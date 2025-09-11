@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+@theme {
+  /* Font Families */
+  --font-heading: "Playfair Display", serif;
+  --font-body: "Inter", sans-serif;
+
+  /* Border Radius */
+  --radius: 0.5rem; /* Equivalent to rounded-lg */
+
+  /* Shadows */
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  /* Colors - Light Mode (Default) */
+  --color-background-primary: theme(colors.gray.50);
+  --color-background-secondary: theme(colors.gray.200);
+  --color-background-tertiary: theme(colors.gray.300);
+  --color-text-primary: theme(colors.gray.900);
+  --color-text-secondary: theme(colors.gray.700);
+  --color-accent: theme(colors.blue.500);
+  --color-accent-hover: theme(colors.blue.600);
+  --color-border: theme(colors.gray.300);
+
+  /* State Colors - Light */
+  --color-success-bg: theme(colors.green.100);
+  --color-success-text: theme(colors.green.600);
+  --color-warning-bg: theme(colors.yellow.100);
+  --color-warning-text: theme(colors.yellow.600);
+  --color-error-bg: theme(colors.red.100);
+  --color-error-text: theme(colors.red.600);
+  --color-info-bg: theme(colors.blue.100);
+  --color-info-text: theme(colors.blue.600);
+}
+
+/* Dark Mode Overrides */
+:is([data-theme="dark"]) {
+  --color-background-primary: theme(colors.gray.900);
+  --color-background-secondary: theme(colors.gray.800);
+  --color-background-tertiary: theme(colors.gray.700);
+  --color-text-primary: theme(colors.gray.100);
+  --color-text-secondary: theme(colors.gray.300);
+  --color-accent: theme(colors.blue.600);
+  --color-accent-hover: theme(colors.blue.500);
+  --color-border: theme(colors.gray.700);
+
+  /* State Colors - Dark */
+  --color-success-bg: theme(colors.green.900);
+  --color-success-text: theme(colors.green.400);
+  --color-warning-bg: theme(colors.yellow.900);
+  --color-warning-text: theme(colors.yellow.400);
+  --color-error-bg: theme(colors.red.900);
+  --color-error-text: theme(colors.red.400);
+  --color-info-bg: theme(colors.blue.900);
+  --color-info-text: theme(colors.blue.400);
+}
+
+/* Base Styles */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply font-body bg-background-primary text-text-primary transition-colors duration-300;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
