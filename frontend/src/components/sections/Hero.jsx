@@ -1,7 +1,10 @@
 import { forwardRef } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 
-const Hero = forwardRef(({ onLoginClick }, ref) => {
+const Hero = forwardRef(({ onLoginClick, isLoggedIn }, ref) => {
+  const navigate = useNavigate();
+
   return (
     <section
       id="home"
@@ -19,9 +22,18 @@ const Hero = forwardRef(({ onLoginClick }, ref) => {
           transparency and control.
         </p>
 
-        <Button onClick={onLoginClick} className="text-lg px-8 py-3">
-          Log In
-        </Button>
+        {isLoggedIn ? (
+          <Button
+            onClick={() => navigate("/dashboard")}
+            className="text-lg px-8 py-3"
+          >
+            Go to dashboard
+          </Button>
+        ) : (
+          <Button onClick={onLoginClick} className="text-lg px-8 py-3">
+            Log In
+          </Button>
+        )}
       </div>
     </section>
   );

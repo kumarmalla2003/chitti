@@ -1,33 +1,52 @@
 import { useState, useRef, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import ThemeToggle from "../ui/ThemeToggle";
-import { FiMenu, FiLogIn } from "react-icons/fi";
+import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
 
 const Header = ({
   onLoginClick,
   activeSection,
   onNavLinkClick,
   onMenuOpen,
+  isLoggedIn,
 }) => {
+  const location = useLocation();
   const [underlineStyle, setUnderlineStyle] = useState({});
   const [hoveredLink, setHoveredLink] = useState(null);
 
-  const homeLinkRef = useRef(null);
-  const featuresLinkRef = useRef(null);
-  const workflowLinkRef = useRef(null);
-  const whyUsLinkRef = useRef(null);
-  const contactLinkRef = useRef(null);
-
-  const navLinks = {
-    home: homeLinkRef,
-    features: featuresLinkRef,
-    workflow: workflowLinkRef,
-    "why-us": whyUsLinkRef,
-    contact: contactLinkRef,
+  // Refs for all possible links
+  const linkRefs = {
+    home: useRef(null),
+    features: useRef(null),
+    workflow: useRef(null),
+    "why-us": useRef(null),
+    contact: useRef(null),
+    dashboard: useRef(null),
   };
 
+  const loggedOutNavLinks = [
+    { href: "#home", text: "Home", id: "home" },
+    { href: "#features", text: "Features", id: "features" },
+    { href: "#workflow", text: "Process", id: "workflow" },
+    { href: "#why-us", text: "Why Us", id: "why-us" },
+    { href: "#contact", text: "Contact", id: "contact" },
+  ];
+
+  const loggedInNavLinks = [
+    { href: "/", text: "Home", id: "home" },
+    { href: "/dashboard", text: "Dashboard", id: "dashboard" },
+  ];
+
   useEffect(() => {
-    const targetLink = hoveredLink || activeSection;
-    const activeLinkRef = navLinks[targetLink];
+    // Determine the active link's ID based on login state
+    const activeId = isLoggedIn
+      ? location.pathname === "/dashboard"
+        ? "dashboard"
+        : "home"
+      : activeSection;
+
+    const targetId = hoveredLink || activeId;
+    const activeLinkRef = linkRefs[targetId];
 
     if (activeLinkRef && activeLinkRef.current) {
       setUnderlineStyle({
@@ -38,10 +57,45 @@ const Header = ({
     } else if (!hoveredLink) {
       setUnderlineStyle({ opacity: 0 });
     }
-  }, [activeSection, hoveredLink]);
+  }, [activeSection, hoveredLink, isLoggedIn, location.pathname]);
 
   const handleLinkClick = (e, sectionId) => {
     onNavLinkClick(sectionId);
+  };
+
+  const NavLinks = () => {
+    if (isLoggedIn) {
+      return loggedInNavLinks.map((link) => (
+        <Link
+          key={link.id}
+          ref={linkRefs[link.id]}
+          to={link.href}
+          onMouseEnter={() => setHoveredLink(link.id)}
+          className={`transition-colors ${
+            location.pathname === link.href
+              ? "text-accent"
+              : "text-text-secondary"
+          }`}
+        >
+          {link.text}
+        </Link>
+      ));
+    }
+
+    return loggedOutNavLinks.map((link) => (
+      <a
+        key={link.id}
+        ref={linkRefs[link.id]}
+        href={link.href}
+        onClick={(e) => handleLinkClick(e, link.id)}
+        onMouseEnter={() => setHoveredLink(link.id)}
+        className={`transition-colors ${
+          activeSection === link.id ? "text-accent" : "text-text-secondary"
+        }`}
+      >
+        {link.text}
+      </a>
+    ));
   };
 
   return (
@@ -49,8 +103,13 @@ const Header = ({
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">
           <a
-            href="#home"
-            onClick={(e) => handleLinkClick(e, "home")}
+            href="/"
+            onClick={(e) => {
+              if (location.pathname === "/") {
+                e.preventDefault();
+                handleLinkClick(e, "home");
+              }
+            }}
             className="hidden md:block text-3xl font-bold font-heading text-accent"
           >
             Chitti
@@ -67,80 +126,16 @@ const Header = ({
         </div>
 
         <div className="md:hidden">
-          <a
-            href="#home"
-            onClick={(e) => handleLinkClick(e, "home")}
-            className="text-3xl font-bold font-heading text-accent"
-          >
+          <Link to="/" className="text-3xl font-bold font-heading text-accent">
             Chitti
-          </a>
+          </Link>
         </div>
 
         <div
           onMouseLeave={() => setHoveredLink(null)}
           className="hidden md:flex items-center space-x-8 relative"
         >
-          <a
-            ref={homeLinkRef}
-            href="#home"
-            onClick={(e) => handleLinkClick(e, "home")}
-            onMouseEnter={() => setHoveredLink("home")}
-            className={`transition-colors ${
-              activeSection === "home" ? "text-accent" : "text-text-secondary"
-            }`}
-          >
-            Home
-          </a>
-          <a
-            ref={featuresLinkRef}
-            href="#features"
-            onClick={(e) => handleLinkClick(e, "features")}
-            onMouseEnter={() => setHoveredLink("features")}
-            className={`transition-colors ${
-              activeSection === "features"
-                ? "text-accent"
-                : "text-text-secondary"
-            }`}
-          >
-            Features
-          </a>
-          <a
-            ref={workflowLinkRef}
-            href="#workflow"
-            onClick={(e) => handleLinkClick(e, "workflow")}
-            onMouseEnter={() => setHoveredLink("workflow")}
-            className={`transition-colors ${
-              activeSection === "workflow"
-                ? "text-accent"
-                : "text-text-secondary"
-            }`}
-          >
-            Process
-          </a>
-          <a
-            ref={whyUsLinkRef}
-            href="#why-us"
-            onClick={(e) => handleLinkClick(e, "why-us")}
-            onMouseEnter={() => setHoveredLink("why-us")}
-            className={`transition-colors ${
-              activeSection === "why-us" ? "text-accent" : "text-text-secondary"
-            }`}
-          >
-            Why Us
-          </a>
-          <a
-            ref={contactLinkRef}
-            href="#contact"
-            onClick={(e) => handleLinkClick(e, "contact")}
-            onMouseEnter={() => setHoveredLink("contact")}
-            className={`transition-colors ${
-              activeSection === "contact"
-                ? "text-accent"
-                : "text-text-secondary"
-            }`}
-          >
-            Contact
-          </a>
+          <NavLinks />
           <span
             className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-300 ease-out"
             style={underlineStyle}
@@ -151,13 +146,22 @@ const Header = ({
           <div className="hidden md:block">
             <ThemeToggle />
           </div>
-          <button
-            onClick={onLoginClick}
-            className="text-accent transition-opacity hover:opacity-80 cursor-pointer"
-            aria-label="Log In"
-          >
-            <FiLogIn className="w-8 h-8" />
-          </button>
+          {isLoggedIn ? (
+            <div
+              className="text-text-primary cursor-pointer"
+              aria-label="Profile"
+            >
+              <FiUser className="w-6 h-6 md:w-8 md:h-8" />
+            </div>
+          ) : (
+            <button
+              onClick={onLoginClick}
+              className="text-accent transition-opacity hover:opacity-80 cursor-pointer"
+              aria-label="Log In"
+            >
+              <FiLogIn className="w-8 h-8" />
+            </button>
+          )}
         </div>
       </nav>
     </header>

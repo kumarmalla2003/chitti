@@ -1,6 +1,7 @@
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
-import { FiArrowLeft, FiLogIn } from "react-icons/fi";
+import { FiArrowLeft, FiLogIn, FiUser } from "react-icons/fi";
+import { Link, useLocation } from "react-router-dom";
 
 const MobileNav = ({
   isOpen,
@@ -8,7 +9,10 @@ const MobileNav = ({
   onNavLinkClick,
   activeSection,
   onLoginClick,
+  isLoggedIn,
 }) => {
+  const location = useLocation();
+
   const handleLinkClick = (e, sectionId) => {
     onNavLinkClick(sectionId);
     onClose();
@@ -19,12 +23,17 @@ const MobileNav = ({
     onClose();
   };
 
-  const navLinks = [
+  const loggedOutNavLinks = [
     { href: "#home", text: "Home", id: "home" },
     { href: "#features", text: "Features", id: "features" },
     { href: "#workflow", text: "Process", id: "workflow" },
     { href: "#why-us", text: "Why Us", id: "why-us" },
     { href: "#contact", text: "Contact", id: "contact" },
+  ];
+
+  const loggedInNavLinks = [
+    { href: "/", text: "Home" },
+    { href: "/dashboard", text: "Dashboard" },
   ];
 
   return (
@@ -53,36 +62,65 @@ const MobileNav = ({
             <h2 className="text-2xl font-bold font-heading text-accent">
               Chitti
             </h2>
-            <button
-              onClick={handleLoginClick}
-              className="absolute right-0 p-1 text-accent"
-              aria-label="Log In"
-            >
-              <FiLogIn className="w-6 h-6" />
-            </button>
+            {isLoggedIn ? (
+              <div
+                className="absolute right-0 p-1 text-text-primary"
+                aria-label="Profile"
+              >
+                <FiUser className="w-6 h-6" />
+              </div>
+            ) : (
+              <button
+                onClick={handleLoginClick}
+                className="absolute right-0 p-1 text-accent"
+                aria-label="Log In"
+              >
+                <FiLogIn className="w-6 h-6" />
+              </button>
+            )}
           </div>
           <hr className="border-border" />
 
           <nav className="flex flex-col space-y-2 mt-6">
-            {navLinks.map((link, index) => (
-              <a
-                key={link.id}
-                href={link.href}
-                onClick={(e) => handleLinkClick(e, link.id)}
-                className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
-                  activeSection === link.id
-                    ? "text-accent font-semibold underline underline-offset-4"
-                    : "text-text-primary"
-                }`}
-                style={{
-                  transitionDelay: `${75 + index * 25}ms`,
-                  transform: isOpen ? "translateX(0)" : "translateX(-20px)",
-                  opacity: isOpen ? 1 : 0,
-                }}
-              >
-                {link.text}
-              </a>
-            ))}
+            {isLoggedIn
+              ? loggedInNavLinks.map((link, index) => (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={onClose}
+                    className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
+                      location.pathname === link.href
+                        ? "text-accent font-semibold underline underline-offset-4"
+                        : "text-text-primary"
+                    }`}
+                    style={{
+                      transitionDelay: `${75 + index * 25}ms`,
+                      transform: isOpen ? "translateX(0)" : "translateX(-20px)",
+                      opacity: isOpen ? 1 : 0,
+                    }}
+                  >
+                    {link.text}
+                  </Link>
+                ))
+              : loggedOutNavLinks.map((link, index) => (
+                  <a
+                    key={link.id}
+                    href={link.href}
+                    onClick={(e) => handleLinkClick(e, link.id)}
+                    className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
+                      activeSection === link.id
+                        ? "text-accent font-semibold underline underline-offset-4"
+                        : "text-text-primary"
+                    }`}
+                    style={{
+                      transitionDelay: `${75 + index * 25}ms`,
+                      transform: isOpen ? "translateX(0)" : "translateX(-20px)",
+                      opacity: isOpen ? 1 : 0,
+                    }}
+                  >
+                    {link.text}
+                  </a>
+                ))}
           </nav>
 
           <hr className="my-6 border-border" />
@@ -94,13 +132,17 @@ const MobileNav = ({
             </div>
           </div>
 
-          <p className="mt-auto pt-6 text-base text-text-secondary text-center mb-4">
-            Log in to access your dashboard!
-          </p>
-          <hr className="mb-6 border-border" />
-          <Button onClick={handleLoginClick} className="w-full mb-4">
-            Log In
-          </Button>
+          {!isLoggedIn && (
+            <>
+              <p className="mt-auto pt-6 text-base text-text-secondary text-center mb-4">
+                Log in to access your dashboard!
+              </p>
+              <hr className="mb-6 border-border" />
+              <Button onClick={handleLoginClick} className="w-full mb-4">
+                Log In
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </>

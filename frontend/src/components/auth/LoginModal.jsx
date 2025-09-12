@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Button from "../ui/Button";
 import { FiPhone, FiLock, FiX } from "react-icons/fi";
 
-const LoginModal = ({ isOpen, onClose }) => {
+const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [step, setStep] = useState("phone"); // 'phone' or 'otp'
   const [phoneNumber, setPhoneNumber] = useState(""); // Stores raw 10 digits
   const [otp, setOtp] = useState(new Array(4).fill(""));
@@ -72,6 +72,8 @@ const LoginModal = ({ isOpen, onClose }) => {
       return;
     }
     console.log("Verifying OTP:", enteredOtp);
+    // On successful verification
+    onLoginSuccess();
   };
 
   const handleOtpChange = (element, index) => {
@@ -157,8 +159,9 @@ const LoginModal = ({ isOpen, onClose }) => {
                 Enter the 4-digit OTP sent to +91 {formattedPhoneNumber}
               </p>
             </div>
-            <div className="flex justify-center items-center gap-4 mb-6">
-              <FiLock className="w-8 h-8 text-text-secondary" />
+            <div className="flex justify-center items-center gap-2 mb-6">
+              <FiLock className="w-10 h-10 text-text-secondary" />
+              <div className="mr-1 h-10 w-px bg-border"></div>
               <div className="flex justify-center gap-2">
                 {otp.map((data, index) => {
                   return (
@@ -172,7 +175,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                       onChange={(e) => handleOtpChange(e.target, index)}
                       onKeyDown={(e) => handleOtpKeyDown(e, index)}
                       ref={(el) => (otpInputRefs.current[index] = el)}
-                      className="w-12 h-12 text-center text-2xl bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-10 h-10 text-center text-2xl bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                   );
                 })}
