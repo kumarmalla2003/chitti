@@ -7,6 +7,7 @@ import WhyUs from "../components/sections/WhyUs";
 import Contact from "../components/sections/Contact";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
+import BottomNav from "../components/layout/BottomNav";
 import { useActiveSection } from "../hooks/useActiveSection";
 
 const HomePage = ({ onLoginClick }) => {
@@ -55,14 +56,16 @@ const HomePage = ({ onLoginClick }) => {
           onNavLinkClick={setClickedSection}
           onMenuOpen={() => setIsMenuOpen(true)}
         />
-        <main className="flex-grow">
-          <Hero ref={homeRef} onLoginClick={onLoginClick} />
-          <Features ref={featuresRef} />
-          <Workflow ref={workflowRef} />
-          <WhyUs ref={whyUsRef} />
-          <Contact ref={contactRef} />
-        </main>
-        <Footer />
+        <div className="pb-16 md:pb-0">
+          <main className="flex-grow">
+            <Hero ref={homeRef} onLoginClick={onLoginClick} />
+            <Features ref={featuresRef} />
+            <Workflow ref={workflowRef} />
+            <WhyUs ref={whyUsRef} />
+            <Contact ref={contactRef} />
+          </main>
+          <Footer />
+        </div>
       </div>
       <MobileNav
         isOpen={isMenuOpen}
@@ -71,6 +74,7 @@ const HomePage = ({ onLoginClick }) => {
         activeSection={activeSection}
         onLoginClick={onLoginClick}
       />
+      <BottomNav onLoginClick={onLoginClick} />
     </>
   );
 };

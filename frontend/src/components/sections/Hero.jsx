@@ -18,6 +18,7 @@ const Hero = forwardRef(({ onLoginClick }, ref) => {
           schedules, track payments, and manage your groups with complete
           transparency and control.
         </p>
+
         <Button onClick={onLoginClick} className="text-lg px-8 py-3">
           Log In
         </Button>

@@ -1,5 +1,5 @@
 import { useTheme } from "../../hooks/useTheme";
-import { SunIcon, MoonIcon } from "./Icons";
+import { FiSun, FiMoon } from "react-icons/fi";
 
 const ThemeToggle = () => {
   const { theme, toggleTheme } = useTheme();
@@ -17,9 +17,9 @@ const ThemeToggle = () => {
         }`}
       >
         {isDark ? (
-          <MoonIcon className="w-4 h-4 text-gray-600" />
+          <FiMoon className="w-4 h-4 text-gray-600" />
         ) : (
-          <SunIcon className="w-4 h-4 text-yellow-500" />
+          <FiSun className="w-4 h-4 text-yellow-500" />
         )}
       </span>
     </button>

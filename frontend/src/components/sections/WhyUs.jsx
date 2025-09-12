@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import Card from "../ui/Card";
-import { NoAuctionIcon, TrustIcon, UsersIcon } from "./../ui/Icons";
+import { FiSlash, FiCheckCircle, FiUsers } from "react-icons/fi";
 
 const WhyUs = forwardRef((props, ref) => {
   return (
@@ -19,7 +19,7 @@ const WhyUs = forwardRef((props, ref) => {
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <NoAuctionIcon />
+              <FiSlash size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               No More Auctions
@@ -31,7 +31,7 @@ const WhyUs = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <TrustIcon />
+              <FiCheckCircle size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Increased Trust
@@ -43,7 +43,7 @@ const WhyUs = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <UsersIcon />
+              <FiUsers size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Reduced Workload

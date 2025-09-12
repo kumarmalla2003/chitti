@@ -1,18 +1,24 @@
 import { useState } from "react";
-import HomePage from "./pages/HomePage";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import HomePage from "./pages/HomePage";
 import LoginModal from "./components/auth/LoginModal";
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleOpenModal = () => setIsModalOpen(true);
-  const handleCloseModal = () => setIsModalOpen(false);
+  const handleLoginModalOpen = () => setIsModalOpen(true);
+  const handleLoginModalClose = () => setIsModalOpen(false);
 
   return (
     <ThemeProvider>
-      <HomePage onLoginClick={handleOpenModal} />
-      <LoginModal isOpen={isModalOpen} onClose={handleCloseModal} />
+      <div
+        className={`transition-all duration-300 ${
+          isModalOpen ? "blur-sm pointer-events-none" : ""
+        }`}
+      >
+        <HomePage onLoginClick={handleLoginModalOpen} />
+      </div>
+      <LoginModal isOpen={isModalOpen} onClose={handleLoginModalClose} />
     </ThemeProvider>
   );
 };

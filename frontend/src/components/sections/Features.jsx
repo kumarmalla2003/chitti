@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import Card from "../ui/Card";
-import { ScheduleIcon, UsersIcon, PaymentIcon } from "../ui/Icons";
+import { FiCalendar, FiUsers, FiDollarSign } from "react-icons/fi";
 
 const Features = forwardRef((props, ref) => {
   return (
@@ -19,7 +19,7 @@ const Features = forwardRef((props, ref) => {
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <ScheduleIcon />
+              <FiCalendar size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Fixed Payout Schedules
@@ -31,7 +31,7 @@ const Features = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <UsersIcon />
+              <FiUsers size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Effortless Group Setup
@@ -43,7 +43,7 @@ const Features = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <PaymentIcon />
+              <FiDollarSign size={24} />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Automated Collections

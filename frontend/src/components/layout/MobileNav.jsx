@@ -1,6 +1,6 @@
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
-import { ArrowLeftIcon, LogInIcon } from "../ui/Icons";
+import { FiArrowLeft, FiLogIn } from "react-icons/fi";
 
 const MobileNav = ({
   isOpen,
@@ -48,7 +48,7 @@ const MobileNav = ({
               className="absolute left-0 text-text-primary"
               aria-label="Close menu"
             >
-              <ArrowLeftIcon className="w-6 h-6" />
+              <FiArrowLeft className="w-6 h-6" />
             </button>
             <h2 className="text-2xl font-bold font-heading text-accent">
               Chitti
@@ -58,7 +58,7 @@ const MobileNav = ({
               className="absolute right-0 p-1 text-accent"
               aria-label="Log In"
             >
-              <LogInIcon className="w-6 h-6" />
+              <FiLogIn className="w-6 h-6" />
             </button>
           </div>
           <hr className="border-border" />

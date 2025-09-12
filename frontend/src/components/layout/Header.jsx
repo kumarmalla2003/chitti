@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import ThemeToggle from "../ui/ThemeToggle";
-import { MenuIcon, LogInIcon } from "../ui/Icons";
+import { FiMenu, FiLogIn } from "react-icons/fi";
 
 const Header = ({
   onLoginClick,
@@ -61,7 +61,7 @@ const Header = ({
               className="text-text-primary"
               aria-label="Open menu"
             >
-              <MenuIcon className="w-6 h-6" />
+              <FiMenu className="w-6 h-6" />
             </button>
           </div>
         </div>
@@ -156,7 +156,7 @@ const Header = ({
             className="text-accent transition-opacity hover:opacity-80 cursor-pointer"
             aria-label="Log In"
           >
-            <LogInIcon className="w-8 h-8" />
+            <FiLogIn className="w-8 h-8" />
           </button>
         </div>
       </nav>

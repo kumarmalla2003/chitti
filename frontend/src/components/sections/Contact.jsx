@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import Card from "../ui/Card";
-import { MailIcon, PhoneIcon } from "../ui/Icons";
+import { FiMail, FiPhone } from "react-icons/fi";
 
 const Contact = forwardRef((props, ref) => {
   return (
@@ -37,7 +37,7 @@ const Contact = forwardRef((props, ref) => {
                 className="group flex items-center gap-4"
               >
                 <div className="p-3 bg-background-primary rounded-full group-hover:bg-accent transition-colors duration-300">
-                  <MailIcon />
+                  <FiMail />
                 </div>
                 <div>
                   <p className="font-semibold text-text-primary">Email Us</p>
@@ -51,7 +51,7 @@ const Contact = forwardRef((props, ref) => {
                 className="group flex items-center gap-4"
               >
                 <div className="p-3 bg-background-primary rounded-full group-hover:bg-accent transition-colors duration-300">
-                  <PhoneIcon />
+                  <FiPhone />
                 </div>
                 <div>
                   <p className="font-semibold text-text-primary">Call Us</p>

@@ -2,8 +2,8 @@
 
 @theme {
   /* Font Families */
-  --font-heading: "Playfair Display", serif;
-  --font-body: "Inter", sans-serif;
+  --font-heading: serif;
+  --font-body: sans-serif;
 
   /* Border Radius */
   --radius: 0.5rem; /* Equivalent to rounded-lg */
