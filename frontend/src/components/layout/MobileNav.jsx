@@ -1,6 +1,8 @@
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
-import { FiArrowLeft, FiLogIn, FiUser } from "react-icons/fi";
+import { FiArrowLeft, FiLogIn, FiLogOut } from "react-icons/fi";
 import { Link, useLocation } from "react-router-dom";
 
 const MobileNav = ({
@@ -9,17 +11,25 @@ const MobileNav = ({
   onNavLinkClick,
   activeSection,
   onLoginClick,
-  isLoggedIn,
 }) => {
   const location = useLocation();
+  const dispatch = useDispatch();
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const handleLinkClick = (e, sectionId) => {
-    onNavLinkClick(sectionId);
+    if (onNavLinkClick) {
+      onNavLinkClick(sectionId);
+    }
     onClose();
   };
 
   const handleLoginClick = () => {
     onLoginClick();
+    onClose();
+  };
+
+  const handleLogoutClick = () => {
+    dispatch(logout());
     onClose();
   };
 
@@ -36,6 +46,26 @@ const MobileNav = ({
     { href: "/dashboard", text: "Dashboard" },
   ];
 
+  const BrandLogo = () => {
+    const className = "text-2xl font-bold font-heading text-accent";
+    if (location.pathname === "/") {
+      return (
+        <a
+          href="#home"
+          className={className}
+          onClick={(e) => handleLinkClick(e, "home")}
+        >
+          Chitti
+        </a>
+      );
+    }
+    return (
+      <Link to="/" className={className} onClick={onClose}>
+        Chitti
+      </Link>
+    );
+  };
+
   return (
     <>
       <div
@@ -51,6 +81,7 @@ const MobileNav = ({
         }`}
       >
         <div className="px-4 py-5 flex flex-col h-full">
+          {/* Header */}
           <div className="relative flex justify-center items-center pb-4">
             <button
               onClick={onClose}
@@ -59,16 +90,15 @@ const MobileNav = ({
             >
               <FiArrowLeft className="w-6 h-6" />
             </button>
-            <h2 className="text-2xl font-bold font-heading text-accent">
-              Chitti
-            </h2>
+            <BrandLogo />
             {isLoggedIn ? (
-              <div
-                className="absolute right-0 p-1 text-text-primary"
-                aria-label="Profile"
+              <button
+                onClick={handleLogoutClick}
+                className="absolute right-0 p-1 text-danger"
+                aria-label="Log Out"
               >
-                <FiUser className="w-6 h-6" />
-              </div>
+                <FiLogOut className="w-6 h-6" />
+              </button>
             ) : (
               <button
                 onClick={handleLoginClick}
@@ -81,6 +111,7 @@ const MobileNav = ({
           </div>
           <hr className="border-border" />
 
+          {/* Navigation Links */}
           <nav className="flex flex-col space-y-2 mt-6">
             {isLoggedIn
               ? loggedInNavLinks.map((link, index) => (
@@ -123,8 +154,8 @@ const MobileNav = ({
                 ))}
           </nav>
 
+          {/* Theme Toggle */}
           <hr className="my-6 border-border" />
-
           <div className="px-4">
             <div className="flex justify-between items-center">
               <span className="text-text-secondary text-lg">Theme</span>
@@ -132,17 +163,30 @@ const MobileNav = ({
             </div>
           </div>
 
-          {!isLoggedIn && (
-            <>
-              <p className="mt-auto pt-6 text-base text-text-secondary text-center mb-4">
-                Log in to access your dashboard!
-              </p>
-              <hr className="mb-6 border-border" />
-              <Button onClick={handleLoginClick} className="w-full mb-4">
-                Log In
-              </Button>
-            </>
-          )}
+          {/* Session Actions (Login/Logout) */}
+          <div className="mt-auto">
+            {isLoggedIn ? (
+              <>
+                <hr className="mb-6 border-border" />
+                <Button
+                  onClick={handleLogoutClick}
+                  className="w-full mb-4 !bg-danger hover:!bg-danger-hover"
+                >
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="pt-6 text-base text-text-secondary text-center mb-4">
+                  Log in to access your dashboard!
+                </p>
+                <hr className="mb-6 border-border" />
+                <Button onClick={handleLoginClick} className="w-full mb-4">
+                  Log In
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>

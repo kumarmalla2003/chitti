@@ -4,7 +4,7 @@ import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 
-const DashboardPage = ({ isLoggedIn }) => {
+const DashboardPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Placeholder props for components that expect them
@@ -18,7 +18,6 @@ const DashboardPage = ({ isLoggedIn }) => {
         className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
       >
         <Header
-          isLoggedIn={isLoggedIn}
           onMenuOpen={() => setIsMenuOpen(true)}
           activeSection={dummyActiveSection}
           onNavLinkClick={dummyNavLinkClick}
@@ -43,12 +42,11 @@ const DashboardPage = ({ isLoggedIn }) => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        isLoggedIn={isLoggedIn}
         activeSection={dummyActiveSection}
         onNavLinkClick={dummyNavLinkClick}
         onLoginClick={dummyLoginClick}
       />
-      <BottomNav isLoggedIn={isLoggedIn} />
+      <BottomNav />
     </>
   );
 };

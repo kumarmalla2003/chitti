@@ -1,9 +1,11 @@
 import { forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import Button from "../ui/Button";
 
-const Hero = forwardRef(({ onLoginClick, isLoggedIn }, ref) => {
+const Hero = forwardRef(({ onLoginClick }, ref) => {
   const navigate = useNavigate();
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   return (
     <section

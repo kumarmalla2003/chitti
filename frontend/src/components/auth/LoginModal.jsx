@@ -1,100 +1,111 @@
 import { useState, useEffect, useRef } from "react";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
 import { FiPhone, FiLock, FiX } from "react-icons/fi";
 
-const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
-  const [step, setStep] = useState("phone"); // 'phone' or 'otp'
-  const [phoneNumber, setPhoneNumber] = useState(""); // Stores raw 10 digits
-  const [otp, setOtp] = useState(new Array(4).fill(""));
+const LoginModal = ({ isOpen, onClose }) => {
+  const [step, setStep] = useState("phone"); // 'phone' or 'pin'
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [pin, setPin] = useState(new Array(6).fill(""));
+  const [visiblePinIndex, setVisiblePinIndex] = useState(null);
+  const dispatch = useDispatch();
 
   const phoneInputRef = useRef(null);
-  const otpInputRefs = useRef([]);
+  const pinInputRefs = useRef([]);
+  const visibilityTimerRef = useRef(null);
 
-  // Effect to handle browser back button
   useEffect(() => {
     const handlePopState = () => {
       onClose();
     };
-
     if (isOpen) {
       window.history.pushState({ modal: true }, "");
       window.addEventListener("popstate", handlePopState);
     }
-
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      clearTimeout(visibilityTimerRef.current);
     };
   }, [isOpen, onClose]);
 
-  // Autofocus logic
   useEffect(() => {
     if (isOpen) {
       if (step === "phone") {
         setTimeout(() => phoneInputRef.current?.focus(), 100);
-      } else if (step === "otp") {
-        setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
+      } else if (step === "pin") {
+        setTimeout(() => pinInputRefs.current[0]?.focus(), 100);
       }
     }
   }, [isOpen, step]);
 
-  // Reset state when modal is closed
   useEffect(() => {
     if (!isOpen) {
       setTimeout(() => {
         setStep("phone");
         setPhoneNumber("");
-        setOtp(new Array(4).fill(""));
+        setPin(new Array(6).fill(""));
       }, 300);
     }
   }, [isOpen]);
 
   const handlePhoneChange = (e) => {
-    // Remove all non-numeric characters and limit to 10 digits
     const input = e.target.value.replace(/\D/g, "");
     setPhoneNumber(input.slice(0, 10));
   };
 
-  const handleSendOtp = (e) => {
+  const handleNextStep = (e) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
       alert("Please enter a valid 10-digit phone number.");
       return;
     }
-    console.log("Sending OTP to:", phoneNumber);
-    setStep("otp");
+    setStep("pin");
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    const enteredOtp = otp.join("");
-    if (enteredOtp.length < 4) {
-      alert("Please enter the complete 4-digit OTP.");
+    const enteredPin = pin.join("");
+    if (enteredPin.length < 6) {
+      alert("Please enter the complete 6-digit PIN.");
       return;
     }
-    console.log("Verifying OTP:", enteredOtp);
-    // On successful verification
-    onLoginSuccess();
+    const mockUserData = { phone: phoneNumber };
+    const mockToken = `fake-jwt-token-for-${phoneNumber}`;
+    dispatch(loginSuccess({ user: mockUserData, token: mockToken }));
+    onClose();
   };
 
-  const handleOtpChange = (element, index) => {
-    if (isNaN(element.value)) return false;
+  const handlePinChange = (element, index) => {
+    if (isNaN(element.value)) return;
+    const newPin = [...pin];
+    newPin[index] = element.value.slice(-1);
+    setPin(newPin);
 
-    const newOtp = [...otp];
-    newOtp[index] = element.value.slice(-1);
-    setOtp(newOtp);
+    setVisiblePinIndex(index);
+    clearTimeout(visibilityTimerRef.current);
+
+    visibilityTimerRef.current = setTimeout(() => {
+      setVisiblePinIndex(null);
+    }, 500); // Changed from 800 to 500
 
     if (element.value !== "" && element.nextSibling) {
       element.nextSibling.focus();
     }
   };
 
-  const handleOtpKeyDown = (e, index) => {
-    if (e.key === "Backspace" && !otp[index] && e.target.previousSibling) {
+  const handlePinKeyDown = (e, index) => {
+    if (e.key === "Backspace" && !pin[index] && e.target.previousSibling) {
       e.target.previousSibling.focus();
     }
   };
 
-  // Create the formatted phone number for display
+  const handlePinFocus = (e) => {
+    setTimeout(() => {
+      e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+    }, 0);
+  };
+
   let formattedPhoneNumber = phoneNumber;
   if (phoneNumber.length > 5) {
     formattedPhoneNumber = `${phoneNumber.slice(0, 5)} ${phoneNumber.slice(5)}`;
@@ -129,9 +140,9 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
         <hr className="my-6 border-border" />
 
         {step === "phone" ? (
-          <form onSubmit={handleSendOtp}>
+          <form onSubmit={handleNextStep}>
             <p className="text-text-secondary text-center mb-4">
-              Please enter your registered phone number to continue.
+              Please enter your registered phone number
             </p>
             <div className="relative flex items-center mb-6">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -149,40 +160,39 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
               />
             </div>
             <Button type="submit" className="w-full">
-              Send OTP
+              Verify
             </Button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp}>
+          <form onSubmit={handleLogin}>
             <div className="mb-4">
               <p className="text-center text-text-secondary text-sm">
-                Enter the 4-digit OTP sent to +91 {formattedPhoneNumber}
+                Enter the 6-digit PIN for +91 {formattedPhoneNumber}
               </p>
             </div>
             <div className="flex justify-center items-center gap-2 mb-6">
-              <FiLock className="w-10 h-10 text-text-secondary" />
-              <div className="mr-1 h-10 w-px bg-border"></div>
+              <FiLock className="w-8 h-8 text-text-secondary" />
+              <div className="mr-1 h-8 w-px bg-border"></div>
               <div className="flex justify-center gap-2">
-                {otp.map((data, index) => {
-                  return (
-                    <input
-                      key={index}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="\d{1}"
-                      maxLength="1"
-                      value={data}
-                      onChange={(e) => handleOtpChange(e.target, index)}
-                      onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                      ref={(el) => (otpInputRefs.current[index] = el)}
-                      className="w-10 h-10 text-center text-2xl bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                    />
-                  );
-                })}
+                {pin.map((data, index) => (
+                  <input
+                    key={index}
+                    type={visiblePinIndex === index ? "text" : "password"}
+                    inputMode="numeric"
+                    pattern="\d{1}"
+                    maxLength="1"
+                    value={data}
+                    onChange={(e) => handlePinChange(e.target, index)}
+                    onKeyDown={(e) => handlePinKeyDown(e, index)}
+                    onFocus={handlePinFocus}
+                    ref={(el) => (pinInputRefs.current[index] = el)}
+                    className="w-8 h-8 text-center text-xl bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                ))}
               </div>
             </div>
             <Button type="submit" className="w-full">
-              Verify & Log In
+              Login
             </Button>
             <div className="text-center mt-4">
               <button

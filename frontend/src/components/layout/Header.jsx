@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import ThemeToggle from "../ui/ThemeToggle";
+import ProfileDropdown from "../ui/ProfileDropdown";
+import useClickOutside from "../../hooks/useClickOutside";
 import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
 
 const Header = ({
@@ -8,13 +11,16 @@ const Header = ({
   activeSection,
   onNavLinkClick,
   onMenuOpen,
-  isLoggedIn,
 }) => {
   const location = useLocation();
+  const { isLoggedIn } = useSelector((state) => state.auth);
+
   const [underlineStyle, setUnderlineStyle] = useState({});
   const [hoveredLink, setHoveredLink] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Refs for all possible links
+  const dropdownRef = useClickOutside(() => setIsDropdownOpen(false));
+
   const linkRefs = {
     home: useRef(null),
     features: useRef(null),
@@ -38,7 +44,6 @@ const Header = ({
   ];
 
   useEffect(() => {
-    // Determine the active link's ID based on login state
     const activeId = isLoggedIn
       ? location.pathname === "/dashboard"
         ? "dashboard"
@@ -60,7 +65,9 @@ const Header = ({
   }, [activeSection, hoveredLink, isLoggedIn, location.pathname]);
 
   const handleLinkClick = (e, sectionId) => {
-    onNavLinkClick(sectionId);
+    if (onNavLinkClick) {
+      onNavLinkClick(sectionId);
+    }
   };
 
   const NavLinks = () => {
@@ -81,7 +88,6 @@ const Header = ({
         </Link>
       ));
     }
-
     return loggedOutNavLinks.map((link) => (
       <a
         key={link.id}
@@ -98,22 +104,30 @@ const Header = ({
     ));
   };
 
+  const BrandLogo = ({ className }) => {
+    if (location.pathname === "/") {
+      return (
+        <a
+          href="#home"
+          onClick={(e) => handleLinkClick(e, "home")}
+          className={className}
+        >
+          Chitti
+        </a>
+      );
+    }
+    return (
+      <Link to="/" className={className}>
+        Chitti
+      </Link>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-20 bg-background-secondary/80 backdrop-blur-sm shadow-md">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">
-          <a
-            href="/"
-            onClick={(e) => {
-              if (location.pathname === "/") {
-                e.preventDefault();
-                handleLinkClick(e, "home");
-              }
-            }}
-            className="hidden md:block text-3xl font-bold font-heading text-accent"
-          >
-            Chitti
-          </a>
+          <BrandLogo className="hidden md:block text-3xl font-bold font-heading text-accent" />
           <div className="md:hidden">
             <button
               onClick={onMenuOpen}
@@ -126,9 +140,7 @@ const Header = ({
         </div>
 
         <div className="md:hidden">
-          <Link to="/" className="text-3xl font-bold font-heading text-accent">
-            Chitti
-          </Link>
+          <BrandLogo className="text-3xl font-bold font-heading text-accent" />
         </div>
 
         <div
@@ -147,11 +159,17 @@ const Header = ({
             <ThemeToggle />
           </div>
           {isLoggedIn ? (
-            <div
-              className="text-text-primary cursor-pointer"
-              aria-label="Profile"
-            >
-              <FiUser className="w-6 h-6 md:w-8 md:h-8" />
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                className="text-text-primary cursor-pointer"
+                aria-label="Profile"
+              >
+                <FiUser className="w-6 h-6 md:w-8 md:h-8" />
+              </button>
+              {isDropdownOpen && (
+                <ProfileDropdown onClose={() => setIsDropdownOpen(false)} />
+              )}
             </div>
           ) : (
             <button

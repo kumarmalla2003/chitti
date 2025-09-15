@@ -10,7 +10,7 @@ import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 import { useActiveSection } from "../hooks/useActiveSection";
 
-const HomePage = ({ onLoginClick, isLoggedIn }) => {
+const HomePage = ({ onLoginClick }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const homeRef = useRef(null);
@@ -55,15 +55,10 @@ const HomePage = ({ onLoginClick, isLoggedIn }) => {
           activeSection={activeSection}
           onNavLinkClick={setClickedSection}
           onMenuOpen={() => setIsMenuOpen(true)}
-          isLoggedIn={isLoggedIn}
         />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow">
-            <Hero
-              ref={homeRef}
-              onLoginClick={onLoginClick}
-              isLoggedIn={isLoggedIn}
-            />
+            <Hero ref={homeRef} onLoginClick={onLoginClick} />
             <Features ref={featuresRef} />
             <Workflow ref={workflowRef} />
             <WhyUs ref={whyUsRef} />
@@ -78,9 +73,8 @@ const HomePage = ({ onLoginClick, isLoggedIn }) => {
         onNavLinkClick={setClickedSection}
         activeSection={activeSection}
         onLoginClick={onLoginClick}
-        isLoggedIn={isLoggedIn}
       />
-      <BottomNav onLoginClick={onLoginClick} isLoggedIn={isLoggedIn} />
+      <BottomNav onLoginClick={onLoginClick} />
     </>
   );
 };

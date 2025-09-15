@@ -1,9 +1,11 @@
+import { useSelector } from "react-redux";
 import Button from "../ui/Button";
 import { Link, useLocation } from "react-router-dom";
 import { FiGrid } from "react-icons/fi";
 
-const BottomNav = ({ onLoginClick, isLoggedIn }) => {
+const BottomNav = ({ onLoginClick }) => {
   const location = useLocation();
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   return (
     <footer className="fixed bottom-0 left-0 w-full h-16 bg-background-secondary shadow-[0_-2px_6px_rgba(0,0,0,0.1)] px-4 border-t border-border md:hidden flex items-center">
