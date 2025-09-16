@@ -1,14 +1,19 @@
+// frontend/src/App.jsx
+
 import { useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginModal from "./components/auth/LoginModal";
+import { AnimatePresence } from "framer-motion";
+import AnimatedPage from "./components/ui/AnimatedPage";
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isLoggedIn } = useSelector((state) => state.auth);
+  const location = useLocation();
 
   const handleLoginModalOpen = () => setIsModalOpen(true);
   const handleLoginModalClose = () => setIsModalOpen(false);
@@ -21,18 +26,30 @@ const App = () => {
           isModalOpen ? "blur-sm pointer-events-none" : ""
         }`}
       >
-        <Routes>
-          <Route
-            path="/"
-            element={<HomePage onLoginClick={handleLoginModalOpen} />}
-          />
-          <Route
-            path="/dashboard"
-            element={
-              isLoggedIn ? <DashboardPage /> : <Navigate to="/" replace />
-            }
-          />
-        </Routes>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route
+              path="/"
+              element={
+                <AnimatedPage>
+                  <HomePage onLoginClick={handleLoginModalOpen} />
+                </AnimatedPage>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <DashboardPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+          </Routes>
+        </AnimatePresence>
       </div>
     </ThemeProvider>
   );

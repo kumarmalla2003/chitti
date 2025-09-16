@@ -1,14 +1,21 @@
+// frontend/src/components/auth/LoginModal.jsx
+
 import { useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
-import { FiPhone, FiLock, FiX } from "react-icons/fi";
+import { FiPhone, FiLock, FiX, FiLoader } from "react-icons/fi";
+import { verifyPhone, login } from "../../services/authService";
+import Message from "../ui/Message";
 
 const LoginModal = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState("phone"); // 'phone' or 'pin'
+  const [step, setStep] = useState("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [pin, setPin] = useState(new Array(6).fill(""));
   const [visiblePinIndex, setVisiblePinIndex] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const dispatch = useDispatch();
 
   const phoneInputRef = useRef(null);
@@ -16,27 +23,17 @@ const LoginModal = ({ isOpen, onClose }) => {
   const visibilityTimerRef = useRef(null);
 
   useEffect(() => {
-    const handlePopState = () => {
-      onClose();
-    };
     if (isOpen) {
-      window.history.pushState({ modal: true }, "");
-      window.addEventListener("popstate", handlePopState);
-    }
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      clearTimeout(visibilityTimerRef.current);
-    };
-  }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (isOpen) {
+      document.body.style.overflow = "hidden";
       if (step === "phone") {
         setTimeout(() => phoneInputRef.current?.focus(), 100);
       } else if (step === "pin") {
         setTimeout(() => pinInputRefs.current[0]?.focus(), 100);
       }
+    } else {
+      document.body.style.overflow = "auto";
     }
+    return () => clearTimeout(visibilityTimerRef.current);
   }, [isOpen, step]);
 
   useEffect(() => {
@@ -45,6 +42,8 @@ const LoginModal = ({ isOpen, onClose }) => {
         setStep("phone");
         setPhoneNumber("");
         setPin(new Array(6).fill(""));
+        setError(null);
+        setIsLoading(false);
       }, 300);
     }
   }, [isOpen]);
@@ -52,42 +51,64 @@ const LoginModal = ({ isOpen, onClose }) => {
   const handlePhoneChange = (e) => {
     const input = e.target.value.replace(/\D/g, "");
     setPhoneNumber(input.slice(0, 10));
+    if (error) setError(null);
   };
 
-  const handleNextStep = (e) => {
+  const handleNextStep = async (e) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
-      alert("Please enter a valid 10-digit phone number.");
+      setError("Please enter a valid 10-digit phone number.");
       return;
     }
-    setStep("pin");
+    setIsLoading(true);
+    setError(null);
+    try {
+      await verifyPhone(phoneNumber);
+      setStep("pin");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const enteredPin = pin.join("");
     if (enteredPin.length < 6) {
-      alert("Please enter the complete 6-digit PIN.");
+      setError("Please enter the complete 6-digit PIN.");
       return;
     }
-    const mockUserData = { phone: phoneNumber };
-    const mockToken = `fake-jwt-token-for-${phoneNumber}`;
-    dispatch(loginSuccess({ user: mockUserData, token: mockToken }));
-    onClose();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = await login(phoneNumber, enteredPin);
+      const userData = { phone: phoneNumber };
+      dispatch(loginSuccess({ user: userData, token }));
+      onClose();
+    } catch (err) {
+      setError(err.message);
+      setPin(new Array(6).fill("")); // Clear PIN on error
+      setTimeout(() => pinInputRefs.current[0]?.focus(), 100);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePinChange = (element, index) => {
     if (isNaN(element.value)) return;
+    if (error) setError(null);
+
     const newPin = [...pin];
     newPin[index] = element.value.slice(-1);
     setPin(newPin);
 
     setVisiblePinIndex(index);
     clearTimeout(visibilityTimerRef.current);
-
-    visibilityTimerRef.current = setTimeout(() => {
-      setVisiblePinIndex(null);
-    }, 500); // Changed from 800 to 500
+    visibilityTimerRef.current = setTimeout(
+      () => setVisiblePinIndex(null),
+      500
+    );
 
     if (element.value !== "" && element.nextSibling) {
       element.nextSibling.focus();
@@ -101,9 +122,20 @@ const LoginModal = ({ isOpen, onClose }) => {
   };
 
   const handlePinFocus = (e) => {
-    setTimeout(() => {
-      e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-    }, 0);
+    setTimeout(
+      () =>
+        e.target.setSelectionRange(
+          e.target.value.length,
+          e.target.value.length
+        ),
+      0
+    );
+  };
+
+  const handleGoBackToPhone = () => {
+    setStep("phone");
+    setError(null);
+    setPin(new Array(6).fill(""));
   };
 
   let formattedPhoneNumber = phoneNumber;
@@ -133,18 +165,27 @@ const LoginModal = ({ isOpen, onClose }) => {
         >
           <FiX className="w-6 h-6" />
         </button>
-
         <h2 className="text-3xl font-bold text-center text-text-primary">
           Login
         </h2>
-        <hr className="my-6 border-border" />
-
+        <hr className="my-4 border-border" /> {/* Moved and margin adjusted */}
+        <p className="text-sm text-center text-text-secondary h-5 mb-6">
+          {step === "phone"
+            ? "Enter your authorized phone number"
+            : `Enter PIN for +91 ${formattedPhoneNumber}`}
+        </p>
         {step === "phone" ? (
           <form onSubmit={handleNextStep}>
-            <p className="text-text-secondary text-center mb-4">
-              Please enter your registered phone number
-            </p>
-            <div className="relative flex items-center mb-6">
+            {error && (
+              <Message
+                type="error"
+                title="Validation Error"
+                onClose={() => setError(null)}
+              >
+                {error}
+              </Message>
+            )}
+            <div className="relative flex items-center mb-4">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                 <FiPhone className="w-5 h-5 text-text-secondary" />
               </span>
@@ -156,23 +197,36 @@ const LoginModal = ({ isOpen, onClose }) => {
                 value={formattedPhoneNumber}
                 onChange={handlePhoneChange}
                 required
-                className="w-full pl-12 pr-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                className={`w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
+                  error
+                    ? "border-error-border focus:ring-error-border"
+                    : "border-border focus:ring-accent"
+                }`}
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Verify
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <FiLoader className="animate-spin mx-auto" />
+              ) : (
+                "Verify"
+              )}
             </Button>
           </form>
         ) : (
           <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <p className="text-center text-text-secondary text-sm">
-                Enter the 6-digit PIN for +91 {formattedPhoneNumber}
-              </p>
-            </div>
-            <div className="flex justify-center items-center gap-2 mb-6">
-              <FiLock className="w-8 h-8 text-text-secondary" />
-              <div className="mr-1 h-8 w-px bg-border"></div>
+            {error && (
+              <Message
+                type="error"
+                title="Authentication Error"
+                onClose={() => setError(null)}
+              >
+                {error}
+              </Message>
+            )}
+            <div className="flex justify-center items-center gap-2 mb-4">
+              <FiLock className="w-9 h-9 text-text-secondary" />
+              <div className="mr-1 h-9 w-px bg-border"></div>
               <div className="flex justify-center gap-2">
                 {pin.map((data, index) => (
                   <input
@@ -186,19 +240,29 @@ const LoginModal = ({ isOpen, onClose }) => {
                     onKeyDown={(e) => handlePinKeyDown(e, index)}
                     onFocus={handlePinFocus}
                     ref={(el) => (pinInputRefs.current[index] = el)}
-                    className="w-8 h-8 text-center text-xl bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                    className={`w-9 h-9 text-center text-xl bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
+                      error
+                        ? "border-error-border focus:ring-error-border"
+                        : "border-border focus:ring-accent"
+                    }`}
+                    disabled={isLoading}
                   />
                 ))}
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <FiLoader className="animate-spin mx-auto" />
+              ) : (
+                "Login"
+              )}
             </Button>
             <div className="text-center mt-4">
               <button
                 type="button"
-                onClick={() => setStep("phone")}
+                onClick={handleGoBackToPhone}
                 className="text-sm text-accent underline underline-offset-2 hover:opacity-80 cursor-pointer"
+                disabled={isLoading}
               >
                 Change number?
               </button>

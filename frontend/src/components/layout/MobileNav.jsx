@@ -1,3 +1,5 @@
+// frontend/src/components/layout/MobileNav.jsx
+
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
@@ -94,7 +96,7 @@ const MobileNav = ({
             {isLoggedIn ? (
               <button
                 onClick={handleLogoutClick}
-                className="absolute right-0 p-1 text-danger"
+                className="absolute right-0 p-1 text-error-text"
                 aria-label="Log Out"
               >
                 <FiLogOut className="w-6 h-6" />
@@ -170,7 +172,7 @@ const MobileNav = ({
                 <hr className="mb-6 border-border" />
                 <Button
                   onClick={handleLogoutClick}
-                  className="w-full mb-4 !bg-danger hover:!bg-danger-hover"
+                  className="w-full mb-4 !bg-error-bg !text-error-text hover:!opacity-80"
                 >
                   Log Out
                 </Button>

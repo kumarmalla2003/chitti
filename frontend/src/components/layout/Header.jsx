@@ -1,3 +1,5 @@
+// frontend/src/components/layout/Header.jsx
+
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -5,6 +7,7 @@ import ThemeToggle from "../ui/ThemeToggle";
 import ProfileDropdown from "../ui/ProfileDropdown";
 import useClickOutside from "../../hooks/useClickOutside";
 import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
+import { AnimatePresence } from "framer-motion";
 
 const Header = ({
   onLoginClick,
@@ -167,9 +170,11 @@ const Header = ({
               >
                 <FiUser className="w-6 h-6 md:w-8 md:h-8" />
               </button>
-              {isDropdownOpen && (
-                <ProfileDropdown onClose={() => setIsDropdownOpen(false)} />
-              )}
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <ProfileDropdown onClose={() => setIsDropdownOpen(false)} />
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <button
