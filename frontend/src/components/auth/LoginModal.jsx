@@ -58,6 +58,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
       setError("Please enter a valid 10-digit phone number.");
+      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
       return;
     }
     setIsLoading(true);
@@ -67,6 +68,7 @@ const LoginModal = ({ isOpen, onClose }) => {
       setStep("pin");
     } catch (err) {
       setError(err.message);
+      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
     } finally {
       setIsLoading(false);
     }
@@ -225,8 +227,8 @@ const LoginModal = ({ isOpen, onClose }) => {
               </Message>
             )}
             <div className="flex justify-center items-center gap-2 mb-4">
-              <FiLock className="w-9 h-9 text-text-secondary" />
-              <div className="mr-1 h-9 w-px bg-border"></div>
+              <FiLock className="w-8 h-8 text-text-secondary" />
+              <div className="mr-1 h-8 w-px bg-border"></div>
               <div className="flex justify-center gap-2">
                 {pin.map((data, index) => (
                   <input
@@ -240,7 +242,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     onKeyDown={(e) => handlePinKeyDown(e, index)}
                     onFocus={handlePinFocus}
                     ref={(el) => (pinInputRefs.current[index] = el)}
-                    className={`w-9 h-9 text-center text-xl bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
+                    className={`w-8 h-8 text-center text-xl bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
                       error
                         ? "border-error-border focus:ring-error-border"
                         : "border-border focus:ring-accent"

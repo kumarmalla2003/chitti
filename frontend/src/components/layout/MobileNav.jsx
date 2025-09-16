@@ -172,7 +172,7 @@ const MobileNav = ({
                 <hr className="mb-6 border-border" />
                 <Button
                   onClick={handleLogoutClick}
-                  className="w-full mb-4 !bg-error-bg !text-error-text hover:!opacity-80"
+                  className="w-full mb-4 !bg-error-text text-white hover:!opacity-90"
                 >
                   Log Out
                 </Button>

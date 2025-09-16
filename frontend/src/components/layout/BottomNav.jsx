@@ -37,7 +37,7 @@ const BottomNav = ({ onLoginClick }) => {
           </nav>
         ) : (
           <Button onClick={onLoginClick} className="w-full">
-            Log In
+            Log In to access your Dashboard!
           </Button>
         )}
       </div>

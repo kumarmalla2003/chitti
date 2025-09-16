@@ -47,7 +47,7 @@ const Message = ({ type = "info", title, children, onClose }) => {
       {onClose && (
         <button
           onClick={onClose}
-          className={`p-1 rounded-full hover:bg-black/10 ${config.textColor}`}
+          className={`p-1 rounded-full hover:bg-black/10 cursor-pointer ${config.textColor}`}
           aria-label="Close"
         >
           <FiX className="w-4 h-4" />
