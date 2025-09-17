@@ -5,26 +5,26 @@ import { FiAlertTriangle, FiCheckCircle, FiInfo, FiX } from "react-icons/fi";
 const messageConfig = {
   error: {
     bgColor: "bg-error-bg",
-    textColor: "text-error-text",
-    borderColor: "border-error-border",
+    textColor: "text-error-accent",
+    borderColor: "border-error-accent",
     icon: <FiAlertTriangle />,
   },
   success: {
     bgColor: "bg-success-bg",
-    textColor: "text-success-text",
-    borderColor: "border-success-border",
+    textColor: "text-success-accent",
+    borderColor: "border-success-accent",
     icon: <FiCheckCircle />,
   },
   warning: {
     bgColor: "bg-warning-bg",
-    textColor: "text-warning-text",
-    borderColor: "border-warning-border",
+    textColor: "text-warning-accent",
+    borderColor: "border-warning-accent",
     icon: <FiAlertTriangle />,
   },
   info: {
     bgColor: "bg-info-bg",
-    textColor: "text-info-text",
-    borderColor: "border-info-border",
+    textColor: "text-info-accent",
+    borderColor: "border-info-accent",
     icon: <FiInfo />,
   },
 };

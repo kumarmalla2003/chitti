@@ -31,6 +31,7 @@ const Header = ({
     "why-us": useRef(null),
     contact: useRef(null),
     dashboard: useRef(null),
+    groups: useRef(null),
   };
 
   const loggedOutNavLinks = [
@@ -44,12 +45,15 @@ const Header = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home", id: "home" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
+    { href: "/groups", text: "Groups", id: "groups" },
   ];
 
   useEffect(() => {
     const activeId = isLoggedIn
       ? location.pathname === "/dashboard"
         ? "dashboard"
+        : location.pathname === "/groups"
+        ? "groups"
         : "home"
       : activeSection;
 

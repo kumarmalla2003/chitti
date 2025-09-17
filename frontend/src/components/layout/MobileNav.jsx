@@ -46,6 +46,7 @@ const MobileNav = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home" },
     { href: "/dashboard", text: "Dashboard" },
+    { href: "/groups", text: "Groups" },
   ];
 
   const BrandLogo = () => {
@@ -96,7 +97,7 @@ const MobileNav = ({
             {isLoggedIn ? (
               <button
                 onClick={handleLogoutClick}
-                className="absolute right-0 p-1 text-error-text"
+                className="absolute right-0 p-1 text-error-accent"
                 aria-label="Log Out"
               >
                 <FiLogOut className="w-6 h-6" />
@@ -172,7 +173,8 @@ const MobileNav = ({
                 <hr className="mb-6 border-border" />
                 <Button
                   onClick={handleLogoutClick}
-                  className="w-full mb-4 !bg-error-text text-white hover:!opacity-90"
+                  className="w-full mb-4"
+                  variant="error"
                 >
                   Log Out
                 </Button>

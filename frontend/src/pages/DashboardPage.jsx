@@ -1,8 +1,12 @@
+// frontend/src/pages/DashboardPage.jsx
+
 import { useState } from "react";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
+import Button from "../components/ui/Button"; // <-- ADD THIS LINE
+import { Link } from "react-router-dom"; // <-- ADD THIS LINE
 
 const DashboardPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,6 +37,13 @@ const DashboardPage = () => {
                 <p className="mt-4 text-text-secondary">
                   This area is secure and only visible to logged-in users.
                 </p>
+                {/* ADD THIS NEW BUTTON */}
+                <Link to="/groups" className="inline-block mt-8">
+                  <Button className="px-8 py-3 text-lg">
+                    View My Chit Groups
+                  </Button>
+                </Link>
+                {/* END OF NEW BUTTON */}
               </div>
             </div>
           </main>

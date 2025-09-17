@@ -6,6 +6,8 @@ import { useSelector } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
+import GroupsPage from "./pages/GroupsPage";
+import CreateGroupPage from "./pages/CreateGroupPage"; // <-- ADD THIS LINE
 import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
@@ -42,6 +44,30 @@ const App = () => {
                 isLoggedIn ? (
                   <AnimatedPage>
                     <DashboardPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/groups"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <GroupsPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/groups/create" // <-- ADD THIS NEW ROUTE
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <CreateGroupPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
-
+from app.security.dependencies import get_current_user
 from app.crud import crud_auth
 from app.schemas import auth as auth_schemas
 from app.security import core as security

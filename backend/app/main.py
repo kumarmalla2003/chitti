@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routers import auth as auth_router
+from app.api.routers import auth as auth_router, chits as chits_router
 from app.core.config import settings
 from app.db.session import engine, AsyncSessionLocal
-from app.models import auth as auth_models
+from app.models import auth as auth_models, chits as chits_models
 from app.security import core as security
 
 @asynccontextmanager
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
     print("Initializing database...")
     async with engine.begin() as conn:
         await conn.run_sync(auth_models.SQLModel.metadata.create_all)
+        await conn.run_sync(chits_models.SQLModel.metadata.create_all)
 
     print("Seeding initial data...")
     async with AsyncSessionLocal() as session:
@@ -66,6 +67,7 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(auth_router.router)
+app.include_router(chits_router.router)
 
 @app.get("/")
 def read_root():

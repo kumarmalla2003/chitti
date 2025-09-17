@@ -11,3 +11,7 @@ class Token(BaseModel):
 
 class UserData(BaseModel):
     phone: str
+
+# New schema for token payload
+class TokenData(BaseModel):
+    phone_number: str | None = None

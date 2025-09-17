@@ -23,20 +23,16 @@
 
   /* State Colors - Light */
   --color-success-bg: theme(colors.green.100);
-  --color-success-text: theme(colors.green.500);
-  --color-success-border: theme(colors.green.500);
+  --color-success-accent: theme(colors.green.500);
   --color-success-hover: theme(colors.green.600);
   --color-warning-bg: theme(colors.yellow.100);
-  --color-warning-text: theme(colors.yellow.500);
-  --color-warning-border: theme(colors.yellow.500);
+  --color-warning-accent: theme(colors.yellow.500);
   --color-warning-hover: theme(colors.yellow.600);
   --color-error-bg: theme(colors.red.100);
-  --color-error-text: theme(colors.red.500);
-  --color-error-border: theme(colors.red.500);
+  --color-error-accent: theme(colors.red.500);
   --color-error-hover: theme(colors.red.600);
   --color-info-bg: theme(colors.blue.100);
-  --color-info-text: theme(colors.blue.500);
-  --color-info-border: theme(colors.blue.500);
+  --color-info-accent: theme(colors.blue.500);
   --color-info-hover: theme(colors.blue.600);
 }
 
@@ -53,20 +49,16 @@
 
   /* State Colors - Dark */
   --color-success-bg: theme(colors.green.200);
-  --color-success-text: theme(colors.green.600);
-  --color-success-border: theme(colors.green.600);
+  --color-success-accent: theme(colors.green.600);
   --color-success-hover: theme(colors.green.500);
   --color-warning-bg: theme(colors.yellow.200);
-  --color-warning-text: theme(colors.yellow.600);
-  --color-warning-border: theme(colors.yellow.600);
+  --color-warning-accent: theme(colors.yellow.600);
   --color-warning-hover: theme(colors.yellow.500);
   --color-error-bg: theme(colors.red.200);
-  --color-error-text: theme(colors.red.600);
-  --color-error-border: theme(colors.red.600);
+  --color-error-accent: theme(colors.red.600);
   --color-error-hover: theme(colors.red.500);
   --color-info-bg: theme(colors.blue.200);
-  --color-info-text: theme(colors.blue.600);
-  --color-info-border: theme(colors.blue.600);
+  --color-info-accent: theme(colors.blue.600);
   --color-info-hover: theme(colors.blue.500);
 }
 
