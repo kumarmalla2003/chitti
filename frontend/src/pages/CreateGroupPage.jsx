@@ -158,13 +158,12 @@ const CreateGroupPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              {/* Centralized Heading and HR */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
                   Create New Chit Group
                 </h1>
-                <hr className="my-4 border-border" />
               </div>
+              <hr className="my-4 border-border" />
 
               <div className="w-full max-w-2xl mx-auto">
                 <Card>

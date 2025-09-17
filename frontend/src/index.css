@@ -60,6 +60,12 @@
   --color-info-bg: theme(colors.blue.200);
   --color-info-accent: theme(colors.blue.600);
   --color-info-hover: theme(colors.blue.500);
+
+  /* --- NEW: Dark Mode Placeholder --- */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-white/35;
+  }
 }
 
 /* Base Styles */
@@ -77,5 +83,10 @@
   h5,
   h6 {
     @apply font-heading;
+  }
+  /* --- NEW: Light Mode (Default) Placeholder --- */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-black/35;
   }
 }

@@ -18,6 +18,8 @@ class ChitGroupCreate(ChitGroupBase):
 class ChitGroupResponse(ChitGroupBase):
     id: int
     end_date: date
+    status: str  # Added status field
+    chit_cycle: str  # Added chit_cycle field
 
     model_config = ConfigDict(from_attributes=True)
 
