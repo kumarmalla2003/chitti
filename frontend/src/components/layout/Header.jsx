@@ -48,15 +48,15 @@ const Header = ({
     { href: "/groups", text: "Groups", id: "groups" },
   ];
 
-  useEffect(() => {
-    const activeId = isLoggedIn
-      ? location.pathname === "/dashboard"
-        ? "dashboard"
-        : location.pathname === "/groups"
-        ? "groups"
-        : "home"
-      : activeSection;
+  const getActiveId = () => {
+    if (!isLoggedIn) return activeSection;
+    if (location.pathname.startsWith("/groups")) return "groups";
+    if (location.pathname === "/dashboard") return "dashboard";
+    return "home";
+  };
 
+  useEffect(() => {
+    const activeId = getActiveId();
     const targetId = hoveredLink || activeId;
     const activeLinkRef = linkRefs[targetId];
 
@@ -77,6 +77,11 @@ const Header = ({
     }
   };
 
+  const isLinkActive = (path) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
+
   const NavLinks = () => {
     if (isLoggedIn) {
       return loggedInNavLinks.map((link) => (
@@ -86,9 +91,7 @@ const Header = ({
           to={link.href}
           onMouseEnter={() => setHoveredLink(link.id)}
           className={`transition-colors ${
-            location.pathname === link.href
-              ? "text-accent"
-              : "text-text-secondary"
+            isLinkActive(link.href) ? "text-accent" : "text-text-secondary"
           }`}
         >
           {link.text}

@@ -35,6 +35,13 @@ const MobileNav = ({
     onClose();
   };
 
+  const isLinkActive = (path) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
+
   const loggedOutNavLinks = [
     { href: "#home", text: "Home", id: "home" },
     { href: "#features", text: "Features", id: "features" },
@@ -123,7 +130,7 @@ const MobileNav = ({
                     to={link.href}
                     onClick={onClose}
                     className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
-                      location.pathname === link.href
+                      isLinkActive(link.href)
                         ? "text-accent font-semibold underline underline-offset-4"
                         : "text-text-primary"
                     }`}

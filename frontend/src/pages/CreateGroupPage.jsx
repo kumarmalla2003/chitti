@@ -1,7 +1,7 @@
 // frontend/src/pages/CreateGroupPage.jsx
 
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -10,17 +10,65 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Message from "../components/ui/Message";
-import { FiArrowLeft, FiPlus, FiLoader } from "react-icons/fi";
+import CustomMonthInput from "../components/ui/CustomMonthInput";
+import {
+  FiPlus,
+  FiLoader,
+  FiTag,
+  FiUsers,
+  FiClock,
+  FiArrowLeft,
+} from "react-icons/fi";
+import { RupeeIcon } from "../components/ui/Icons";
 import { createChitGroup } from "../services/chitsService";
 
-const calculateEndDate = (startDate, durationMonths) => {
-  if (!startDate || durationMonths <= 0) {
+// --- HELPER FUNCTIONS FOR DATE CALCULATIONS ---
+const getFirstDayOfMonth = (yearMonth) => {
+  if (!yearMonth) return "";
+  return `${yearMonth}-01`;
+};
+
+const toYearMonth = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  return `${year}-${month}`;
+};
+
+const calculateEndDate = (startYearMonth, durationMonths) => {
+  if (!startYearMonth || !durationMonths || durationMonths <= 0) return "";
+  const [year, month] = startYearMonth.split("-").map(Number);
+  const startDate = new Date(year, month - 1, 1);
+  startDate.setMonth(startDate.getMonth() + parseInt(durationMonths) - 1);
+  return toYearMonth(startDate.toISOString());
+};
+
+const calculateStartDate = (endYearMonth, durationMonths) => {
+  if (!endYearMonth || !durationMonths || durationMonths <= 0) return "";
+  const [year, month] = endYearMonth.split("-").map(Number);
+  const endDate = new Date(year, month, 0);
+  endDate.setMonth(endDate.getMonth() - parseInt(durationMonths) + 1);
+  return toYearMonth(endDate.toISOString());
+};
+
+const calculateDuration = (startYearMonth, endYearMonth) => {
+  if (!startYearMonth || !endYearMonth) return "";
+  const [startYear, startMonth] = startYearMonth.split("-").map(Number);
+  const [endYear, endMonth] = endYearMonth.split("-").map(Number);
+
+  if (endYear < startYear || (endYear === startYear && endMonth < startMonth)) {
     return "";
   }
-  const start = new Date(startDate);
-  start.setMonth(start.getMonth() + durationMonths);
-  return start.toISOString().split("T")[0];
+
+  const yearDiff = endYear - startYear;
+  const monthDiff = endMonth - startMonth;
+  const totalMonths = yearDiff * 12 + monthDiff + 1;
+
+  return totalMonths > 0 ? totalMonths.toString() : "";
 };
+
+// --- COMPONENT START ---
 
 const CreateGroupPage = () => {
   const navigate = useNavigate();
@@ -40,34 +88,65 @@ const CreateGroupPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const formRef = useRef(null);
+  const nameInputRef = useRef(null);
 
   useEffect(() => {
-    const { start_date, duration_months } = formData;
-    if (start_date && duration_months > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        end_date: calculateEndDate(start_date, duration_months),
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        end_date: "",
-      }));
-    }
-  }, [formData.start_date, formData.duration_months]);
+    nameInputRef.current?.focus();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "name" ? value : value,
-    }));
+    let newFormData = { ...formData, [name]: value };
+
+    // --- SYNC & CALCULATION LOGIC ---
+    if (name === "chit_value" || name === "monthly_installment") {
+      newFormData[name] = value.replace(/[^0-9]/g, "");
+    } else if (name === "group_size") {
+      newFormData.duration_months = value;
+      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
+        newFormData.end_date = calculateEndDate(newFormData.start_date, value);
+      }
+    } else if (name === "duration_months") {
+      newFormData.group_size = value;
+      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
+        newFormData.end_date = calculateEndDate(newFormData.start_date, value);
+      } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
+        newFormData.start_date = calculateStartDate(
+          newFormData.end_date,
+          value
+        );
+      }
+    } else if (name === "start_date" && value.match(/^\d{4}-\d{2}$/)) {
+      if (newFormData.duration_months) {
+        newFormData.end_date = calculateEndDate(
+          value,
+          newFormData.duration_months
+        );
+      } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
+        const newDuration = calculateDuration(value, newFormData.end_date);
+        newFormData.duration_months = newDuration;
+        newFormData.group_size = newDuration;
+      }
+    } else if (name === "end_date" && value.match(/^\d{4}-\d{2}$/)) {
+      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
+        const newDuration = calculateDuration(newFormData.start_date, value);
+        newFormData.duration_months = newDuration;
+        newFormData.group_size = newDuration;
+      } else if (newFormData.duration_months) {
+        newFormData.start_date = calculateStartDate(
+          value,
+          newFormData.duration_months
+        );
+      }
+    }
+
+    setFormData(newFormData);
     setError(null);
     setSuccess(null);
   };
 
   const validateForm = () => {
+    // (Validation logic remains the same)
     if (!formData.name || formData.name.trim() === "") {
       return "Chit Group Name cannot be empty.";
     }
@@ -118,8 +197,11 @@ const CreateGroupPage = () => {
     setError(null);
     setSuccess(null);
 
+    const startDate = getFirstDayOfMonth(formData.start_date);
+
     const dataToSend = {
       ...formData,
+      start_date: startDate,
       chit_value: Number(formData.chit_value),
       group_size: Number(formData.group_size),
       monthly_installment: Number(formData.monthly_installment),
@@ -158,7 +240,14 @@ const CreateGroupPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              <div className="text-center mb-4">
+              <div className="relative flex justify-center items-center mb-4">
+                <Link
+                  to="/groups"
+                  className="absolute left-0 text-text-primary hover:text-accent transition-colors" // <-- UPDATED CLASSES HERE
+                  aria-label="Go back to groups"
+                >
+                  <FiArrowLeft className="w-6 h-6" />
+                </Link>
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
                   Create New Chit Group
                 </h1>
@@ -167,7 +256,7 @@ const CreateGroupPage = () => {
 
               <div className="w-full max-w-2xl mx-auto">
                 <Card>
-                  <form ref={formRef} onSubmit={handleSubmit}>
+                  <form onSubmit={handleSubmit}>
                     {success && (
                       <Message type="success" title="Success">
                         {success}
@@ -186,134 +275,178 @@ const CreateGroupPage = () => {
                       <div>
                         <label
                           htmlFor="name"
-                          className="block text-sm font-medium text-text-secondary mb-1"
+                          className="block text-lg font-medium text-text-secondary mb-1"
                         >
                           Group Name
                         </label>
-                        <input
-                          type="text"
-                          id="name"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                          disabled={loading}
-                          maxLength={50}
-                          placeholder="e.g., Kasi Malla Family Chit"
-                        />
+                        <div className="relative flex items-center">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <FiTag className="w-5 h-5 text-text-secondary" />
+                          </span>
+                          <div className="absolute left-10 h-6 w-px bg-border"></div>
+                          <input
+                            ref={nameInputRef}
+                            type="text"
+                            id="name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                            disabled={loading}
+                            maxLength={50}
+                            placeholder="Kasi Malla Family Chit"
+                            required
+                          />
+                        </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <label
                             htmlFor="chit_value"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
-                            Chit Value (₹)
+                            Chit Value
                           </label>
-                          <input
-                            type="number"
-                            id="chit_value"
-                            name="chit_value"
-                            value={formData.chit_value}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                            disabled={loading}
-                            min="1"
-                            placeholder="e.g., 100000"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                              <RupeeIcon />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <input
+                              type="text"
+                              id="chit_value"
+                              name="chit_value"
+                              value={
+                                formData.chit_value
+                                  ? parseInt(
+                                      formData.chit_value
+                                    ).toLocaleString("en-IN")
+                                  : ""
+                              }
+                              onChange={handleChange}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                              disabled={loading}
+                              placeholder="1,00,000"
+                              required
+                              inputMode="numeric"
+                            />
+                          </div>
                         </div>
                         <div>
                           <label
                             htmlFor="group_size"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
                             Group Size
                           </label>
-                          <input
-                            type="number"
-                            id="group_size"
-                            name="group_size"
-                            value={formData.group_size}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                            disabled={loading}
-                            min="1"
-                            placeholder="e.g., 20"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                              <FiUsers className="w-5 h-5 text-text-secondary" />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <input
+                              type="number"
+                              id="group_size"
+                              name="group_size"
+                              value={formData.group_size}
+                              onChange={handleChange}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                              disabled={loading}
+                              min="1"
+                              placeholder="20"
+                              required
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <label
                             htmlFor="monthly_installment"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
-                            Monthly Installment (₹)
+                            Monthly Installment
                           </label>
-                          <input
-                            type="number"
-                            id="monthly_installment"
-                            name="monthly_installment"
-                            value={formData.monthly_installment}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                            disabled={loading}
-                            min="1"
-                            placeholder="e.g., 5000"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                              <RupeeIcon />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <input
+                              type="text"
+                              id="monthly_installment"
+                              name="monthly_installment"
+                              value={
+                                formData.monthly_installment
+                                  ? parseInt(
+                                      formData.monthly_installment
+                                    ).toLocaleString("en-IN")
+                                  : ""
+                              }
+                              onChange={handleChange}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                              disabled={loading}
+                              placeholder="5,000"
+                              required
+                              inputMode="numeric"
+                            />
+                          </div>
                         </div>
                         <div>
                           <label
                             htmlFor="duration_months"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
-                            Duration (in months)
+                            Duration (months)
                           </label>
-                          <input
-                            type="number"
-                            id="duration_months"
-                            name="duration_months"
-                            value={formData.duration_months}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                            disabled={loading}
-                            min="1"
-                            placeholder="e.g., 20"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                              <FiClock className="w-5 h-5 text-text-secondary" />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <input
+                              type="number"
+                              id="duration_months"
+                              name="duration_months"
+                              value={formData.duration_months}
+                              onChange={handleChange}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                              disabled={loading}
+                              min="1"
+                              placeholder="20"
+                              required
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <label
                             htmlFor="start_date"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
                             Start Date
                           </label>
-                          <input
-                            type="date"
-                            id="start_date"
+                          <CustomMonthInput
                             name="start_date"
                             value={formData.start_date}
                             onChange={handleChange}
-                            className="w-full px-4 py-3 bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
                             disabled={loading}
+                            required
                           />
                         </div>
                         <div>
                           <label
                             htmlFor="end_date"
-                            className="block text-sm font-medium text-text-secondary mb-1"
+                            className="block text-lg font-medium text-text-secondary mb-1"
                           >
                             End Date
                           </label>
-                          <input
-                            type="date"
-                            id="end_date"
+                          <CustomMonthInput
                             name="end_date"
                             value={formData.end_date}
-                            className="w-full px-4 py-3 bg-background-tertiary border border-border rounded-md focus:outline-none"
-                            disabled
+                            onChange={handleChange}
+                            disabled={loading}
                           />
                         </div>
                       </div>
