@@ -1,7 +1,7 @@
-// frontend/src/pages/CreateGroupPage.jsx
+// frontend/src/pages/GroupDetailPage.jsx
 
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -18,9 +18,14 @@ import {
   FiUsers,
   FiClock,
   FiArrowLeft,
+  FiEdit,
 } from "react-icons/fi";
 import { RupeeIcon } from "../components/ui/Icons";
-import { createChitGroup } from "../services/chitsService";
+import {
+  createChitGroup,
+  getChitGroupById,
+  updateChitGroup,
+} from "../services/chitsService";
 
 // --- HELPER FUNCTIONS FOR DATE CALCULATIONS ---
 const getFirstDayOfMonth = (yearMonth) => {
@@ -70,10 +75,13 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
 
 // --- COMPONENT START ---
 
-const CreateGroupPage = () => {
+const GroupDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
+  const { id } = useParams();
+  const location = useLocation();
 
+  const [mode, setMode] = useState("create"); // create, view, edit
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -91,8 +99,42 @@ const CreateGroupPage = () => {
   const nameInputRef = useRef(null);
 
   useEffect(() => {
-    nameInputRef.current?.focus();
-  }, []);
+    const path = location.pathname;
+    if (path.includes("view")) {
+      setMode("view");
+    } else if (path.includes("edit")) {
+      setMode("edit");
+    } else {
+      setMode("create");
+    }
+
+    if (id) {
+      const fetchGroup = async () => {
+        setLoading(true);
+        try {
+          const group = await getChitGroupById(id, token);
+          setFormData({
+            name: group.name,
+            chit_value: group.chit_value.toString(),
+            group_size: group.group_size.toString(),
+            monthly_installment: group.monthly_installment.toString(),
+            duration_months: group.duration_months.toString(),
+            start_date: toYearMonth(group.start_date),
+            end_date: toYearMonth(group.end_date),
+          });
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchGroup();
+    }
+
+    if (mode !== "view") {
+      nameInputRef.current?.focus();
+    }
+  }, [id, location.pathname, token, mode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -210,8 +252,13 @@ const CreateGroupPage = () => {
     delete dataToSend.end_date;
 
     try {
-      await createChitGroup(dataToSend, token);
-      setSuccess("Chit group created successfully!");
+      if (mode === "create") {
+        await createChitGroup(dataToSend, token);
+        setSuccess("Chit group created successfully!");
+      } else if (mode === "edit") {
+        await updateChitGroup(id, dataToSend, token);
+        setSuccess("Chit group updated successfully!");
+      }
       setTimeout(() => {
         navigate("/groups");
       }, 1500);
@@ -222,9 +269,63 @@ const CreateGroupPage = () => {
     }
   };
 
+  const getTitle = () => {
+    if (mode === "view") return "View Chit Group";
+    if (mode === "edit") return "Edit Chit Group";
+    return "Create New Chit Group";
+  };
+
+  const getButton = () => {
+    if (mode === "view") return null;
+    if (mode === "edit") {
+      return (
+        <Button
+          type="submit"
+          className="w-full mt-8"
+          disabled={loading}
+          variant="warning"
+        >
+          {loading ? (
+            <FiLoader className="animate-spin mx-auto" />
+          ) : (
+            <>
+              <FiEdit className="inline-block mr-2" />
+              Update Chit Group
+            </>
+          )}
+        </Button>
+      );
+    }
+    return (
+      <Button
+        type="submit"
+        className="w-full mt-8"
+        disabled={loading}
+        variant="success"
+      >
+        {loading ? (
+          <FiLoader className="animate-spin mx-auto" />
+        ) : (
+          <>
+            <FiPlus className="inline-block mr-2" />
+            Create Chit Group
+          </>
+        )}
+      </Button>
+    );
+  };
+
   const dummyNavLinkClick = () => {};
   const dummyActiveSection = "groups";
   const dummyLoginClick = () => {};
+
+  if (loading && !formData.name) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <FiLoader className="w-10 h-10 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -243,13 +344,13 @@ const CreateGroupPage = () => {
               <div className="relative flex justify-center items-center mb-4">
                 <Link
                   to="/groups"
-                  className="absolute left-0 text-text-primary hover:text-accent transition-colors" // <-- UPDATED CLASSES HERE
+                  className="absolute left-0 text-text-primary hover:text-accent transition-colors"
                   aria-label="Go back to groups"
                 >
                   <FiArrowLeft className="w-6 h-6" />
                 </Link>
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-                  Create New Chit Group
+                  {getTitle()}
                 </h1>
               </div>
               <hr className="my-4 border-border" />
@@ -265,13 +366,13 @@ const CreateGroupPage = () => {
                     {error && (
                       <Message
                         type="error"
-                        title="Validation Error"
+                        title="Error"
                         onClose={() => setError(null)}
                       >
                         {error}
                       </Message>
                     )}
-                    <div className="space-y-6">
+                    <fieldset disabled={mode === "view"} className="space-y-6">
                       <div>
                         <label
                           htmlFor="name"
@@ -291,8 +392,7 @@ const CreateGroupPage = () => {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                            disabled={loading}
+                            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
                             maxLength={50}
                             placeholder="Kasi Malla Family Chit"
                             required
@@ -324,8 +424,7 @@ const CreateGroupPage = () => {
                                   : ""
                               }
                               onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                              disabled={loading}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
                               placeholder="1,00,000"
                               required
                               inputMode="numeric"
@@ -350,8 +449,7 @@ const CreateGroupPage = () => {
                               name="group_size"
                               value={formData.group_size}
                               onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                              disabled={loading}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
                               min="1"
                               placeholder="20"
                               required
@@ -384,8 +482,7 @@ const CreateGroupPage = () => {
                                   : ""
                               }
                               onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                              disabled={loading}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
                               placeholder="5,000"
                               required
                               inputMode="numeric"
@@ -410,8 +507,7 @@ const CreateGroupPage = () => {
                               name="duration_months"
                               value={formData.duration_months}
                               onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                              disabled={loading}
+                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
                               min="1"
                               placeholder="20"
                               required
@@ -431,7 +527,6 @@ const CreateGroupPage = () => {
                             name="start_date"
                             value={formData.start_date}
                             onChange={handleChange}
-                            disabled={loading}
                             required
                           />
                         </div>
@@ -446,26 +541,11 @@ const CreateGroupPage = () => {
                             name="end_date"
                             value={formData.end_date}
                             onChange={handleChange}
-                            disabled={loading}
                           />
                         </div>
                       </div>
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full mt-8"
-                      disabled={loading}
-                      variant="success"
-                    >
-                      {loading ? (
-                        <FiLoader className="animate-spin mx-auto" />
-                      ) : (
-                        <>
-                          <FiPlus className="inline-block mr-2" />
-                          Create Chit Group
-                        </>
-                      )}
-                    </Button>
+                    </fieldset>
+                    {getButton()}
                   </form>
                 </Card>
               </div>
@@ -486,4 +566,4 @@ const CreateGroupPage = () => {
   );
 };
 
-export default CreateGroupPage;
+export default GroupDetailPage;

@@ -7,7 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import GroupsPage from "./pages/GroupsPage";
-import CreateGroupPage from "./pages/CreateGroupPage"; // <-- ADD THIS LINE
+import GroupDetailPage from "./pages/GroupDetailPage"; // <-- RENAMED
 import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
@@ -63,11 +63,35 @@ const App = () => {
               }
             />
             <Route
-              path="/groups/create" // <-- ADD THIS NEW ROUTE
+              path="/groups/create"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <CreateGroupPage />
+                    <GroupDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/groups/view/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <GroupDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/groups/edit/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <GroupDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />

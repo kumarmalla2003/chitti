@@ -107,20 +107,22 @@ const GroupsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <button
+          <Link
+            to={`/groups/view/${row.id}`}
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="View"
           >
             {" "}
             <FiEye />{" "}
-          </button>
-          <button
+          </Link>
+          <Link
+            to={`/groups/edit/${row.id}`}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit"
           >
             {" "}
             <FiEdit />{" "}
-          </button>
+          </Link>
           <button
             className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Reports"

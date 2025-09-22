@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from app.schemas.chits import ChitGroupCreate, ChitGroupResponse, ChitGroupListResponse
+from app.schemas.chits import ChitGroupCreate, ChitGroupUpdate, ChitGroupResponse, ChitGroupListResponse
 from app.models.chits import ChitGroup
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
@@ -28,7 +28,7 @@ async def create_chit_group(
     """
 
     # Calculate end_date based on duration_months from start_date
-    end_date = chit_group.start_date + relativedelta(months=chit_group.duration_months)
+    end_date = chit_group.start_date + relativedelta(months=chit_group.duration_months -1)
 
 
     db_chit_group = ChitGroup(
@@ -116,3 +116,87 @@ async def read_chit_groups(
     response_groups.sort(key=lambda g: (g.status != 'Active', g.start_date), reverse=False)
 
     return {"groups": response_groups}
+
+@router.get("/{group_id}", response_model=ChitGroupResponse)
+async def read_chit_group(
+    group_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Retrieves a single chit group by its ID.
+    """
+    db_chit_group = await session.get(ChitGroup, group_id)
+    if not db_chit_group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+
+    today = date.today()
+    status = "Active" if db_chit_group.start_date <= today <= db_chit_group.end_date else "Inactive"
+    
+    if status == "Active":
+        delta = relativedelta(today, db_chit_group.start_date)
+        months_passed = delta.years * 12 + delta.months + 1
+        chit_cycle = f"{months_passed}/{db_chit_group.duration_months}"
+    else:
+        chit_cycle = f"-/{db_chit_group.duration_months}"
+
+    return ChitGroupResponse(
+        id=db_chit_group.id,
+        name=db_chit_group.name,
+        chit_value=db_chit_group.chit_value,
+        group_size=db_chit_group.group_size,
+        monthly_installment=db_chit_group.monthly_installment,
+        duration_months=db_chit_group.duration_months,
+        start_date=db_chit_group.start_date,
+        end_date=db_chit_group.end_date,
+        status=status,
+        chit_cycle=chit_cycle
+    )
+
+@router.put("/{group_id}", response_model=ChitGroupResponse)
+async def update_chit_group(
+    group_id: int,
+    chit_group: ChitGroupUpdate,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Updates an existing chit group.
+    """
+    db_chit_group = await session.get(ChitGroup, group_id)
+    if not db_chit_group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+
+    group_data = chit_group.model_dump(exclude_unset=True)
+    for key, value in group_data.items():
+        setattr(db_chit_group, key, value)
+    
+    # Recalculate end_date
+    db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
+
+    session.add(db_chit_group)
+    await session.commit()
+    await session.refresh(db_chit_group)
+
+    today = date.today()
+    status = "Active" if db_chit_group.start_date <= today <= db_chit_group.end_date else "Inactive"
+    
+    if status == "Active":
+        delta = relativedelta(today, db_chit_group.start_date)
+        months_passed = delta.years * 12 + delta.months + 1
+        chit_cycle = f"{months_passed}/{db_chit_group.duration_months}"
+    else:
+        chit_cycle = f"-/{db_chit_group.duration_months}"
+
+    return ChitGroupResponse(
+        id=db_chit_group.id,
+        name=db_chit_group.name,
+        chit_value=db_chit_group.chit_value,
+        group_size=db_chit_group.group_size,
+        monthly_installment=db_chit_group.monthly_installment,
+        duration_months=db_chit_group.duration_months,
+        start_date=db_chit_group.start_date,
+        end_date=db_chit_group.end_date,
+        status=status,
+        chit_cycle=chit_cycle
+    )

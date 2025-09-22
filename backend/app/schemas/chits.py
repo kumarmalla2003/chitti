@@ -15,6 +15,9 @@ class ChitGroupBase(BaseModel):
 class ChitGroupCreate(ChitGroupBase):
     pass
 
+class ChitGroupUpdate(ChitGroupBase):
+    pass
+
 class ChitGroupResponse(ChitGroupBase):
     id: int
     end_date: date
