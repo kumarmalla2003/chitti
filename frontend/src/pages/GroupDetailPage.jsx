@@ -345,22 +345,18 @@ const GroupDetailPage = () => {
                 {activeTab === "members" && <MembersSection />}
                 {activeTab === "payments" && <PaymentsSection />}
               </div>
-              <div className="hidden md:grid md:grid-cols-2 md:gap-8">
-                <div className="md:col-span-1">
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    handleFormChange={handleFormChange}
-                    handleSubmit={handleSubmit}
-                    loading={loading}
-                    error={error}
-                    success={success}
-                  />
-                </div>
-                <div className="space-y-8">
-                  <MembersSection />
-                  <PaymentsSection />
-                </div>
+              <div className="hidden md:block md:space-y-8">
+                <DetailsSection
+                  mode={mode}
+                  formData={formData}
+                  handleFormChange={handleFormChange}
+                  handleSubmit={handleSubmit}
+                  loading={loading}
+                  error={error}
+                  success={success}
+                />
+                <MembersSection />
+                <PaymentsSection />
               </div>
             </div>
           </main>

@@ -514,38 +514,34 @@ const MemberDetailPage = () => {
                 )}
                 {activeTab === "payments" && <PaymentsSection />}
               </div>
-              <div className="hidden md:grid md:grid-cols-2 md:gap-8">
-                <div className="md:col-span-1">
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    onFormChange={handleFormChange}
-                    handleDetailsSubmit={handleDetailsSubmit}
-                    detailsLoading={detailsLoading}
-                    error={error}
-                    success={success}
-                  />
-                </div>
-                <div className="space-y-8">
-                  <AssignmentsSection
-                    mode={mode}
-                    assignments={assignments}
-                    showAssignForm={showAssignForm}
-                    setShowAssignForm={setShowAssignForm}
-                    handleAssignmentSubmit={handleAssignmentSubmit}
-                    error={error}
-                    setError={setError}
-                    selectedGroupId={selectedGroupId}
-                    setSelectedGroupId={setSelectedGroupId}
-                    groups={groups}
-                    selectedMonth={selectedMonth}
-                    setSelectedMonth={setSelectedMonth}
-                    availableMonths={availableMonths}
-                    assignmentLoading={assignmentLoading}
-                    formatDate={formatDate}
-                  />
-                  <PaymentsSection />
-                </div>
+              <div className="hidden md:block md:space-y-8">
+                <DetailsSection
+                  mode={mode}
+                  formData={formData}
+                  onFormChange={handleFormChange}
+                  handleDetailsSubmit={handleDetailsSubmit}
+                  detailsLoading={detailsLoading}
+                  error={error}
+                  success={success}
+                />
+                <AssignmentsSection
+                  mode={mode}
+                  assignments={assignments}
+                  showAssignForm={showAssignForm}
+                  setShowAssignForm={setShowAssignForm}
+                  handleAssignmentSubmit={handleAssignmentSubmit}
+                  error={error}
+                  setError={setError}
+                  selectedGroupId={selectedGroupId}
+                  setSelectedGroupId={setSelectedGroupId}
+                  groups={groups}
+                  selectedMonth={selectedMonth}
+                  setSelectedMonth={setSelectedMonth}
+                  availableMonths={availableMonths}
+                  assignmentLoading={assignmentLoading}
+                  formatDate={formatDate}
+                />
+                <PaymentsSection />
               </div>
             </div>
           </main>
