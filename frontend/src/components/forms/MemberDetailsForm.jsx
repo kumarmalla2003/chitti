@@ -1,39 +1,26 @@
 // frontend/src/components/forms/MemberDetailsForm.jsx
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import { FiLoader, FiUser, FiPhone, FiPlus, FiEdit } from "react-icons/fi";
 
 const MemberDetailsForm = ({
   mode,
-  initialData,
+  formData,
+  onFormChange,
   onFormSubmit,
   loading,
   error,
   success,
 }) => {
-  const [formData, setFormData] = useState(initialData);
   const nameInputRef = useRef(null);
-
-  useEffect(() => {
-    setFormData(initialData);
-  }, [initialData]);
 
   useEffect(() => {
     if (mode === "create" || mode === "edit") {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [mode]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    let processedValue = value;
-    if (name === "phone_number") {
-      processedValue = value.replace(/\D/g, "").slice(0, 10);
-    }
-    setFormData((prev) => ({ ...prev, [name]: processedValue }));
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -69,7 +56,7 @@ const MemberDetailsForm = ({
               id="full_name"
               name="full_name"
               value={formData.full_name}
-              onChange={handleChange}
+              onChange={onFormChange}
               className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
               required
             />
@@ -92,7 +79,7 @@ const MemberDetailsForm = ({
               id="phone_number"
               name="phone_number"
               value={formData.phone_number}
-              onChange={handleChange}
+              onChange={onFormChange}
               className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
               required
               maxLength="10"

@@ -1,6 +1,6 @@
 // frontend/src/components/forms/GroupDetailsForm.jsx
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import CustomMonthInput from "../ui/CustomMonthInput";
@@ -14,104 +14,22 @@ import {
   FiEdit,
 } from "react-icons/fi";
 
-const toYearMonth = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `${year}-${month}`;
-};
-const calculateEndDate = (startYearMonth, durationMonths) => {
-  if (!startYearMonth || !durationMonths || durationMonths <= 0) return "";
-  const [year, month] = startYearMonth.split("-").map(Number);
-  const startDate = new Date(year, month - 1, 1);
-  startDate.setMonth(startDate.getMonth() + parseInt(durationMonths) - 1);
-  return toYearMonth(startDate.toISOString());
-};
-const calculateStartDate = (endYearMonth, durationMonths) => {
-  if (!endYearMonth || !durationMonths || durationMonths <= 0) return "";
-  const [year, month] = endYearMonth.split("-").map(Number);
-  const endDate = new Date(year, month, 0);
-  endDate.setMonth(endDate.getMonth() - parseInt(durationMonths) + 1);
-  return toYearMonth(endDate.toISOString());
-};
-const calculateDuration = (startYearMonth, endYearMonth) => {
-  if (!startYearMonth || !endYearMonth) return "";
-  const [startYear, startMonth] = startYearMonth.split("-").map(Number);
-  const [endYear, endMonth] = endYearMonth.split("-").map(Number);
-  if (endYear < startYear || (endYear === startYear && endMonth < startMonth))
-    return "";
-  const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-  return totalMonths > 0 ? totalMonths.toString() : "";
-};
-
 const GroupDetailsForm = ({
   mode,
-  initialData,
+  formData,
+  onFormChange,
   onFormSubmit,
   loading,
   error,
   success,
 }) => {
-  const [formData, setFormData] = useState(initialData);
   const nameInputRef = useRef(null);
-
-  useEffect(() => {
-    setFormData(initialData);
-  }, [initialData]);
 
   useEffect(() => {
     if (mode === "create" || mode === "edit") {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [mode]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    let newFormData = { ...formData, [name]: value };
-
-    if (name === "chit_value" || name === "monthly_installment") {
-      newFormData[name] = value.replace(/[^0-9]/g, "");
-    } else if (name === "group_size") {
-      newFormData.duration_months = value;
-      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-        newFormData.end_date = calculateEndDate(newFormData.start_date, value);
-      }
-    } else if (name === "duration_months") {
-      newFormData.group_size = value;
-      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-        newFormData.end_date = calculateEndDate(newFormData.start_date, value);
-      } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-        newFormData.start_date = calculateStartDate(
-          newFormData.end_date,
-          value
-        );
-      }
-    } else if (name === "start_date" && value.match(/^\d{4}-\d{2}$/)) {
-      if (newFormData.duration_months) {
-        newFormData.end_date = calculateEndDate(
-          value,
-          newFormData.duration_months
-        );
-      } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-        const newDuration = calculateDuration(value, newFormData.end_date);
-        newFormData.duration_months = newDuration;
-        newFormData.group_size = newDuration;
-      }
-    } else if (name === "end_date" && value.match(/^\d{4}-\d{2}$/)) {
-      if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-        const newDuration = calculateDuration(newFormData.start_date, value);
-        newFormData.duration_months = newDuration;
-        newFormData.group_size = newDuration;
-      } else if (newFormData.duration_months) {
-        newFormData.start_date = calculateStartDate(
-          value,
-          newFormData.duration_months
-        );
-      }
-    }
-    setFormData(newFormData);
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -151,7 +69,7 @@ const GroupDetailsForm = ({
               id="name"
               name="name"
               value={formData.name}
-              onChange={handleChange}
+              onChange={onFormChange}
               className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
               maxLength={50}
               placeholder="Kasi Malla Family Chit"
@@ -181,7 +99,7 @@ const GroupDetailsForm = ({
                     ? parseInt(formData.chit_value).toLocaleString("en-IN")
                     : ""
                 }
-                onChange={handleChange}
+                onChange={onFormChange}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="1,00,000"
                 required
@@ -206,7 +124,7 @@ const GroupDetailsForm = ({
                 id="group_size"
                 name="group_size"
                 value={formData.group_size}
-                onChange={handleChange}
+                onChange={onFormChange}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 min="1"
                 placeholder="20"
@@ -239,7 +157,7 @@ const GroupDetailsForm = ({
                       )
                     : ""
                 }
-                onChange={handleChange}
+                onChange={onFormChange}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="5,000"
                 required
@@ -264,7 +182,7 @@ const GroupDetailsForm = ({
                 id="duration_months"
                 name="duration_months"
                 value={formData.duration_months}
-                onChange={handleChange}
+                onChange={onFormChange}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 min="1"
                 placeholder="20"
@@ -284,7 +202,7 @@ const GroupDetailsForm = ({
             <CustomMonthInput
               name="start_date"
               value={formData.start_date}
-              onChange={handleChange}
+              onChange={onFormChange}
               required
               disabled={isFormDisabled}
             />
@@ -299,7 +217,7 @@ const GroupDetailsForm = ({
             <CustomMonthInput
               name="end_date"
               value={formData.end_date}
-              onChange={handleChange}
+              onChange={onFormChange}
               disabled={isFormDisabled}
             />
           </div>

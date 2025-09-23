@@ -27,7 +27,6 @@ import { RupeeIcon } from "../components/ui/Icons";
 import {
   FiLoader,
   FiUser,
-  FiPhone,
   FiBox,
   FiArrowLeft,
   FiPlus,
@@ -35,6 +34,195 @@ import {
   FiUsers,
   FiChevronUp,
 } from "react-icons/fi";
+
+// --- Helper Components (Extracted) ---
+
+const DetailsSection = ({
+  mode,
+  formData,
+  onFormChange,
+  handleDetailsSubmit,
+  detailsLoading,
+  error,
+  success,
+}) => (
+  <Card>
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+      <FiUser /> Member Details
+    </h2>
+    <hr className="border-border mb-4" />
+    <MemberDetailsForm
+      mode={mode}
+      formData={formData}
+      onFormChange={onFormChange}
+      onFormSubmit={handleDetailsSubmit}
+      loading={detailsLoading}
+      error={error && error.context === "details" ? error.message : null}
+      success={success}
+    />
+  </Card>
+);
+
+const AssignmentsSection = ({
+  mode,
+  assignments,
+  showAssignForm,
+  setShowAssignForm,
+  handleAssignmentSubmit,
+  error,
+  setError,
+  selectedGroupId,
+  setSelectedGroupId,
+  groups,
+  selectedMonth,
+  setSelectedMonth,
+  availableMonths,
+  assignmentLoading,
+  formatDate,
+}) => (
+  <Card>
+    <div className="relative flex justify-center items-center mb-2">
+      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+        <FiBox /> Chit Assignments
+      </h2>
+      {mode !== "create" && (
+        <div className="absolute right-0">
+          <Button
+            variant="secondary"
+            onClick={() => setShowAssignForm((p) => !p)}
+          >
+            {showAssignForm ? <FiChevronUp /> : <FiPlus />}
+          </Button>
+        </div>
+      )}
+    </div>
+    <hr className="border-border mb-4" />
+    {mode !== "create" && assignments.length > 0 && (
+      <div className="space-y-3 mb-6">
+        {assignments.map((a) => (
+          <div
+            key={a.id}
+            className="p-3 bg-background-primary rounded-md border border-border flex justify-between items-center"
+          >
+            <div>
+              <p className="font-bold text-text-primary">{a.chit_group.name}</p>
+              <p className="text-sm text-text-secondary">
+                {formatDate(a.chit_month)}
+              </p>
+            </div>
+            <StatusBadge status={a.chit_group.status} />
+          </div>
+        ))}
+      </div>
+    )}
+    {mode !== "create" && assignments.length === 0 && !showAssignForm && (
+      <p className="text-center text-text-secondary py-4">
+        This member has no active assignments.
+      </p>
+    )}
+    {showAssignForm && (
+      <form onSubmit={handleAssignmentSubmit} className="space-y-6">
+        {error && error.context === "assignment" && (
+          <Message type="error" onClose={() => setError(null)}>
+            {error.message}
+          </Message>
+        )}
+        <div>
+          <label
+            htmlFor="chit_group"
+            className="block text-lg font-medium text-text-secondary mb-1"
+          >
+            Active Chit Group
+          </label>
+          <div className="relative flex items-center">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+              <FiUsers className="w-5 h-5 text-text-secondary" />
+            </span>
+            <div className="absolute left-10 h-6 w-px bg-border"></div>
+            <select
+              id="chit_group"
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
+            >
+              <option value="">Select an active group...</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name} - (₹{group.chit_value.toLocaleString("en-IN")})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label
+            htmlFor="chit_month"
+            className="block text-lg font-medium text-text-secondary mb-1"
+          >
+            Chit Month
+          </label>
+          <div className="relative flex items-center">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+              <FiCalendar className="w-5 h-5 text-text-secondary" />
+            </span>
+            <div className="absolute left-10 h-6 w-px bg-border"></div>
+            <select
+              id="chit_month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
+              disabled={!selectedGroupId || availableMonths.length === 0}
+            >
+              <option value="">
+                {selectedGroupId
+                  ? availableMonths.length > 0
+                    ? "Select an available month..."
+                    : "No available months"
+                  : "Select a group first"}
+              </option>
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>
+                  {formatDate(month)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {mode !== "create" && (
+          <Button
+            type="submit"
+            className="w-full"
+            variant="success"
+            disabled={assignmentLoading}
+          >
+            {assignmentLoading ? (
+              <FiLoader className="animate-spin mx-auto" />
+            ) : (
+              <>
+                <FiPlus className="inline mr-2" />
+                Assign Member
+              </>
+            )}
+          </Button>
+        )}
+      </form>
+    )}
+  </Card>
+);
+
+const PaymentsSection = () => (
+  <Card>
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+      <RupeeIcon className="w-5 h-5" /> Payments
+    </h2>
+    <hr className="border-border mb-4" />
+    <div className="text-center text-text-secondary py-8">
+      This feature is coming soon!
+    </div>
+  </Card>
+);
+
+// --- Main Page Component ---
 
 const MemberDetailPage = () => {
   const navigate = useNavigate();
@@ -45,7 +233,7 @@ const MemberDetailPage = () => {
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [initialData, setInitialData] = useState({
+  const [formData, setFormData] = useState({
     full_name: "",
     phone_number: "",
   });
@@ -69,7 +257,7 @@ const MemberDetailPage = () => {
         getMemberById(id, token),
         getAssignmentsForMember(id, token),
       ]);
-      setInitialData({
+      setFormData({
         full_name: memberData.full_name,
         phone_number: memberData.phone_number,
       });
@@ -131,7 +319,16 @@ const MemberDetailPage = () => {
     fetchMonths();
   }, [selectedGroupId, token]);
 
-  const handleDetailsSubmit = async (formData) => {
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    let processedValue = value;
+    if (name === "phone_number") {
+      processedValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+  };
+
+  const handleDetailsSubmit = async (currentFormData) => {
     setError(null);
     setSuccess(null);
     setDetailsLoading(true);
@@ -139,7 +336,7 @@ const MemberDetailPage = () => {
       let memberId = id;
       let successMessage = "";
       if (mode === "create") {
-        const newMember = await createMember(formData, token);
+        const newMember = await createMember(currentFormData, token);
         memberId = newMember.id;
         successMessage = "Member created successfully!";
         if (newMember.id && selectedGroupId && selectedMonth) {
@@ -156,7 +353,11 @@ const MemberDetailPage = () => {
         setSuccess(successMessage);
         setTimeout(() => navigate(`/members/view/${newMember.id}`), 1500);
       } else {
-        await updateMember(id, formData, token);
+        const updatedMember = await updateMember(id, currentFormData, token);
+        setFormData({
+          full_name: updatedMember.full_name,
+          phone_number: updatedMember.phone_number,
+        });
         setSuccess("Member details updated successfully!");
         setTimeout(() => navigate(`/members/view/${id}`), 1500);
       }
@@ -192,7 +393,7 @@ const MemberDetailPage = () => {
       setSelectedGroupId("");
       setSelectedMonth("");
       setShowAssignForm(false);
-      fetchMemberAndAssignments();
+      await fetchMemberAndAssignments();
     } catch (err) {
       setError({ context: "assignment", message: err.message });
     } finally {
@@ -203,7 +404,7 @@ const MemberDetailPage = () => {
   const getTitle = () => {
     if (mode === "create") return "Create New Member";
     if (mode === "edit") return "Edit Member";
-    return initialData.full_name || "Member Details";
+    return formData.full_name || "Member Details";
   };
 
   const formatDate = (
@@ -221,174 +422,6 @@ const MemberDetailPage = () => {
       </div>
     );
   }
-
-  const DetailsSection = () => (
-    <Card>
-      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-        <FiUser /> Member Details
-      </h2>
-      <hr className="border-border mb-4" />
-      <MemberDetailsForm
-        mode={mode}
-        initialData={initialData}
-        onFormChange={(e) =>
-          setInitialData((prev) => ({
-            ...prev,
-            [e.target.name]: e.target.value,
-          }))
-        }
-        onFormSubmit={handleDetailsSubmit}
-        loading={detailsLoading}
-        error={error && error.context === "details" ? error.message : null}
-        success={success}
-      />
-    </Card>
-  );
-
-  const AssignmentsSection = () => (
-    <Card>
-      <div className="relative flex justify-center items-center mb-2">
-        <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <FiBox /> Chit Assignments
-        </h2>
-        {mode !== "create" && (
-          <div className="absolute right-0">
-            <Button
-              variant="secondary"
-              onClick={() => setShowAssignForm((p) => !p)}
-            >
-              {showAssignForm ? <FiChevronUp /> : <FiPlus />}
-            </Button>
-          </div>
-        )}
-      </div>
-      <hr className="border-border mb-4" />
-      {mode !== "create" && assignments.length > 0 && (
-        <div className="space-y-3 mb-6">
-          {assignments.map((a) => (
-            <div
-              key={a.id}
-              className="p-3 bg-background-primary rounded-md border border-border flex justify-between items-center"
-            >
-              <div>
-                <p className="font-bold text-text-primary">
-                  {a.chit_group.name}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {formatDate(a.chit_month)}
-                </p>
-              </div>
-              <StatusBadge status={a.chit_group.status} />
-            </div>
-          ))}
-        </div>
-      )}
-      {mode !== "create" && assignments.length === 0 && !showAssignForm && (
-        <p className="text-center text-text-secondary py-4">
-          This member has no active assignments.
-        </p>
-      )}
-      {showAssignForm && (
-        <form onSubmit={handleAssignmentSubmit} className="space-y-6">
-          {error && error.context === "assignment" && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error.message}
-            </Message>
-          )}
-          <div>
-            <label
-              htmlFor="chit_group"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Active Chit Group
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiUsers className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <select
-                id="chit_group"
-                value={selectedGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
-              >
-                <option value="">Select an active group...</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} - (₹{group.chit_value.toLocaleString("en-IN")})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="chit_month"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Chit Month
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiCalendar className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <select
-                id="chit_month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
-                disabled={!selectedGroupId || availableMonths.length === 0}
-              >
-                <option value="">
-                  {selectedGroupId
-                    ? availableMonths.length > 0
-                      ? "Select an available month..."
-                      : "No available months"
-                    : "Select a group first"}
-                </option>
-                {availableMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {formatDate(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {mode !== "create" && (
-            <Button
-              type="submit"
-              className="w-full"
-              variant="success"
-              disabled={assignmentLoading}
-            >
-              {assignmentLoading ? (
-                <FiLoader className="animate-spin mx-auto" />
-              ) : (
-                <>
-                  <FiPlus className="inline mr-2" />
-                  Assign Member
-                </>
-              )}
-            </Button>
-          )}
-        </form>
-      )}
-    </Card>
-  );
-
-  const PaymentsSection = () => (
-    <Card>
-      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-        <RupeeIcon className="w-5 h-5" /> Payments
-      </h2>
-      <hr className="border-border mb-4" />
-      <div className="text-center text-text-secondary py-8">
-        This feature is coming soon!
-      </div>
-    </Card>
-  );
 
   const TabButton = ({ name, icon, label }) => {
     const isActive = activeTab === name;
@@ -432,7 +465,7 @@ const MemberDetailPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-              {error && mode === "view" && (
+              {error && mode === "view" && !pageLoading && (
                 <Message type="error">{error.message || error}</Message>
               )}
               <div className="w-full max-w-2xl mx-auto md:hidden">
@@ -449,16 +482,68 @@ const MemberDetailPage = () => {
                     label="Payments"
                   />
                 </div>
-                {activeTab === "details" && <DetailsSection />}
-                {activeTab === "assignments" && <AssignmentsSection />}
+                {activeTab === "details" && (
+                  <DetailsSection
+                    mode={mode}
+                    formData={formData}
+                    onFormChange={handleFormChange}
+                    handleDetailsSubmit={handleDetailsSubmit}
+                    detailsLoading={detailsLoading}
+                    error={error}
+                    success={success}
+                  />
+                )}
+                {activeTab === "assignments" && (
+                  <AssignmentsSection
+                    mode={mode}
+                    assignments={assignments}
+                    showAssignForm={showAssignForm}
+                    setShowAssignForm={setShowAssignForm}
+                    handleAssignmentSubmit={handleAssignmentSubmit}
+                    error={error}
+                    setError={setError}
+                    selectedGroupId={selectedGroupId}
+                    setSelectedGroupId={setSelectedGroupId}
+                    groups={groups}
+                    selectedMonth={selectedMonth}
+                    setSelectedMonth={setSelectedMonth}
+                    availableMonths={availableMonths}
+                    assignmentLoading={assignmentLoading}
+                    formatDate={formatDate}
+                  />
+                )}
                 {activeTab === "payments" && <PaymentsSection />}
               </div>
               <div className="hidden md:grid md:grid-cols-2 md:gap-8">
                 <div className="md:col-span-1">
-                  <DetailsSection />
+                  <DetailsSection
+                    mode={mode}
+                    formData={formData}
+                    onFormChange={handleFormChange}
+                    handleDetailsSubmit={handleDetailsSubmit}
+                    detailsLoading={detailsLoading}
+                    error={error}
+                    success={success}
+                  />
                 </div>
                 <div className="space-y-8">
-                  <AssignmentsSection />
+                  <AssignmentsSection
+                    mode={mode}
+                    assignments={assignments}
+                    showAssignForm={showAssignForm}
+                    setShowAssignForm={setShowAssignForm}
+                    handleAssignmentSubmit={handleAssignmentSubmit}
+                    error={error}
+                    setError={setError}
+                    selectedGroupId={selectedGroupId}
+                    setSelectedGroupId={setSelectedGroupId}
+                    groups={groups}
+                    selectedMonth={selectedMonth}
+                    setSelectedMonth={setSelectedMonth}
+                    availableMonths={availableMonths}
+                    assignmentLoading={assignmentLoading}
+                    formatDate={formatDate}
+                  />
                   <PaymentsSection />
                 </div>
               </div>
