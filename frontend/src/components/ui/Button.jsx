@@ -4,6 +4,7 @@ const Button = ({
   variant = "primary",
   className = "",
   disabled,
+  ...props
 }) => {
   // Base styles are now more generic
   const baseStyles =
@@ -29,6 +30,7 @@ const Button = ({
       onClick={onClick}
       className={`${baseStyles} ${variants[variant]} ${className}`}
       disabled={disabled}
+      {...props}
     >
       {children}
     </button>

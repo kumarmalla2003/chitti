@@ -493,7 +493,7 @@ const MemberDetailPage = () => {
               {error && error.context === "page" && !pageLoading && (
                 <Message type="error">{error.message}</Message>
               )}
-              <div className="w-full max-w-2xl mx-auto md:hidden">
+              <div className="w-full mx-auto md:hidden">
                 <div className="flex items-center border-b border-border mb-6">
                   <TabButton name="details" icon={<FiUser />} label="Details" />
                   <TabButton
@@ -537,11 +537,12 @@ const MemberDetailPage = () => {
                   />
                 )}
                 {activeTab === "payments" && (
-                  <PaymentsSection>
-                    <div className="mt-8">
+                  <>
+                    <PaymentsSection />
+                    <div className="mt-8 flex justify-center">
                       <SubmitButton />
                     </div>
-                  </PaymentsSection>
+                  </>
                 )}
               </div>
               <div className="hidden md:block">

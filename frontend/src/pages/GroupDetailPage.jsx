@@ -348,7 +348,7 @@ const GroupDetailPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-              <div className="w-full max-w-2xl mx-auto md:hidden">
+              <div className="w-full mx-auto md:hidden">
                 <div className="flex items-center border-b border-border mb-6">
                   <TabButton name="details" icon={<FiInfo />} label="Details" />
                   <TabButton
@@ -374,11 +374,12 @@ const GroupDetailPage = () => {
                 )}
                 {activeTab === "members" && <MembersSection />}
                 {activeTab === "payments" && (
-                  <PaymentsSection>
-                    <div className="mt-8">
+                  <>
+                    <PaymentsSection />
+                    <div className="mt-8 flex justify-center">
                       <SubmitButton />
                     </div>
-                  </PaymentsSection>
+                  </>
                 )}
               </div>
               <div className="hidden md:block">
