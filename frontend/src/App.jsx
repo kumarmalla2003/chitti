@@ -7,7 +7,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import GroupsPage from "./pages/GroupsPage";
-import GroupDetailPage from "./pages/GroupDetailPage"; // <-- RENAMED
+import GroupDetailPage from "./pages/GroupDetailPage";
+import MembersPage from "./pages/MembersPage";
+import MemberDetailPage from "./pages/MemberDetailPage";
 import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
@@ -50,6 +52,7 @@ const App = () => {
                 )
               }
             />
+            {/* --- GROUPS ROUTES --- */}
             <Route
               path="/groups"
               element={
@@ -92,6 +95,55 @@ const App = () => {
                 isLoggedIn ? (
                   <AnimatedPage>
                     <GroupDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            {/* --- MEMBERS ROUTES --- */}
+            <Route
+              path="/members"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <MembersPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/members/create"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <MemberDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/members/view/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <MemberDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/members/edit/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <MemberDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />

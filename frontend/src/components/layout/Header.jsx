@@ -32,6 +32,7 @@ const Header = ({
     contact: useRef(null),
     dashboard: useRef(null),
     groups: useRef(null),
+    members: useRef(null), // <-- ADD THIS
   };
 
   const loggedOutNavLinks = [
@@ -46,11 +47,14 @@ const Header = ({
     { href: "/", text: "Home", id: "home" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/groups", text: "Groups", id: "groups" },
+    { href: "/members", text: "Members", id: "members" }, // <-- ADD THIS
   ];
 
   const getActiveId = () => {
     if (!isLoggedIn) return activeSection;
     if (location.pathname.startsWith("/groups")) return "groups";
+    if (location.pathname.startsWith("/members")) return "members"; // <-- ADD THIS
+    if (location.pathname.startsWith("/assignments")) return "members"; // <-- ADD THIS
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -79,6 +83,11 @@ const Header = ({
 
   const isLinkActive = (path) => {
     if (path === "/") return location.pathname === "/";
+    if (path === "/members")
+      return (
+        location.pathname.startsWith("/members") ||
+        location.pathname.startsWith("/assignments")
+      );
     return location.pathname.startsWith(path);
   };
 

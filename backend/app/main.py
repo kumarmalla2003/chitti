@@ -7,10 +7,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routers import auth as auth_router, chits as chits_router
+# UPDATE IMPORTS
+from app.api.routers import (
+    auth as auth_router, 
+    chits as chits_router, 
+    members as members_router,             # <-- ADD THIS
+    assignments as assignments_router      # <-- ADD THIS
+)
 from app.core.config import settings
 from app.db.session import engine, AsyncSessionLocal
-from app.models import auth as auth_models, chits as chits_models
+from app.models import (
+    auth as auth_models, 
+    chits as chits_models,
+    members as members_models,             # <-- ADD THIS
+    assignments as assignments_models      # <-- ADD THIS
+)
 from app.security import core as security
 
 @asynccontextmanager
@@ -18,8 +29,11 @@ async def lifespan(app: FastAPI):
     print("Starting up...")
     print("Initializing database...")
     async with engine.begin() as conn:
+        # UPDATE METADATA CREATE CALL
         await conn.run_sync(auth_models.SQLModel.metadata.create_all)
         await conn.run_sync(chits_models.SQLModel.metadata.create_all)
+        await conn.run_sync(members_models.SQLModel.metadata.create_all)      # <-- ADD THIS
+        await conn.run_sync(assignments_models.SQLModel.metadata.create_all)  # <-- ADD THIS
 
     print("Seeding initial data...")
     async with AsyncSessionLocal() as session:
@@ -68,6 +82,8 @@ app.add_middleware(
 # Include API routers
 app.include_router(auth_router.router)
 app.include_router(chits_router.router)
+app.include_router(members_router.router)        # <-- ADD THIS
+app.include_router(assignments_router.router)  # <-- ADD THIS
 
 @app.get("/")
 def read_root():

@@ -39,6 +39,13 @@ const MobileNav = ({
     if (path === "/") {
       return location.pathname === "/";
     }
+    if (path === "/members") {
+      // <-- ADD THIS BLOCK
+      return (
+        location.pathname.startsWith("/members") ||
+        location.pathname.startsWith("/assignments")
+      );
+    }
     return location.pathname.startsWith(path);
   };
 
@@ -51,9 +58,11 @@ const MobileNav = ({
   ];
 
   const loggedInNavLinks = [
+    // <-- UPDATE THIS ARRAY
     { href: "/", text: "Home" },
     { href: "/dashboard", text: "Dashboard" },
     { href: "/groups", text: "Groups" },
+    { href: "/members", text: "Members" },
   ];
 
   const BrandLogo = () => {
