@@ -19,6 +19,7 @@ import {
   FiClock,
   FiArrowLeft,
   FiEdit,
+  FiInfo,
 } from "react-icons/fi";
 import { RupeeIcon } from "../components/ui/Icons";
 import {
@@ -27,7 +28,7 @@ import {
   updateChitGroup,
 } from "../services/chitsService";
 
-// --- HELPER FUNCTIONS FOR DATE CALCULATIONS ---
+// --- HELPER FUNCTIONS ---
 const getFirstDayOfMonth = (yearMonth) => {
   if (!yearMonth) return "";
   return `${yearMonth}-01`;
@@ -83,6 +84,7 @@ const GroupDetailPage = () => {
 
   const [mode, setMode] = useState("create"); // create, view, edit
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
   const [formData, setFormData] = useState({
     name: "",
     chit_value: "",
@@ -188,7 +190,6 @@ const GroupDetailPage = () => {
   };
 
   const validateForm = () => {
-    // (Validation logic remains the same)
     if (!formData.name || formData.name.trim() === "") {
       return "Chit Group Name cannot be empty.";
     }
@@ -319,13 +320,249 @@ const GroupDetailPage = () => {
   const dummyActiveSection = "groups";
   const dummyLoginClick = () => {};
 
-  if (loading && !formData.name) {
+  if (loading && !formData.name && id) {
     return (
       <div className="flex justify-center items-center h-screen">
         <FiLoader className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
+
+  // --- Reusable Section Components ---
+  const DetailsSection = () => (
+    <Card>
+      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+        <FiInfo /> Details
+      </h2>
+      <hr className="border-border mb-4" />
+      <form onSubmit={handleSubmit}>
+        {success && (
+          <Message type="success" title="Success">
+            {success}
+          </Message>
+        )}
+        {error && (
+          <Message type="error" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Message>
+        )}
+        <fieldset disabled={mode === "view"} className="space-y-6">
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-lg font-medium text-text-secondary mb-1"
+            >
+              Group Name
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <FiTag className="w-5 h-5 text-text-secondary" />
+              </span>
+              <div className="absolute left-10 h-6 w-px bg-border"></div>
+              <input
+                ref={nameInputRef}
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
+                maxLength={50}
+                placeholder="Kasi Malla Family Chit"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="chit_value"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Chit Value
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <RupeeIcon className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <input
+                  type="text"
+                  id="chit_value"
+                  name="chit_value"
+                  value={
+                    formData.chit_value
+                      ? parseInt(formData.chit_value).toLocaleString("en-IN")
+                      : ""
+                  }
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
+                  placeholder="1,00,000"
+                  required
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="group_size"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Group Size
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <FiUsers className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <input
+                  type="number"
+                  id="group_size"
+                  name="group_size"
+                  value={formData.group_size}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
+                  min="1"
+                  placeholder="20"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="monthly_installment"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Monthly Installment
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <RupeeIcon className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <input
+                  type="text"
+                  id="monthly_installment"
+                  name="monthly_installment"
+                  value={
+                    formData.monthly_installment
+                      ? parseInt(formData.monthly_installment).toLocaleString(
+                          "en-IN"
+                        )
+                      : ""
+                  }
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
+                  placeholder="5,000"
+                  required
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="duration_months"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Duration (months)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <FiClock className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <input
+                  type="number"
+                  id="duration_months"
+                  name="duration_months"
+                  value={formData.duration_months}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
+                  min="1"
+                  placeholder="20"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="start_date"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Start Date
+              </label>
+              <CustomMonthInput
+                name="start_date"
+                value={formData.start_date}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="end_date"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                End Date
+              </label>
+              <CustomMonthInput
+                name="end_date"
+                value={formData.end_date}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        </fieldset>
+        {getButton()}
+      </form>
+    </Card>
+  );
+
+  const MembersSection = () => (
+    <Card>
+      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+        <FiUsers /> Members
+      </h2>
+      <hr className="border-border mb-4" />
+      <div className="text-center text-text-secondary py-8">
+        This feature is coming soon!
+      </div>
+    </Card>
+  );
+
+  const PaymentsSection = () => (
+    <Card>
+      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+        <RupeeIcon className="w-5 h-5" /> Payments
+      </h2>
+      <hr className="border-border mb-4" />
+      <div className="text-center text-text-secondary py-8">
+        This feature is coming soon!
+      </div>
+    </Card>
+  );
+
+  const TabButton = ({ name, icon, label }) => {
+    const isActive = activeTab === name;
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveTab(name)}
+        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
+          isActive
+            ? "bg-background-secondary text-accent border-b-2 border-accent"
+            : "text-text-secondary hover:bg-background-tertiary"
+        }`}
+      >
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   return (
     <>
@@ -355,199 +592,37 @@ const GroupDetailPage = () => {
               </div>
               <hr className="my-4 border-border" />
 
-              <div className="w-full max-w-2xl mx-auto">
-                <Card>
-                  <form onSubmit={handleSubmit}>
-                    {success && (
-                      <Message type="success" title="Success">
-                        {success}
-                      </Message>
-                    )}
-                    {error && (
-                      <Message
-                        type="error"
-                        title="Error"
-                        onClose={() => setError(null)}
-                      >
-                        {error}
-                      </Message>
-                    )}
-                    <fieldset disabled={mode === "view"} className="space-y-6">
-                      <div>
-                        <label
-                          htmlFor="name"
-                          className="block text-lg font-medium text-text-secondary mb-1"
-                        >
-                          Group Name
-                        </label>
-                        <div className="relative flex items-center">
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                            <FiTag className="w-5 h-5 text-text-secondary" />
-                          </span>
-                          <div className="absolute left-10 h-6 w-px bg-border"></div>
-                          <input
-                            ref={nameInputRef}
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-                            maxLength={50}
-                            placeholder="Kasi Malla Family Chit"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div>
-                          <label
-                            htmlFor="chit_value"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            Chit Value
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <RupeeIcon />
-                            </span>
-                            <div className="absolute left-10 h-6 w-px bg-border"></div>
-                            <input
-                              type="text"
-                              id="chit_value"
-                              name="chit_value"
-                              value={
-                                formData.chit_value
-                                  ? parseInt(
-                                      formData.chit_value
-                                    ).toLocaleString("en-IN")
-                                  : ""
-                              }
-                              onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-                              placeholder="1,00,000"
-                              required
-                              inputMode="numeric"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="group_size"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            Group Size
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <FiUsers className="w-5 h-5 text-text-secondary" />
-                            </span>
-                            <div className="absolute left-10 h-6 w-px bg-border"></div>
-                            <input
-                              type="number"
-                              id="group_size"
-                              name="group_size"
-                              value={formData.group_size}
-                              onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-                              min="1"
-                              placeholder="20"
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div>
-                          <label
-                            htmlFor="monthly_installment"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            Monthly Installment
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <RupeeIcon />
-                            </span>
-                            <div className="absolute left-10 h-6 w-px bg-border"></div>
-                            <input
-                              type="text"
-                              id="monthly_installment"
-                              name="monthly_installment"
-                              value={
-                                formData.monthly_installment
-                                  ? parseInt(
-                                      formData.monthly_installment
-                                    ).toLocaleString("en-IN")
-                                  : ""
-                              }
-                              onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-                              placeholder="5,000"
-                              required
-                              inputMode="numeric"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="duration_months"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            Duration (months)
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <FiClock className="w-5 h-5 text-text-secondary" />
-                            </span>
-                            <div className="absolute left-10 h-6 w-px bg-border"></div>
-                            <input
-                              type="number"
-                              id="duration_months"
-                              name="duration_months"
-                              value={formData.duration_months}
-                              onChange={handleChange}
-                              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-                              min="1"
-                              placeholder="20"
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div>
-                          <label
-                            htmlFor="start_date"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            Start Date
-                          </label>
-                          <CustomMonthInput
-                            name="start_date"
-                            value={formData.start_date}
-                            onChange={handleChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="end_date"
-                            className="block text-lg font-medium text-text-secondary mb-1"
-                          >
-                            End Date
-                          </label>
-                          <CustomMonthInput
-                            name="end_date"
-                            value={formData.end_date}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-                    </fieldset>
-                    {getButton()}
-                  </form>
-                </Card>
+              {/* --- MOBILE/TABLET VIEW (TABS) --- */}
+              <div className="w-full max-w-2xl mx-auto md:hidden">
+                <div className="flex items-center border-b border-border mb-6">
+                  <TabButton name="details" icon={<FiInfo />} label="Details" />
+                  <TabButton
+                    name="members"
+                    icon={<FiUsers />}
+                    label="Members"
+                  />
+                  <TabButton
+                    name="payments"
+                    icon={<RupeeIcon className="w-4 h-4" />}
+                    label="Payments"
+                  />
+                </div>
+                {activeTab === "details" && <DetailsSection />}
+                {activeTab === "members" && <MembersSection />}
+                {activeTab === "payments" && <PaymentsSection />}
+              </div>
+
+              {/* --- DESKTOP VIEW (GRID) --- */}
+              <div className="hidden md:grid md:grid-cols-2 md:gap-8">
+                {/* --- Left Column --- */}
+                <div className="md:col-span-1">
+                  <DetailsSection />
+                </div>
+                {/* --- Right Column --- */}
+                <div className="space-y-8">
+                  <MembersSection />
+                  <PaymentsSection />
+                </div>
               </div>
             </div>
           </main>
