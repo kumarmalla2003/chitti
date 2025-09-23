@@ -33,6 +33,7 @@ import {
   FiCalendar,
   FiUsers,
   FiChevronUp,
+  FiEdit,
 } from "react-icons/fi";
 
 // --- Helper Components (Extracted) ---
@@ -42,7 +43,6 @@ const DetailsSection = ({
   formData,
   onFormChange,
   handleDetailsSubmit,
-  detailsLoading,
   error,
   success,
 }) => (
@@ -56,7 +56,6 @@ const DetailsSection = ({
       formData={formData}
       onFormChange={onFormChange}
       onFormSubmit={handleDetailsSubmit}
-      loading={detailsLoading}
       error={error && error.context === "details" ? error.message : null}
       success={success}
     />
@@ -210,7 +209,7 @@ const AssignmentsSection = ({
   </Card>
 );
 
-const PaymentsSection = () => (
+const PaymentsSection = ({ children }) => (
   <Card>
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <RupeeIcon className="w-5 h-5" /> Payments
@@ -219,6 +218,7 @@ const PaymentsSection = () => (
     <div className="text-center text-text-secondary py-8">
       This feature is coming soon!
     </div>
+    {children}
   </Card>
 );
 
@@ -263,7 +263,7 @@ const MemberDetailPage = () => {
       });
       setAssignments(assignmentsData);
     } catch (err) {
-      setError(err.message);
+      setError({ context: "page", message: err.message });
     } finally {
       setPageLoading(false);
     }
@@ -412,6 +412,7 @@ const MemberDetailPage = () => {
     options = { year: "numeric", month: "long" }
   ) => {
     const date = new Date(dateString);
+    date.setUTCDate(date.getUTCDate() + 1); // Adjust for timezone display issue
     return date.toLocaleDateString("en-IN", options);
   };
 
@@ -441,6 +442,30 @@ const MemberDetailPage = () => {
     );
   };
 
+  const SubmitButton = () =>
+    mode !== "view" && (
+      <Button
+        type="submit"
+        form="member-details-form"
+        variant={mode === "create" ? "success" : "warning"}
+        disabled={detailsLoading}
+      >
+        {detailsLoading ? (
+          <FiLoader className="animate-spin mx-auto" />
+        ) : mode === "create" ? (
+          <>
+            <FiPlus className="inline mr-2" />
+            Create Member
+          </>
+        ) : (
+          <>
+            <FiEdit className="inline mr-2" />
+            Update Member
+          </>
+        )}
+      </Button>
+    );
+
   return (
     <>
       <div
@@ -465,8 +490,8 @@ const MemberDetailPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-              {error && mode === "view" && !pageLoading && (
-                <Message type="error">{error.message || error}</Message>
+              {error && error.context === "page" && !pageLoading && (
+                <Message type="error">{error.message}</Message>
               )}
               <div className="w-full max-w-2xl mx-auto md:hidden">
                 <div className="flex items-center border-b border-border mb-6">
@@ -488,7 +513,6 @@ const MemberDetailPage = () => {
                     formData={formData}
                     onFormChange={handleFormChange}
                     handleDetailsSubmit={handleDetailsSubmit}
-                    detailsLoading={detailsLoading}
                     error={error}
                     success={success}
                   />
@@ -512,36 +536,46 @@ const MemberDetailPage = () => {
                     formatDate={formatDate}
                   />
                 )}
-                {activeTab === "payments" && <PaymentsSection />}
+                {activeTab === "payments" && (
+                  <PaymentsSection>
+                    <div className="mt-8">
+                      <SubmitButton />
+                    </div>
+                  </PaymentsSection>
+                )}
               </div>
-              <div className="hidden md:block md:space-y-8">
-                <DetailsSection
-                  mode={mode}
-                  formData={formData}
-                  onFormChange={handleFormChange}
-                  handleDetailsSubmit={handleDetailsSubmit}
-                  detailsLoading={detailsLoading}
-                  error={error}
-                  success={success}
-                />
-                <AssignmentsSection
-                  mode={mode}
-                  assignments={assignments}
-                  showAssignForm={showAssignForm}
-                  setShowAssignForm={setShowAssignForm}
-                  handleAssignmentSubmit={handleAssignmentSubmit}
-                  error={error}
-                  setError={setError}
-                  selectedGroupId={selectedGroupId}
-                  setSelectedGroupId={setSelectedGroupId}
-                  groups={groups}
-                  selectedMonth={selectedMonth}
-                  setSelectedMonth={setSelectedMonth}
-                  availableMonths={availableMonths}
-                  assignmentLoading={assignmentLoading}
-                  formatDate={formatDate}
-                />
-                <PaymentsSection />
+              <div className="hidden md:block">
+                <div className="space-y-8">
+                  <DetailsSection
+                    mode={mode}
+                    formData={formData}
+                    onFormChange={handleFormChange}
+                    handleDetailsSubmit={handleDetailsSubmit}
+                    error={error}
+                    success={success}
+                  />
+                  <AssignmentsSection
+                    mode={mode}
+                    assignments={assignments}
+                    showAssignForm={showAssignForm}
+                    setShowAssignForm={setShowAssignForm}
+                    handleAssignmentSubmit={handleAssignmentSubmit}
+                    error={error}
+                    setError={setError}
+                    selectedGroupId={selectedGroupId}
+                    setSelectedGroupId={setSelectedGroupId}
+                    groups={groups}
+                    selectedMonth={selectedMonth}
+                    setSelectedMonth={setSelectedMonth}
+                    availableMonths={availableMonths}
+                    assignmentLoading={assignmentLoading}
+                    formatDate={formatDate}
+                  />
+                  <PaymentsSection />
+                </div>
+                <div className="mt-8 flex justify-end">
+                  <SubmitButton />
+                </div>
               </div>
             </div>
           </main>

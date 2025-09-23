@@ -8,9 +8,17 @@ import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
 import { RupeeIcon } from "../components/ui/Icons";
-import { FiInfo, FiUsers, FiLoader, FiArrowLeft } from "react-icons/fi";
+import {
+  FiInfo,
+  FiUsers,
+  FiLoader,
+  FiArrowLeft,
+  FiPlus,
+  FiEdit,
+} from "react-icons/fi";
 import {
   createChitGroup,
   getChitGroupById,
@@ -24,24 +32,24 @@ const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
 const toYearMonth = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
   return `${year}-${month}`;
 };
 
 const calculateEndDate = (startYearMonth, durationMonths) => {
   if (!startYearMonth || !durationMonths || durationMonths <= 0) return "";
   const [year, month] = startYearMonth.split("-").map(Number);
-  const startDate = new Date(year, month - 1, 1);
-  startDate.setMonth(startDate.getMonth() + parseInt(durationMonths) - 1);
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  startDate.setUTCMonth(startDate.getUTCMonth() + parseInt(durationMonths) - 1);
   return toYearMonth(startDate.toISOString());
 };
 
 const calculateStartDate = (endYearMonth, durationMonths) => {
   if (!endYearMonth || !durationMonths || durationMonths <= 0) return "";
   const [year, month] = endYearMonth.split("-").map(Number);
-  const endDate = new Date(year, month, 0);
-  endDate.setMonth(endDate.getMonth() - parseInt(durationMonths) + 1);
+  const endDate = new Date(Date.UTC(year, month, 0));
+  endDate.setUTCMonth(endDate.getUTCMonth() - parseInt(durationMonths) + 1);
   return toYearMonth(endDate.toISOString());
 };
 
@@ -62,7 +70,6 @@ const DetailsSection = ({
   formData,
   handleFormChange,
   handleSubmit,
-  loading,
   error,
   success,
 }) => (
@@ -76,7 +83,6 @@ const DetailsSection = ({
       formData={formData}
       onFormChange={handleFormChange}
       onFormSubmit={handleSubmit}
-      loading={loading}
       error={error}
       success={success}
     />
@@ -95,7 +101,7 @@ const MembersSection = () => (
   </Card>
 );
 
-const PaymentsSection = () => (
+const PaymentsSection = ({ children }) => (
   <Card>
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <RupeeIcon className="w-5 h-5" /> Payments
@@ -104,6 +110,7 @@ const PaymentsSection = () => (
     <div className="text-center text-text-secondary py-8">
       This feature is coming soon!
     </div>
+    {children}
   </Card>
 );
 
@@ -296,6 +303,30 @@ const GroupDetailPage = () => {
     );
   };
 
+  const SubmitButton = () =>
+    mode !== "view" && (
+      <Button
+        type="submit"
+        form="group-details-form"
+        variant={mode === "create" ? "success" : "warning"}
+        disabled={loading}
+      >
+        {loading ? (
+          <FiLoader className="animate-spin mx-auto" />
+        ) : mode === "create" ? (
+          <>
+            <FiPlus className="inline-block mr-2" />
+            Create Chit Group
+          </>
+        ) : (
+          <>
+            <FiEdit className="inline-block mr-2" />
+            Update Chit Group
+          </>
+        )}
+      </Button>
+    );
+
   return (
     <>
       <div
@@ -337,26 +368,35 @@ const GroupDetailPage = () => {
                     formData={formData}
                     handleFormChange={handleFormChange}
                     handleSubmit={handleSubmit}
-                    loading={loading}
                     error={error}
                     success={success}
                   />
                 )}
                 {activeTab === "members" && <MembersSection />}
-                {activeTab === "payments" && <PaymentsSection />}
+                {activeTab === "payments" && (
+                  <PaymentsSection>
+                    <div className="mt-8">
+                      <SubmitButton />
+                    </div>
+                  </PaymentsSection>
+                )}
               </div>
-              <div className="hidden md:block md:space-y-8">
-                <DetailsSection
-                  mode={mode}
-                  formData={formData}
-                  handleFormChange={handleFormChange}
-                  handleSubmit={handleSubmit}
-                  loading={loading}
-                  error={error}
-                  success={success}
-                />
-                <MembersSection />
-                <PaymentsSection />
+              <div className="hidden md:block">
+                <div className="space-y-8">
+                  <DetailsSection
+                    mode={mode}
+                    formData={formData}
+                    handleFormChange={handleFormChange}
+                    handleSubmit={handleSubmit}
+                    error={error}
+                    success={success}
+                  />
+                  <MembersSection />
+                  <PaymentsSection />
+                </div>
+                <div className="mt-8 flex justify-end">
+                  <SubmitButton />
+                </div>
               </div>
             </div>
           </main>
