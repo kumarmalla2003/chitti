@@ -24,20 +24,19 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       if (step === "phone") {
         setTimeout(() => phoneInputRef.current?.focus(), 100);
       } else if (step === "pin") {
         setTimeout(() => pinInputRefs.current[0]?.focus(), 100);
       }
-    } else {
-      document.body.style.overflow = "auto";
     }
+    // Cleanup timer on unmount or when dependencies change
     return () => clearTimeout(visibilityTimerRef.current);
   }, [isOpen, step]);
 
   useEffect(() => {
     if (!isOpen) {
+      // Reset state after the closing animation completes
       setTimeout(() => {
         setStep("phone");
         setPhoneNumber("");
@@ -58,7 +57,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
       setError("Please enter a valid 10-digit phone number.");
-      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
+      setTimeout(() => phoneInputRef.current?.focus(), 100);
       return;
     }
     setIsLoading(true);
@@ -68,7 +67,7 @@ const LoginModal = ({ isOpen, onClose }) => {
       setStep("pin");
     } catch (err) {
       setError(err.message);
-      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
+      setTimeout(() => phoneInputRef.current?.focus(), 100);
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +146,7 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-30 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out ${
+      className={`fixed inset-0 z-30 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out bg-black/25 ${
         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
@@ -170,7 +169,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         <h2 className="text-3xl font-bold text-center text-text-primary">
           Login
         </h2>
-        <hr className="my-4 border-border" /> {/* Moved and margin adjusted */}
+        <hr className="my-4 border-border" />
         <p className="text-sm text-center text-text-secondary h-5 mb-6">
           {step === "phone"
             ? "Enter your authorized phone number"
