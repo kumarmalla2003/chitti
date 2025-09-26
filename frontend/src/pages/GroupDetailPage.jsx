@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
@@ -10,66 +11,52 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
+import Stepper from "../components/ui/Stepper";
 import { RupeeIcon } from "../components/ui/Icons";
 import {
   FiInfo,
   FiUsers,
   FiLoader,
   FiArrowLeft,
-  FiPlus,
   FiEdit,
+  FiArrowRight,
 } from "react-icons/fi";
 import {
   createChitGroup,
   getChitGroupById,
   updateChitGroup,
 } from "../services/chitsService";
+import {
+  calculateEndDate,
+  calculateStartDate,
+  calculateDuration,
+  getFirstDayOfMonth,
+  toYearMonth,
+} from "../utils/dateUtils";
+import useScreenSize from "../hooks/useScreenSize";
 
-// --- Helper Functions ---
-
-const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
-
-const toYearMonth = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const year = date.getUTCFullYear();
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-  return `${year}-${month}`;
+const stepVariants = {
+  hidden: (direction) => ({
+    opacity: 0,
+    x: direction > 0 ? 30 : -30,
+  }),
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4, ease: "easeInOut" },
+  },
+  exit: (direction) => ({
+    opacity: 0,
+    x: direction < 0 ? 30 : -30,
+    transition: { duration: 0.4, ease: "easeInOut" },
+  }),
 };
-
-const calculateEndDate = (startYearMonth, durationMonths) => {
-  if (!startYearMonth || !durationMonths || durationMonths <= 0) return "";
-  const [year, month] = startYearMonth.split("-").map(Number);
-  const startDate = new Date(Date.UTC(year, month - 1, 1));
-  startDate.setUTCMonth(startDate.getUTCMonth() + parseInt(durationMonths) - 1);
-  return toYearMonth(startDate.toISOString());
-};
-
-const calculateStartDate = (endYearMonth, durationMonths) => {
-  if (!endYearMonth || !durationMonths || durationMonths <= 0) return "";
-  const [year, month] = endYearMonth.split("-").map(Number);
-  const endDate = new Date(Date.UTC(year, month, 0));
-  endDate.setUTCMonth(endDate.getUTCMonth() - parseInt(durationMonths) + 1);
-  return toYearMonth(endDate.toISOString());
-};
-
-const calculateDuration = (startYearMonth, endYearMonth) => {
-  if (!startYearMonth || !endYearMonth) return "";
-  const [startYear, startMonth] = startYearMonth.split("-").map(Number);
-  const [endYear, endMonth] = endYearMonth.split("-").map(Number);
-  if (endYear < startYear || (endYear === startYear && endMonth < startMonth))
-    return "";
-  const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-  return totalMonths > 0 ? totalMonths.toString() : "";
-};
-
-// --- Helper Components (Extracted) ---
 
 const DetailsSection = ({
   mode,
   formData,
-  handleFormChange,
-  handleSubmit,
+  onFormChange,
+  onFormSubmit,
   error,
   success,
 }) => (
@@ -81,8 +68,8 @@ const DetailsSection = ({
     <GroupDetailsForm
       mode={mode}
       formData={formData}
-      onFormChange={handleFormChange}
-      onFormSubmit={handleSubmit}
+      onFormChange={onFormChange}
+      onFormSubmit={onFormSubmit}
       error={error}
       success={success}
     />
@@ -101,7 +88,7 @@ const MembersSection = () => (
   </Card>
 );
 
-const PaymentsSection = ({ children }) => (
+const PaymentsSection = () => (
   <Card>
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <RupeeIcon className="w-5 h-5" /> Payments
@@ -110,21 +97,21 @@ const PaymentsSection = ({ children }) => (
     <div className="text-center text-text-secondary py-8">
       This feature is coming soon!
     </div>
-    {children}
   </Card>
 );
-
-// --- Main Page Component ---
 
 const GroupDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
+  const isDesktop = useScreenSize();
 
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [step, setStep] = useState(1);
+  const [direction, setDirection] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
     chit_value: "",
@@ -138,6 +125,12 @@ const GroupDetailPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  const steps = [
+    { name: "Details", icon: <FiInfo size={20} /> },
+    { name: "Members", icon: <FiUsers size={20} /> },
+    { name: "Payments", icon: <RupeeIcon className="w-5 h-5" /> },
+  ];
 
   useEffect(() => {
     const path = location.pathname;
@@ -176,9 +169,24 @@ const GroupDetailPage = () => {
     }
   }, [id, location.pathname, token]);
 
+  useEffect(() => {
+    if (mode === "create" && isDesktop) {
+      navigate("/groups", { replace: true });
+    }
+  }, [mode, isDesktop, navigate]);
+
+  const handleNextStep = () => {
+    setDirection(1);
+    setStep((prev) => prev + 1);
+  };
+
+  const handlePrevStep = () => {
+    setDirection(-1);
+    setStep((prev) => prev - 1);
+  };
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prevFormData) => {
       let newFormData = { ...prevFormData, [name]: value };
 
@@ -189,19 +197,6 @@ const GroupDetailPage = () => {
         if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
           newFormData.end_date = calculateEndDate(
             newFormData.start_date,
-            value
-          );
-        }
-      } else if (name === "duration_months") {
-        newFormData.group_size = value;
-        if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-          newFormData.end_date = calculateEndDate(
-            newFormData.start_date,
-            value
-          );
-        } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-          newFormData.start_date = calculateStartDate(
-            newFormData.end_date,
             value
           );
         }
@@ -239,10 +234,10 @@ const GroupDetailPage = () => {
     const dataToSend = {
       ...currentFormData,
       start_date: getFirstDayOfMonth(currentFormData.start_date),
-      chit_value: Number(currentFormData.chit_value),
-      group_size: Number(currentFormData.group_size),
-      monthly_installment: Number(currentFormData.monthly_installment),
-      duration_months: Number(currentFormData.duration_months),
+      chit_value: Number(currentFormData.chit_value) || 0,
+      group_size: Number(currentFormData.group_size) || 0,
+      monthly_installment: Number(currentFormData.monthly_installment) || 0,
+      duration_months: Number(currentFormData.duration_months) || 0,
     };
     delete dataToSend.end_date;
 
@@ -272,18 +267,72 @@ const GroupDetailPage = () => {
   };
 
   const getTitle = () => {
-    if (mode === "create") return "Create New Chit Group";
     if (mode === "edit") return "Edit Chit Group";
-    return formData.name || "Group Details";
+    if (mode === "view") return formData.name || "Group Details";
+    return "Create New Group";
   };
 
   if (pageLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-screen bg-background-primary">
         <FiLoader className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
+
+  const renderCreateSteps = () => (
+    <>
+      <div className="my-6 flex justify-center">
+        <Stepper steps={steps} currentStep={step} direction="horizontal" />
+      </div>
+      <hr className="border-border mb-8" />
+      <div className="overflow-hidden min-h-[450px]">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {step === 1 && (
+              <DetailsSection
+                mode="create"
+                formData={formData}
+                onFormChange={handleFormChange}
+                onFormSubmit={handleSubmit}
+                error={error}
+                success={success}
+              />
+            )}
+            {step === 2 && (
+              <Card>
+                <div className="text-center p-8 flex flex-col justify-center items-center min-h-[350px]">
+                  <FiUsers className="w-20 h-20 text-accent/50 mb-4" />
+                  <h3 className="text-2xl font-bold mb-2">Add Members</h3>
+                  <p className="text-text-secondary max-w-sm">
+                    This feature is coming soon.
+                  </p>
+                </div>
+              </Card>
+            )}
+            {step === 3 && (
+              <Card>
+                <div className="text-center p-8 flex flex-col justify-center items-center min-h-[350px]">
+                  <RupeeIcon className="w-20 h-20 text-accent/50 mb-4" />
+                  <h3 className="text-2xl font-bold mb-2">Setup Payments</h3>
+                  <p className="text-text-secondary max-w-sm">
+                    This feature is coming soon.
+                  </p>
+                </div>
+              </Card>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </>
+  );
 
   const TabButton = ({ name, icon, label }) => {
     const isActive = activeTab === name;
@@ -303,29 +352,70 @@ const GroupDetailPage = () => {
     );
   };
 
-  const SubmitButton = () =>
-    mode !== "view" && (
-      <Button
-        type="submit"
-        form="group-details-form"
-        variant={mode === "create" ? "success" : "warning"}
-        disabled={loading}
-      >
-        {loading ? (
-          <FiLoader className="animate-spin mx-auto" />
-        ) : mode === "create" ? (
-          <>
-            <FiPlus className="inline-block mr-2" />
-            Create Chit Group
-          </>
-        ) : (
-          <>
-            <FiEdit className="inline-block mr-2" />
-            Update Chit Group
-          </>
+  const renderViewEditMode = () => (
+    <>
+      <div className="w-full mx-auto md:hidden">
+        <div className="flex items-center border-b border-border mb-6">
+          <TabButton name="details" icon={<FiInfo />} label="Details" />
+          <TabButton name="members" icon={<FiUsers />} label="Members" />
+          <TabButton
+            name="payments"
+            icon={<RupeeIcon className="w-4 h-4" />}
+            label="Payments"
+          />
+        </div>
+        {activeTab === "details" && (
+          <DetailsSection
+            mode={mode}
+            formData={formData}
+            onFormChange={handleFormChange}
+            onFormSubmit={handleSubmit}
+            error={error}
+            success={success}
+          />
         )}
-      </Button>
-    );
+        {activeTab === "members" && <MembersSection />}
+        {activeTab === "payments" && <PaymentsSection />}
+      </div>
+      <div className="hidden md:block">
+        <div className="space-y-8">
+          <DetailsSection
+            mode={mode}
+            formData={formData}
+            onFormChange={handleFormChange}
+            onFormSubmit={handleSubmit}
+            error={error}
+            success={success}
+          />
+          <MembersSection />
+          <PaymentsSection />
+        </div>
+      </div>
+      {mode === "edit" && (
+        <div className="mt-8 flex justify-end">
+          <Button
+            type="submit"
+            form="group-details-form"
+            variant="warning"
+            disabled={loading}
+          >
+            {loading ? (
+              <FiLoader className="animate-spin mx-auto" />
+            ) : (
+              <>
+                <FiEdit className="inline-block mr-2" />
+                Update Chit Group
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </>
+  );
+
+  if (mode === "create" && isDesktop) {
+    return null;
+  }
 
   return (
     <>
@@ -348,57 +438,42 @@ const GroupDetailPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-              <div className="w-full mx-auto md:hidden">
-                <div className="flex items-center border-b border-border mb-6">
-                  <TabButton name="details" icon={<FiInfo />} label="Details" />
-                  <TabButton
-                    name="members"
-                    icon={<FiUsers />}
-                    label="Members"
-                  />
-                  <TabButton
-                    name="payments"
-                    icon={<RupeeIcon className="w-4 h-4" />}
-                    label="Payments"
-                  />
+
+              {mode === "create" ? renderCreateSteps() : renderViewEditMode()}
+
+              {mode === "create" && (
+                <div className="mt-8 flex justify-between">
+                  <Button
+                    onClick={handlePrevStep}
+                    disabled={step === 1 || loading}
+                    variant="secondary"
+                  >
+                    Back
+                  </Button>
+                  {step < 3 ? (
+                    <Button
+                      onClick={handleNextStep}
+                      disabled={loading || !formData.name}
+                    >
+                      Next <FiArrowRight className="inline ml-2" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleSubmit(formData)}
+                      variant="success"
+                      disabled={loading || !formData.name}
+                      type="submit"
+                      form="group-details-form"
+                    >
+                      {loading ? (
+                        <FiLoader className="animate-spin mx-auto" />
+                      ) : (
+                        "Create Group"
+                      )}
+                    </Button>
+                  )}
                 </div>
-                {activeTab === "details" && (
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    handleFormChange={handleFormChange}
-                    handleSubmit={handleSubmit}
-                    error={error}
-                    success={success}
-                  />
-                )}
-                {activeTab === "members" && <MembersSection />}
-                {activeTab === "payments" && (
-                  <>
-                    <PaymentsSection />
-                    <div className="mt-8 flex justify-center">
-                      <SubmitButton />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="hidden md:block">
-                <div className="space-y-8">
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    handleFormChange={handleFormChange}
-                    handleSubmit={handleSubmit}
-                    error={error}
-                    success={success}
-                  />
-                  <MembersSection />
-                  <PaymentsSection />
-                </div>
-                <div className="mt-8 flex justify-end">
-                  <SubmitButton />
-                </div>
-              </div>
+              )}
             </div>
           </main>
           <Footer />

@@ -1,13 +1,13 @@
 // frontend/src/pages/GroupsPage.jsx
 
+import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { getAllChitGroups } from "../services/chitsService";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { getAllChitGroups } from "../services/chitsService";
-import { useSelector } from "react-redux";
 import Message from "../components/ui/Message";
 import {
   FiPlus,
@@ -21,30 +21,58 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
 import StatusBadge from "../components/ui/StatusBadge";
+import CreateGroupModal from "../components/groups/CreateGroupModal";
+import useScreenSize from "../hooks/useScreenSize";
 
 const GroupsPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
+  const isDesktop = useScreenSize();
+
+  // --- ADD THIS useEffect HOOK ---
+  useEffect(() => {
+    // Add/remove class from body to prevent background scrolling
+    if (isModalOpen) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    // Cleanup function to remove the class when the component unmounts
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+    };
+  }, [isModalOpen]);
+  // --- END OF NEW HOOK ---
+
+  const fetchGroups = async () => {
+    try {
+      if (groups.length === 0) setLoading(true);
+      const data = await getAllChitGroups(token);
+      setGroups(data.groups);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const data = await getAllChitGroups(token);
-        setGroups(data.groups);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (token) {
       fetchGroups();
     }
   }, [token]);
+
+  const handleGroupCreated = () => {
+    setSuccess("New chit group has been created successfully!");
+    fetchGroups();
+  };
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery) {
@@ -57,14 +85,6 @@ const GroupsPage = () => {
       return nameMatch || valueMatch;
     });
   }, [groups, searchQuery]);
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    // Adding one day to the date to fix the timezone issue
-    date.setDate(date.getDate() + 1);
-    const options = { year: "numeric", month: "short", day: "numeric" };
-    return date.toLocaleDateString("en-IN", options);
-  };
 
   const columns = [
     {
@@ -112,44 +132,52 @@ const GroupsPage = () => {
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="View"
           >
-            {" "}
-            <FiEye />{" "}
+            <FiEye />
           </Link>
           <Link
             to={`/groups/edit/${row.id}`}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit"
           >
-            {" "}
-            <FiEdit />{" "}
+            <FiEdit />
           </Link>
           <button
             className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Reports"
           >
-            {" "}
-            <FiBarChart2 />{" "}
+            <FiBarChart2 />
           </button>
         </div>
       ),
     },
   ];
 
-  const dummyNavLinkClick = () => {};
-  const dummyActiveSection = "groups";
-  const dummyLoginClick = () => {};
+  const Fab = () => {
+    const fabProps = {
+      variant: "fab",
+      className: "group-hover:scale-110",
+      children: <FiPlus className="w-6 h-6" />,
+    };
+
+    if (isDesktop) {
+      return <Button onClick={() => setIsModalOpen(true)} {...fabProps} />;
+    }
+
+    return (
+      <Link to="/groups/create" className="group">
+        <Button {...fabProps} />
+      </Link>
+    );
+  };
 
   return (
     <>
       <div
-        className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
+        className={`transition-all duration-300 ${
+          isMenuOpen || isModalOpen ? "blur-sm" : ""
+        }`}
       >
-        <Header
-          onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection={dummyActiveSection}
-          onNavLinkClick={dummyNavLinkClick}
-          onLoginClick={dummyLoginClick}
-        />
+        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="groups" />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
@@ -159,8 +187,15 @@ const GroupsPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-
-              {/* --- UPDATED SEARCH BAR --- */}
+              {success && (
+                <Message
+                  type="success"
+                  title="Success"
+                  onClose={() => setSuccess(null)}
+                >
+                  {success}
+                </Message>
+              )}
               <div className="mb-6">
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -176,20 +211,20 @@ const GroupsPage = () => {
                   />
                 </div>
               </div>
-              {/* --- END OF SEARCH BAR --- */}
-
               {loading && (
                 <div className="flex justify-center items-center h-64">
                   <FiLoader className="w-10 h-10 animate-spin text-accent" />
                 </div>
               )}
-
               {error && (
-                <Message type="error" title="Error">
+                <Message
+                  type="error"
+                  title="Error"
+                  onClose={() => setError(null)}
+                >
                   {error}
                 </Message>
               )}
-
               {!loading && !error && filteredGroups.length === 0 && (
                 <Card className="text-center p-8">
                   <h2 className="text-2xl font-bold text-text-primary mb-2">
@@ -204,7 +239,6 @@ const GroupsPage = () => {
                   </p>
                 </Card>
               )}
-
               {!loading && !error && filteredGroups.length > 0 && (
                 <Table columns={columns} data={filteredGroups} />
               )}
@@ -216,16 +250,17 @@ const GroupsPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection={dummyActiveSection}
-        onNavLinkClick={dummyNavLinkClick}
-        onLoginClick={dummyLoginClick}
+        activeSection="groups"
       />
       <BottomNav />
-      <Link to="/groups/create" className="group">
-        <Button variant="fab" className="group-hover:scale-110">
-          <FiPlus className="w-6 h-6" />
-        </Button>
-      </Link>
+      <Fab />
+      {isDesktop && (
+        <CreateGroupModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onGroupCreated={handleGroupCreated}
+        />
+      )}
     </>
   );
 };

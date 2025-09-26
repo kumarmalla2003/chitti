@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
 import CustomMonthInput from "../ui/CustomMonthInput";
 import { RupeeIcon } from "../ui/Icons";
-import { FiTag, FiUsers, FiClock } from "react-icons/fi";
+import { FiTag, FiUsers } from "react-icons/fi";
 
 const GroupDetailsForm = ({
   mode,
@@ -28,6 +28,8 @@ const GroupDetailsForm = ({
   };
 
   const isFormDisabled = mode === "view";
+  const inputClass =
+    "w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed";
 
   return (
     <form onSubmit={handleSubmit} id="group-details-form">
@@ -61,13 +63,14 @@ const GroupDetailsForm = ({
               name="name"
               value={formData.name}
               onChange={onFormChange}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+              className={inputClass}
               maxLength={50}
               placeholder="Kasi Malla Family Chit"
               required
             />
           </div>
         </div>
+
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -91,7 +94,7 @@ const GroupDetailsForm = ({
                     : ""
                 }
                 onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={inputClass}
                 placeholder="1,00,000"
                 required
                 inputMode="numeric"
@@ -103,7 +106,7 @@ const GroupDetailsForm = ({
               htmlFor="group_size"
               className="block text-lg font-medium text-text-secondary mb-1"
             >
-              Group Size
+              Group Size / Duration
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -116,7 +119,7 @@ const GroupDetailsForm = ({
                 name="group_size"
                 value={formData.group_size}
                 onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={inputClass}
                 min="1"
                 placeholder="20"
                 required
@@ -124,64 +127,39 @@ const GroupDetailsForm = ({
             </div>
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label
-              htmlFor="monthly_installment"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Monthly Installment
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <RupeeIcon className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                type="text"
-                id="monthly_installment"
-                name="monthly_installment"
-                value={
-                  formData.monthly_installment
-                    ? parseInt(formData.monthly_installment).toLocaleString(
-                        "en-IN"
-                      )
-                    : ""
-                }
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
-                placeholder="5,000"
-                required
-                inputMode="numeric"
-              />
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="duration_months"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Duration (months)
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiClock className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                type="number"
-                id="duration_months"
-                name="duration_months"
-                value={formData.duration_months}
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
-                min="1"
-                placeholder="20"
-                required
-              />
-            </div>
+
+        <div>
+          <label
+            htmlFor="monthly_installment"
+            className="block text-lg font-medium text-text-secondary mb-1"
+          >
+            Monthly Installment
+          </label>
+          <div className="relative flex items-center">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+              <RupeeIcon className="w-5 h-5 text-text-secondary" />
+            </span>
+            <div className="absolute left-10 h-6 w-px bg-border"></div>
+            <input
+              type="text"
+              id="monthly_installment"
+              name="monthly_installment"
+              value={
+                formData.monthly_installment
+                  ? parseInt(formData.monthly_installment).toLocaleString(
+                      "en-IN"
+                    )
+                  : ""
+              }
+              onChange={onFormChange}
+              className={inputClass}
+              placeholder="5,000"
+              required
+              inputMode="numeric"
+            />
           </div>
         </div>
+
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
