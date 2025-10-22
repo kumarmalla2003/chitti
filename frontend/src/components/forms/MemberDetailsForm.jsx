@@ -1,16 +1,14 @@
 // frontend/src/components/forms/MemberDetailsForm.jsx
 
 import { useRef, useEffect } from "react";
-import Button from "../ui/Button";
 import Message from "../ui/Message";
-import { FiLoader, FiUser, FiPhone, FiPlus, FiEdit } from "react-icons/fi";
+import { FiUser, FiPhone } from "react-icons/fi";
 
 const MemberDetailsForm = ({
   mode,
   formData,
   onFormChange,
   onFormSubmit,
-  loading,
   error,
   success,
 }) => {
@@ -30,7 +28,7 @@ const MemberDetailsForm = ({
   const isFormDisabled = mode === "view";
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="member-details-form" onSubmit={handleSubmit}>
       {success && <Message type="success">{success}</Message>}
       {error && (
         <Message type="error" onClose={() => {}}>
@@ -87,28 +85,6 @@ const MemberDetailsForm = ({
           </div>
         </div>
       </fieldset>
-      {!isFormDisabled && (
-        <Button
-          type="submit"
-          className="w-full mt-8"
-          variant={mode === "create" ? "success" : "warning"}
-          disabled={loading}
-        >
-          {loading ? (
-            <FiLoader className="animate-spin mx-auto" />
-          ) : mode === "create" ? (
-            <>
-              <FiPlus className="inline mr-2" />
-              Create Member
-            </>
-          ) : (
-            <>
-              <FiEdit className="inline mr-2" />
-              Update Member
-            </>
-          )}
-        </Button>
-      )}
     </form>
   );
 };

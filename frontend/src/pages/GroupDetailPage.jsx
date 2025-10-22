@@ -1,6 +1,6 @@
 // frontend/src/pages/GroupDetailPage.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react"; // <-- IMPORT useRef
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -8,9 +8,19 @@ import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
 import { RupeeIcon } from "../components/ui/Icons";
-import { FiInfo, FiUsers, FiLoader, FiArrowLeft } from "react-icons/fi";
+import StepperButtons from "../components/ui/StepperButtons";
+import Message from "../components/ui/Message";
+import {
+  FiInfo,
+  FiUsers,
+  FiLoader,
+  FiArrowLeft,
+  FiPlus,
+  FiEdit,
+} from "react-icons/fi";
 import {
   createChitGroup,
   getChitGroupById,
@@ -62,12 +72,15 @@ const DetailsSection = ({
   formData,
   handleFormChange,
   handleSubmit,
-  loading,
-  error,
-  success,
+  sectionRef, // <-- Add ref prop
 }) => (
-  <Card>
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+  <Card className="h-full">
+    {/* --- ADD tabIndex and ref --- */}
+    <h2
+      ref={sectionRef}
+      tabIndex={-1}
+      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
+    >
       <FiInfo /> Details
     </h2>
     <hr className="border-border mb-4" />
@@ -76,36 +89,79 @@ const DetailsSection = ({
       formData={formData}
       onFormChange={handleFormChange}
       onFormSubmit={handleSubmit}
-      loading={loading}
-      error={error}
-      success={success}
     />
   </Card>
 );
 
-const MembersSection = () => (
-  <Card>
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+const MembersSection = (
+  { sectionRef } // <-- Add ref prop
+) => (
+  <Card className="flex-1 flex flex-col">
+    {/* --- ADD tabIndex and ref --- */}
+    <h2
+      ref={sectionRef}
+      tabIndex={-1}
+      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
+    >
       <FiUsers /> Members
     </h2>
     <hr className="border-border mb-4" />
-    <div className="text-center text-text-secondary py-8">
+    <div className="flex-grow flex items-center justify-center text-center text-text-secondary py-8">
       This feature is coming soon!
     </div>
   </Card>
 );
 
-const PaymentsSection = () => (
-  <Card>
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+const PaymentsSection = (
+  { sectionRef } // <-- Add ref prop
+) => (
+  <Card className="flex-1 flex flex-col">
+    {/* --- ADD tabIndex and ref --- */}
+    <h2
+      ref={sectionRef}
+      tabIndex={-1}
+      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
+    >
       <RupeeIcon className="w-5 h-5" /> Payments
     </h2>
     <hr className="border-border mb-4" />
-    <div className="text-center text-text-secondary py-8">
+    <div className="flex-grow flex items-center justify-center text-center text-text-secondary py-8">
       This feature is coming soon!
     </div>
   </Card>
 );
+
+// --- Action Buttons for different screen sizes ---
+
+const DesktopActionButton = ({ mode, loading }) => {
+  if (mode === "view") return null;
+
+  return (
+    <div className="md:col-start-2 md:flex md:justify-end">
+      <Button
+        type="submit"
+        form="group-details-form"
+        variant={mode === "create" ? "success" : "warning"}
+        disabled={loading}
+        className="w-full md:w-auto"
+      >
+        {loading ? (
+          <FiLoader className="animate-spin mx-auto" />
+        ) : mode === "create" ? (
+          <>
+            <FiPlus className="inline-block mr-2" />
+            Create Chit Group
+          </>
+        ) : (
+          <>
+            <FiEdit className="inline-block mr-2" />
+            Update Chit Group
+          </>
+        )}
+      </Button>
+    </div>
+  );
+};
 
 // --- Main Page Component ---
 
@@ -131,6 +187,41 @@ const GroupDetailPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // --- NEW: Refs for focus management ---
+  const detailsRef = useRef(null);
+  const membersRef = useRef(null);
+  const paymentsRef = useRef(null);
+  // ------------------------------------
+
+  const TABS = ["details", "members", "payments"];
+  const activeTabIndex = TABS.indexOf(activeTab);
+
+  const isDetailsFormValid = useMemo(() => {
+    return (
+      formData.name.trim() !== "" &&
+      formData.chit_value.trim() !== "" &&
+      formData.group_size.trim() !== "" &&
+      formData.monthly_installment.trim() !== "" &&
+      formData.duration_months.trim() !== "" &&
+      formData.start_date.trim() !== ""
+    );
+  }, [formData]);
+
+  // --- NEW: useEffect for focus management ---
+  useEffect(() => {
+    // A short timeout is needed to allow the DOM to update before focusing
+    setTimeout(() => {
+      if (activeTab === "details" && detailsRef.current) {
+        detailsRef.current.focus();
+      } else if (activeTab === "members" && membersRef.current) {
+        membersRef.current.focus();
+      } else if (activeTab === "payments" && paymentsRef.current) {
+        paymentsRef.current.focus();
+      }
+    }, 100);
+  }, [activeTab]);
+  // -----------------------------------------
 
   useEffect(() => {
     const path = location.pathname;
@@ -317,6 +408,24 @@ const GroupDetailPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
+
+              <div className="w-full max-w-2xl mx-auto">
+                {success && (
+                  <Message type="success" title="Success">
+                    {success}
+                  </Message>
+                )}
+                {error && (
+                  <Message
+                    type="error"
+                    title="Error"
+                    onClose={() => setError(null)}
+                  >
+                    {error}
+                  </Message>
+                )}
+              </div>
+
               <div className="w-full max-w-2xl mx-auto md:hidden">
                 <div className="flex items-center border-b border-border mb-6">
                   <TabButton name="details" icon={<FiInfo />} label="Details" />
@@ -337,29 +446,52 @@ const GroupDetailPage = () => {
                     formData={formData}
                     handleFormChange={handleFormChange}
                     handleSubmit={handleSubmit}
-                    loading={loading}
-                    error={error}
-                    success={success}
+                    sectionRef={detailsRef} // <-- Pass ref
                   />
                 )}
-                {activeTab === "members" && <MembersSection />}
-                {activeTab === "payments" && <PaymentsSection />}
+                {activeTab === "members" && (
+                  <MembersSection sectionRef={membersRef} />
+                )}{" "}
+                {/* <-- Pass ref */}
+                {activeTab === "payments" && (
+                  <PaymentsSection sectionRef={paymentsRef} />
+                )}{" "}
+                {/* <-- Pass ref */}
+                {mode !== "view" && (
+                  <StepperButtons
+                    currentStep={activeTabIndex}
+                    totalSteps={TABS.length}
+                    onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+                    onNext={() => setActiveTab(TABS[activeTabIndex + 1])}
+                    onSkip={() => setActiveTab(TABS[activeTabIndex + 1])}
+                    isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+                    isSkipDisabled={activeTabIndex === 0}
+                    isSubmitStep={activeTabIndex === TABS.length - 1}
+                    loading={loading}
+                    formId="group-details-form"
+                    mode={mode}
+                  />
+                )}
               </div>
-              <div className="hidden md:grid md:grid-cols-2 md:gap-8">
+
+              <div className="hidden md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
                 <div className="md:col-span-1">
                   <DetailsSection
                     mode={mode}
                     formData={formData}
                     handleFormChange={handleFormChange}
                     handleSubmit={handleSubmit}
-                    loading={loading}
-                    error={error}
-                    success={success}
+                    sectionRef={detailsRef} // <-- Pass ref
                   />
                 </div>
-                <div className="space-y-8">
-                  <MembersSection />
-                  <PaymentsSection />
+                <div className="flex flex-col gap-8">
+                  <MembersSection sectionRef={membersRef} />{" "}
+                  {/* <-- Pass ref */}
+                  <PaymentsSection sectionRef={paymentsRef} />{" "}
+                  {/* <-- Pass ref */}
+                </div>
+                <div className="md:col-span-2">
+                  <DesktopActionButton mode={mode} loading={loading} />
                 </div>
               </div>
             </div>

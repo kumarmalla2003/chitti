@@ -1,25 +1,16 @@
 // frontend/src/components/forms/GroupDetailsForm.jsx
 
 import { useRef, useEffect } from "react";
-import Button from "../ui/Button";
 import Message from "../ui/Message";
 import CustomMonthInput from "../ui/CustomMonthInput";
 import { RupeeIcon } from "../ui/Icons";
-import {
-  FiLoader,
-  FiTag,
-  FiUsers,
-  FiClock,
-  FiPlus,
-  FiEdit,
-} from "react-icons/fi";
+import { FiTag, FiUsers, FiClock } from "react-icons/fi";
 
 const GroupDetailsForm = ({
   mode,
   formData,
   onFormChange,
   onFormSubmit,
-  loading,
   error,
   success,
 }) => {
@@ -38,8 +29,9 @@ const GroupDetailsForm = ({
 
   const isFormDisabled = mode === "view";
 
+  // The form now has an ID to be targetted by the external button
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="group-details-form" onSubmit={handleSubmit}>
       {success && (
         <Message type="success" title="Success">
           {success}
@@ -223,28 +215,7 @@ const GroupDetailsForm = ({
           </div>
         </div>
       </fieldset>
-      {!isFormDisabled && (
-        <Button
-          type="submit"
-          className="w-full mt-8"
-          variant={mode === "create" ? "success" : "warning"}
-          disabled={loading}
-        >
-          {loading ? (
-            <FiLoader className="animate-spin mx-auto" />
-          ) : mode === "create" ? (
-            <>
-              <FiPlus className="inline-block mr-2" />
-              Create Chit Group
-            </>
-          ) : (
-            <>
-              <FiEdit className="inline-block mr-2" />
-              Update Chit Group
-            </>
-          )}
-        </Button>
-      )}
+      {/* The submit button has been removed from here */}
     </form>
   );
 };
