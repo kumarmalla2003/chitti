@@ -16,7 +16,7 @@ import StepperButtons from "../components/ui/StepperButtons";
 import {
   getMemberById,
   createMember,
-  updateMember,
+  patchMember, // Using patch instead of update
 } from "../services/membersService";
 import { getAllChitGroups } from "../services/chitsService";
 import {
@@ -296,6 +296,7 @@ const MobileContent = ({
   isDetailsFormValid,
   detailsLoading,
   handleNext,
+  handleMiddle, // <-- UPDATED PROP NAME
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto md:hidden">
@@ -358,12 +359,9 @@ const MobileContent = ({
           totalSteps={TABS.length}
           onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
           onNext={handleNext}
-          onSkip={handleNext}
+          onMiddle={handleMiddle}
           isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-          isSkipDisabled={activeTabIndex === 0}
-          isSubmitStep={activeTabIndex === TABS.length - 1}
           loading={detailsLoading || assignmentLoading}
-          formId="member-details-form"
           mode={mode}
         />
       )}
@@ -383,6 +381,7 @@ const MemberDetailPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [formData, setFormData] = useState({ full_name: "", phone_number: "" });
+  const [originalData, setOriginalData] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -414,10 +413,12 @@ const MemberDetailPage = () => {
         getMemberById(id, token),
         getAssignmentsForMember(id, token),
       ]);
-      setFormData({
+      const fetchedData = {
         full_name: memberData.full_name,
         phone_number: memberData.phone_number,
-      });
+      };
+      setFormData(fetchedData);
+      setOriginalData(fetchedData);
       setAssignments(assignmentsData);
     } catch (err) {
       setError({ message: err.message, context: "page" });
@@ -514,7 +515,16 @@ const MemberDetailPage = () => {
         setCreatedMemberId(newMember.id);
         setActiveTab("chits");
       } else {
-        await updateMember(id, formData, token);
+        // 'edit' mode
+        const changes = {};
+        for (const key in formData) {
+          if (formData[key] !== originalData[key]) {
+            changes[key] = formData[key];
+          }
+        }
+        if (Object.keys(changes).length > 0) {
+          await patchMember(id, changes, token);
+        }
         setSuccess("Member details updated successfully!");
         setTimeout(() => navigate(`/members/view/${id}`), 1500);
       }
@@ -551,9 +561,11 @@ const MemberDetailPage = () => {
       setSelectedGroupId("");
       setSelectedMonth("");
       setShowAssignForm(false);
-      if (mode !== "create") {
-        await fetchMemberAndAssignments();
-      }
+      const assignmentsData = await getAssignmentsForMember(
+        memberIdToAssign,
+        token
+      );
+      setAssignments(assignmentsData);
     } catch (err) {
       setError({ context: "assignment", message: err.message });
     } finally {
@@ -563,7 +575,7 @@ const MemberDetailPage = () => {
 
   const getTitle = () => {
     if (mode === "create") return "Create New Member";
-    if (mode === "edit") return "Edit Member";
+    if (mode === "edit") return formData.full_name || "Edit Member";
     return formData.full_name || "Member Details";
   };
 
@@ -575,26 +587,52 @@ const MemberDetailPage = () => {
     return date.toLocaleDateString("en-IN", options);
   };
 
-  const handleNext = () => {
-    // In CREATE mode, only submit on the first step
-    if (mode === "create" && activeTabIndex === 0) {
-      handleDetailsSubmit();
-      return;
-    }
-
-    // In EDIT mode, only submit on the final step
-    if (mode === "edit" && activeTabIndex === TABS.length - 1) {
-      handleDetailsSubmit();
-      return;
-    }
-
-    // For all other cases, just navigate
+  const handleSkip = () => {
+    // Navigates to the next tab without saving anything (used by the middle 'Skip' button)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
+    }
+  };
+
+  const handleNext = () => {
+    // This is for the right-side button ('Save & Next', 'Next')
+
+    // 1. First step in CREATE mode: Must submit details
+    if (mode === "create" && activeTabIndex === 0) {
+      handleDetailsSubmit(); // Submits form, saves member, sets createdMemberId, and navigates to 'chits' tab
+      return;
+    }
+
+    // 2. All other cases ('Next' button)
+    if (activeTabIndex < TABS.length - 1) {
+      setActiveTab(TABS[activeTabIndex + 1]);
+    }
+  };
+
+  const handleMiddle = () => {
+    // This is for the middle button ('Skip' or 'Update'/'Finish')
+    if (activeTabIndex === TABS.length - 1) {
+      // Final step: Update/Finish button should trigger final submission/navigation
+      handleFinalAction();
     } else {
-      navigate(
-        createdMemberId ? `/members/view/${createdMemberId}` : "/members"
-      );
+      // All other steps: Skip button should just navigate to the next tab
+      handleSkip();
+    }
+  };
+
+  const handleFinalAction = () => {
+    // This is the logic that executes when the final button (Update/Finish) is pressed.
+    if (mode === "edit") {
+      handleDetailsSubmit(); // Patches the member and navigates away.
+      return;
+    }
+    // In create mode, the final button only needs to navigate away since saving details
+    // is mandatory on step 1 and assignments are optional on the 'Chits' tab.
+    if (createdMemberId) {
+      navigate(`/members/view/${createdMemberId}`);
+    } else {
+      // Fallback.
+      navigate("/members");
     }
   };
 
@@ -640,7 +678,7 @@ const MemberDetailPage = () => {
                     {success}
                   </Message>
                 )}
-                {error && (
+                {error && error.context !== "assignment" && (
                   <Message
                     type="error"
                     title="Error"
@@ -683,6 +721,7 @@ const MemberDetailPage = () => {
                     isDetailsFormValid={isDetailsFormValid}
                     detailsLoading={detailsLoading}
                     handleNext={handleNext}
+                    handleMiddle={handleMiddle}
                   />
                 </form>
               </div>
@@ -690,7 +729,7 @@ const MemberDetailPage = () => {
               {/* Desktop View */}
               <div className="hidden md:block">
                 <form id="member-details-form" onSubmit={handleDetailsSubmit}>
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
                     <div className="md:col-span-1">
                       <DetailsSection
                         mode={mode}

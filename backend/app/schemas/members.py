@@ -14,6 +14,12 @@ class MemberCreate(MemberBase):
 class MemberUpdate(MemberBase):
     pass
 
+# --- ADD THIS NEW SCHEMA ---
+class MemberPatch(BaseModel):
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+
+
 # To display Member info without sensitive data
 class MemberPublic(MemberBase):
     id: int

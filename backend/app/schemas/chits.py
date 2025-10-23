@@ -1,7 +1,7 @@
 # backend/app/schemas/chits.py
 
 from pydantic import BaseModel, ConfigDict
-from typing import List
+from typing import List, Optional
 from datetime import date
 
 class ChitGroupBase(BaseModel):
@@ -17,6 +17,15 @@ class ChitGroupCreate(ChitGroupBase):
 
 class ChitGroupUpdate(ChitGroupBase):
     pass
+
+# --- ADD THIS NEW SCHEMA ---
+class ChitGroupPatch(BaseModel):
+    name: Optional[str] = None
+    chit_value: Optional[int] = None
+    group_size: Optional[int] = None
+    monthly_installment: Optional[int] = None
+    duration_months: Optional[int] = None
+    start_date: Optional[date] = None
 
 class ChitGroupResponse(ChitGroupBase):
     id: int

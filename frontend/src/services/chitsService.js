@@ -84,6 +84,27 @@ export const updateChitGroup = async (groupId, groupData, token) => {
   return response.json();
 };
 
+// --- ADD THIS NEW FUNCTION ---
+export const patchChitGroup = async (groupId, groupData, token) => {
+  const response = await fetch(`${API_URL}/${groupId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(groupData),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Authentication failed. Please log in again.");
+    }
+    if (response.status === 404) {
+      throw new Error("Chit group not found.");
+    }
+    throw new Error("Failed to update chit group. Please try again.");
+  }
+
+  return response.json();
+};
+
 export const deleteChitGroup = async (groupId, token) => {
   const response = await fetch(`${API_URL}/${groupId}`, {
     method: "DELETE",

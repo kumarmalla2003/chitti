@@ -60,6 +60,26 @@ export const updateMember = async (memberId, memberData, token) => {
   return response.json();
 };
 
+// --- ADD THIS NEW FUNCTION ---
+export const patchMember = async (memberId, memberData, token) => {
+  const response = await fetch(`${API_URL}/${memberId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(memberData),
+  });
+
+  if (!response.ok) {
+    if (response.status === 409) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.detail || "This phone number is already in use."
+      );
+    }
+    throw new Error("Failed to update member.");
+  }
+  return response.json();
+};
+
 export const getAllMembers = async (token) => {
   const response = await fetch(API_URL, {
     method: "GET",

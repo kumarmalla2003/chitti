@@ -58,6 +58,42 @@ async def update_member_details(
     return await crud_members.update_member(session=session, db_member=db_member, member_in=member_in)
 
 
+# --- ADD THIS NEW ENDPOINT ---
+@router.patch("/{member_id}", response_model=members_schemas.MemberPublic)
+async def patch_member_details(
+    member_id: int,
+    member_in: members_schemas.MemberPatch,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Partially updates a member's details.
+    """
+    db_member = await crud_members.get_member_by_id(session, member_id=member_id)
+    if not db_member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+
+    update_data = member_in.model_dump(exclude_unset=True)
+
+    # If phone number is being updated, check if it's already taken
+    if "phone_number" in update_data and update_data["phone_number"] != db_member.phone_number:
+        existing_member = await crud_members.get_member_by_phone(session, phone_number=update_data["phone_number"])
+        if existing_member:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This phone number is already registered to another member.",
+            )
+    
+    # Update the model with the new data
+    for key, value in update_data.items():
+        setattr(db_member, key, value)
+
+    session.add(db_member)
+    await session.commit()
+    await session.refresh(db_member)
+    return db_member
+
+
 @router.get("/search", response_model=List[members_schemas.MemberSearchResponse])
 async def search_for_members(
     query: Annotated[str, Query(min_length=2)],

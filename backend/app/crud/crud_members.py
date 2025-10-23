@@ -3,6 +3,7 @@
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload # <-- ADD THIS IMPORT
 
 from app.models.members import Member
 from app.schemas.members import MemberCreate, MemberUpdate
@@ -20,7 +21,11 @@ async def create_member(session: AsyncSession, member_in: MemberCreate) -> Membe
     return db_member
 
 async def get_all_members(session: AsyncSession) -> list[Member]:
-    statement = select(Member).order_by(Member.full_name)
+    statement = (
+        select(Member)
+        .options(selectinload(Member.assignments)) # <-- ADD THIS LINE
+        .order_by(Member.full_name)
+    )
     result = await session.execute(statement)
     return result.scalars().all()
 
@@ -48,7 +53,6 @@ async def update_member(session: AsyncSession, db_member: Member, member_in: Mem
     await session.refresh(db_member)
     return db_member
 
-# --- ADD THIS NEW FUNCTION ---
 async def delete_member_by_id(session: AsyncSession, db_member: Member):
     """Deletes a member from the database."""
     await session.delete(db_member)

@@ -1,3 +1,5 @@
+// frontend/src/components/ui/Icons.jsx
+
 export const RupeeIcon = ({ className = "" }) => (
   <svg
     viewBox="0 0 24 24"

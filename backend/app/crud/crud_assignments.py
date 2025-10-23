@@ -46,16 +46,33 @@ async def get_assignments_by_member_id(session: AsyncSession, member_id: int) ->
         .where(ChitAssignment.member_id == member_id)
         .options(
             selectinload(ChitAssignment.chit_group),
-            selectinload(ChitAssignment.member)  # Eagerly load the member as well
+            selectinload(ChitAssignment.member)
         )
         .order_by(ChitAssignment.chit_month)
     )
     result = await session.execute(statement)
     return result.scalars().all()
 
-# --- ADD THIS NEW FUNCTION ---
+
 async def get_assignments_by_group_id(session: AsyncSession, group_id: int) -> list[ChitAssignment]:
-    """Retrieves all assignments for a specific group."""
-    statement = select(ChitAssignment).where(ChitAssignment.chit_group_id == group_id)
+    """Retrieves all assignments for a specific group, eagerly loading members."""
+    statement = (
+        select(ChitAssignment)
+        .where(ChitAssignment.chit_group_id == group_id)
+        .options(
+            selectinload(ChitAssignment.member),
+            selectinload(ChitAssignment.chit_group) # <-- ADD THIS LINE
+        ) 
+        .order_by(ChitAssignment.chit_month)
+    )
     result = await session.execute(statement)
     return result.scalars().all()
+
+async def delete_assignment(session: AsyncSession, assignment_id: int) -> bool:
+    """Deletes an assignment by its ID. Returns True if successful."""
+    assignment = await session.get(ChitAssignment, assignment_id)
+    if not assignment:
+        return False
+    await session.delete(assignment)
+    await session.commit()
+    return True

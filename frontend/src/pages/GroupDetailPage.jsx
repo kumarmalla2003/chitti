@@ -10,6 +10,7 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
+import GroupMembersManager from "../components/sections/GroupMembersManager";
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -24,7 +25,7 @@ import {
 import {
   createChitGroup,
   getChitGroupById,
-  updateChitGroup,
+  patchChitGroup,
 } from "../services/chitsService";
 
 // --- Helper Functions ---
@@ -74,17 +75,13 @@ const DetailsSection = ({ mode, formData, handleFormChange }) => (
     />
   </Card>
 );
-const MembersSection = () => (
+
+const MembersSection = ({ mode, groupId }) => (
   <Card className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <FiUsers /> Members
-    </h2>
-    <hr className="border-border mb-4" />
-    <div className="flex-grow flex items-center justify-center text-center text-text-secondary py-8">
-      This feature is coming soon!
-    </div>
+    <GroupMembersManager mode={mode} groupId={groupId} />
   </Card>
 );
+
 const PaymentsSection = () => (
   <Card className="flex-1 flex flex-col">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
@@ -97,8 +94,12 @@ const PaymentsSection = () => (
   </Card>
 );
 
-const DesktopActionButton = ({ mode, loading }) => {
+const DesktopActionButton = ({ mode, loading, onSave }) => {
   if (mode === "view") return null;
+  const buttonText =
+    mode === "create" ? "Create Chit Group" : "Update Chit Group";
+  const Icon = mode === "create" ? FiPlus : FiEdit;
+
   return (
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
@@ -110,15 +111,10 @@ const DesktopActionButton = ({ mode, loading }) => {
       >
         {loading ? (
           <FiLoader className="animate-spin mx-auto" />
-        ) : mode === "create" ? (
-          <>
-            <FiPlus className="inline-block mr-2" />
-            Create Chit Group
-          </>
         ) : (
           <>
-            <FiEdit className="inline-block mr-2" />
-            Update Chit Group
+            <Icon className="inline-block mr-2" />
+            {buttonText}
           </>
         )}
       </Button>
@@ -158,13 +154,14 @@ const MobileContent = ({
   activeTab,
   setActiveTab,
   mode,
-  createdGroupId,
+  groupId,
   formData,
   handleFormChange,
   activeTabIndex,
   isDetailsFormValid,
   loading,
   handleNext,
+  handleMiddle,
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto md:hidden">
@@ -182,7 +179,7 @@ const MobileContent = ({
           label="Members"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={mode === "create" && !createdGroupId}
+          disabled={mode === "create" && !groupId}
         />
         <TabButton
           name="payments"
@@ -190,7 +187,7 @@ const MobileContent = ({
           label="Payments"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={mode === "create" && !createdGroupId}
+          disabled={mode === "create" && !groupId}
         />
       </div>
       {activeTab === "details" && (
@@ -200,7 +197,9 @@ const MobileContent = ({
           handleFormChange={handleFormChange}
         />
       )}
-      {activeTab === "members" && <MembersSection />}
+      {activeTab === "members" && (
+        <MembersSection mode={mode} groupId={groupId} />
+      )}
       {activeTab === "payments" && <PaymentsSection />}
       {mode !== "view" && (
         <StepperButtons
@@ -208,10 +207,9 @@ const MobileContent = ({
           totalSteps={TABS.length}
           onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
           onNext={handleNext}
+          onMiddle={handleMiddle}
           isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-          isSubmitStep={activeTabIndex === TABS.length - 1}
           loading={loading}
-          formId="group-details-form"
           mode={mode}
         />
       )}
@@ -230,6 +228,7 @@ const GroupDetailPage = () => {
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     chit_value: "",
@@ -268,7 +267,7 @@ const GroupDetailPage = () => {
       setPageLoading(true);
       try {
         const group = await getChitGroupById(id, token);
-        setFormData({
+        const fetchedData = {
           name: group.name,
           chit_value: group.chit_value.toString(),
           group_size: group.group_size.toString(),
@@ -276,7 +275,9 @@ const GroupDetailPage = () => {
           duration_months: group.duration_months.toString(),
           start_date: toYearMonth(group.start_date),
           end_date: toYearMonth(group.end_date),
-        });
+        };
+        setFormData(fetchedData);
+        setOriginalData(fetchedData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -369,27 +370,53 @@ const GroupDetailPage = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (createdGroupId && mode === "create" && activeTabIndex === 0) return; // Allow submit only on step 1 of create or step 3 of edit
+
     setLoading(true);
     setError(null);
     setSuccess(null);
-    const dataToSend = {
-      ...formData,
-      start_date: getFirstDayOfMonth(formData.start_date),
-      chit_value: Number(formData.chit_value),
-      group_size: Number(formData.group_size),
-      monthly_installment: Number(formData.monthly_installment),
-      duration_months: Number(formData.duration_months),
-    };
-    delete dataToSend.end_date;
 
     try {
       if (mode === "create") {
+        const dataToSend = {
+          ...formData,
+          start_date: getFirstDayOfMonth(formData.start_date),
+          chit_value: Number(formData.chit_value),
+          group_size: Number(formData.group_size),
+          monthly_installment: Number(formData.monthly_installment),
+          duration_months: Number(formData.duration_months),
+        };
+        delete dataToSend.end_date;
         const newGroup = await createChitGroup(dataToSend, token);
         setSuccess("Group details saved. You can now add members.");
         setCreatedGroupId(newGroup.id);
         setActiveTab("members");
       } else if (mode === "edit") {
-        await updateChitGroup(id, dataToSend, token);
+        // This 'edit' block remains for the dedicated edit page
+        const changes = {};
+        for (const key in formData) {
+          if (formData[key] !== originalData[key]) {
+            changes[key] = formData[key];
+          }
+        }
+
+        if (Object.keys(changes).length > 0) {
+          const patchData = { ...changes };
+          if (patchData.start_date)
+            patchData.start_date = getFirstDayOfMonth(patchData.start_date);
+          if (patchData.chit_value)
+            patchData.chit_value = Number(patchData.chit_value);
+          if (patchData.group_size)
+            patchData.group_size = Number(patchData.group_size);
+          if (patchData.monthly_installment)
+            patchData.monthly_installment = Number(
+              patchData.monthly_installment
+            );
+          if (patchData.duration_months)
+            patchData.duration_months = Number(patchData.duration_months);
+
+          await patchChitGroup(id, patchData, token);
+        }
         setSuccess("Chit group updated successfully!");
         setTimeout(() => navigate("/groups"), 1500);
       }
@@ -402,28 +429,57 @@ const GroupDetailPage = () => {
 
   const getTitle = () => {
     if (mode === "create") return "Create New Chit Group";
-    if (mode === "edit") return "Edit Chit Group";
+    if (mode === "edit") return formData.name || "Edit Chit Group";
     return formData.name || "Group Details";
   };
 
-  const handleNext = () => {
-    // In CREATE mode, only submit on the first step
-    if (mode === "create" && activeTabIndex === 0) {
-      handleSubmit();
-      return;
-    }
-
-    // In EDIT mode, only submit on the final step
-    if (mode === "edit" && activeTabIndex === TABS.length - 1) {
-      handleSubmit();
-      return;
-    }
-
-    // For all other cases, just navigate
+  const handleSkip = () => {
+    // Navigates to the next tab without saving anything (used by the middle 'Skip' button)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
+    }
+  };
+
+  const handleNext = () => {
+    // This is for the right-side button ('Save & Next', 'Next')
+
+    // 1. First step in CREATE mode: Must submit details
+    if (mode === "create" && activeTabIndex === 0) {
+      handleSubmit(); // Submits form, saves group, sets createdGroupId, and navigates to 'members' tab
+      return;
+    }
+
+    // 2. All other cases ('Next' button)
+    if (activeTabIndex < TABS.length - 1) {
+      setActiveTab(TABS[activeTabIndex + 1]);
+    }
+  };
+
+  const handleMiddle = () => {
+    // This is for the middle button ('Skip' or 'Update'/'Finish')
+    if (activeTabIndex === TABS.length - 1) {
+      // Final step: Update/Finish button should trigger final submission/navigation
+      handleFinalAction();
     } else {
-      navigate(createdGroupId ? `/groups/view/${createdGroupId}` : "/groups");
+      // All other steps: Skip button should just navigate to the next tab
+      handleSkip();
+    }
+  };
+
+  const handleFinalAction = () => {
+    // This is the logic that executes when the final button (Update/Finish) is pressed.
+    if (mode === "edit") {
+      handleSubmit(); // Patches the group and navigates away.
+      return;
+    }
+    // In create mode, after the Details step saves and moves to the 'Members' tab,
+    // the final button only needs to navigate away since saving details is mandatory
+    // on step 1 and assignments are handled on the 'Members' tab.
+    if (createdGroupId) {
+      navigate(`/groups/view/${createdGroupId}`);
+    } else {
+      // Fallback.
+      navigate("/groups");
     }
   };
 
@@ -485,13 +541,14 @@ const GroupDetailPage = () => {
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     mode={mode}
-                    createdGroupId={createdGroupId}
+                    groupId={id || createdGroupId}
                     formData={formData}
                     handleFormChange={handleFormChange}
                     activeTabIndex={activeTabIndex}
                     isDetailsFormValid={isDetailsFormValid}
                     loading={loading}
                     handleNext={handleNext}
+                    handleMiddle={handleMiddle}
                   />
                 </form>
               </div>
@@ -499,7 +556,7 @@ const GroupDetailPage = () => {
               {/* Desktop View */}
               <div className="hidden md:block">
                 <form id="group-details-form" onSubmit={handleSubmit}>
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
                     <div className="md:col-span-1">
                       <DetailsSection
                         mode={mode}
@@ -508,7 +565,10 @@ const GroupDetailPage = () => {
                       />
                     </div>
                     <div className="flex flex-col gap-8">
-                      <MembersSection />
+                      <MembersSection
+                        mode={mode}
+                        groupId={id || createdGroupId}
+                      />
                       <PaymentsSection />
                     </div>
                     {mode !== "view" && (

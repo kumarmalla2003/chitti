@@ -17,7 +17,8 @@ const GroupDetailsForm = ({
   const nameInputRef = useRef(null);
 
   useEffect(() => {
-    if (mode === "create" || mode === "edit") {
+    // Only auto-focus on the 'create' screen
+    if (mode === "create") {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [mode]);

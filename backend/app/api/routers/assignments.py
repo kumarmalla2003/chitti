@@ -7,8 +7,9 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-from app.crud import crud_assignments
+from app.crud import crud_assignments, crud_chits, crud_members
 from app.schemas import assignments as assignments_schemas
+from app.schemas.members import MemberPublic
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
@@ -21,22 +22,26 @@ async def create_assignment(
     """
     Assigns a member to a chit group for a specific month.
     """
-    # Potential future validation: check if the month is already assigned.
-    # The frontend logic should prevent this, but an API-level check would be robust.
+    # 1. Create the new assignment in the database
     new_assignment = await crud_assignments.create_assignment(session=session, assignment_in=assignment_in)
     
-    # We need to eagerly load the relationships to return the full public model
-    # A simple way is to refetch it with loaded relationships after creation.
-    # This can be optimized later if needed.
-    from app.crud.crud_assignments import get_assignments_by_member_id # Re-import to avoid circular dependency issues at file-level
-    
-    assignments = await get_assignments_by_member_id(session, member_id=new_assignment.member_id)
-    # Find the specific assignment we just created to return it with all data loaded
-    for a in assignments:
-        if a.id == new_assignment.id:
-            return a
-            
-    raise HTTPException(status_code=500, detail="Could not retrieve created assignment details.")
+    # 2. Fetch the full details for the related objects
+    group_with_details = await crud_chits.get_group_by_id_with_details(session, group_id=new_assignment.chit_group_id)
+    member = await crud_members.get_member_by_id(session, member_id=new_assignment.member_id)
+
+    if not group_with_details or not member:
+        raise HTTPException(status_code=500, detail="Could not retrieve created assignment details after creation.")
+
+    # 3. Construct the Pydantic models for the response
+    member_public = MemberPublic.model_validate(member)
+
+    # 4. Assemble and return the final, valid response object
+    return assignments_schemas.ChitAssignmentPublic(
+        id=new_assignment.id,
+        chit_month=new_assignment.chit_month,
+        member=member_public,
+        chit_group=group_with_details,
+    )
 
 
 @router.get("/unassigned-months/{group_id}", response_model=assignments_schemas.UnassignedMonthResponse)
@@ -50,3 +55,18 @@ async def get_unassigned_months(
     """
     months = await crud_assignments.get_unassigned_months_for_group(session, group_id=group_id)
     return {"available_months": months}
+
+
+@router.delete("/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unassign_member(
+    assignment_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Deletes a specific chit assignment (unassigns a member).
+    """
+    success = await crud_assignments.delete_assignment(session, assignment_id=assignment_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+    return
