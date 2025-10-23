@@ -142,3 +142,27 @@ async def read_all_members(
     """
     members = await crud_members.get_all_members(session)
     return {"members": members}
+
+@router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_member(
+    member_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Deletes a member, only if they have no active chit assignments.
+    """
+    db_member = await crud_members.get_member_by_id(session, member_id=member_id)
+    if not db_member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+
+    # Safety Check: Ensure member has no assignments
+    assignments = await crud_assignments.get_assignments_by_member_id(session, member_id=member_id)
+    if assignments:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete member: They are still assigned to one or more chit groups."
+        )
+
+    await crud_members.delete_member_by_id(session=session, db_member=db_member)
+    return

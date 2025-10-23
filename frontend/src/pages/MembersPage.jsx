@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getAllMembers } from "../services/membersService";
+import { getAllMembers, deleteMember } from "../services/membersService";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
@@ -12,13 +12,14 @@ import Message from "../components/ui/Message";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
   FiPlus,
   FiLoader,
   FiSearch,
   FiEye,
   FiEdit,
-  FiBarChart2,
+  FiTrash2,
 } from "react-icons/fi";
 
 const MembersPage = () => {
@@ -26,8 +27,14 @@ const MembersPage = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
+
+  // State for delete confirmation
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -44,6 +51,37 @@ const MembersPage = () => {
       fetchMembers();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  const handleDeleteClick = (member) => {
+    setItemToDelete(member);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setDeleteLoading(true);
+    setError(null);
+    try {
+      await deleteMember(itemToDelete.id, token);
+      setMembers((prevMembers) =>
+        prevMembers.filter((m) => m.id !== itemToDelete.id)
+      );
+      setSuccess(`Member "${itemToDelete.full_name}" has been deleted.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleteLoading(false);
+      setIsModalOpen(false);
+      setItemToDelete(null);
+    }
+  };
 
   const filteredMembers = useMemo(() => {
     if (!searchQuery) return members;
@@ -93,18 +131,16 @@ const MembersPage = () => {
             <FiEdit />
           </Link>
           <button
-            className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Reports"
+            onClick={() => handleDeleteClick(row)}
+            className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
+            title="Delete Member"
           >
-            <FiBarChart2 />
+            <FiTrash2 />
           </button>
         </div>
       ),
     },
   ];
-
-  const dummyNavLinkClick = () => {};
-  const dummyLoginClick = () => {};
 
   return (
     <>
@@ -114,8 +150,6 @@ const MembersPage = () => {
         <Header
           onMenuOpen={() => setIsMenuOpen(true)}
           activeSection="members"
-          onNavLinkClick={dummyNavLinkClick}
-          onLoginClick={dummyLoginClick}
         />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
@@ -126,6 +160,14 @@ const MembersPage = () => {
                 </h1>
               </div>
               <hr className="my-4 border-border" />
+
+              {/* Success/Error Messages */}
+              {success && <Message type="success">{success}</Message>}
+              {error && (
+                <Message type="error" onClose={() => setError(null)}>
+                  {error}
+                </Message>
+              )}
 
               <div className="mb-6">
                 <div className="relative flex items-center">
@@ -147,12 +189,6 @@ const MembersPage = () => {
                 <div className="flex justify-center items-center h-64">
                   <FiLoader className="w-10 h-10 animate-spin text-accent" />
                 </div>
-              )}
-
-              {error && (
-                <Message type="error" title="Error">
-                  {error}
-                </Message>
               )}
 
               {!loading && !error && filteredMembers.length === 0 && (
@@ -180,8 +216,6 @@ const MembersPage = () => {
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         activeSection="members"
-        onNavLinkClick={dummyNavLinkClick}
-        onLoginClick={dummyLoginClick}
       />
       <BottomNav />
       <Link to="/members/create" className="group">
@@ -189,6 +223,14 @@ const MembersPage = () => {
           <FiPlus className="w-6 h-6" />
         </Button>
       </Link>
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Member?"
+        message={`Are you sure you want to permanently delete "${itemToDelete?.full_name}"? This action cannot be undone.`}
+        loading={deleteLoading}
+      />
     </>
   );
 };

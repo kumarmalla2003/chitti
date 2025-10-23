@@ -4,7 +4,8 @@ import Button from "./Button";
 import {
   FiChevronLeft,
   FiChevronRight,
-  FiPlus,
+  FiCheck,
+  FiSave,
   FiEdit,
   FiLoader,
 } from "react-icons/fi";
@@ -19,29 +20,93 @@ const StepperButtons = ({
   isSkipDisabled,
   isSubmitStep,
   loading,
-  formId,
   mode,
 }) => {
+  const isFirstStep = currentStep === 0;
+
+  // Renders the correct button for the right side of the stepper
+  const renderRightButton = () => {
+    // Final step button ("Update" or "Finish")
+    if (isSubmitStep) {
+      if (mode === "edit") {
+        return (
+          <Button
+            type="button"
+            onClick={onNext}
+            variant="warning"
+            disabled={loading}
+          >
+            {loading ? (
+              <FiLoader className="animate-spin mx-auto" />
+            ) : (
+              <>
+                Update <FiEdit className="inline-block ml-1" />
+              </>
+            )}
+          </Button>
+        );
+      }
+      return (
+        <Button type="button" onClick={onNext} variant="success">
+          Finish <FiCheck className="inline-block ml-1" />
+        </Button>
+      );
+    }
+
+    // First step button ("Save & Next")
+    if (isFirstStep && mode === "create") {
+      return (
+        <Button
+          type="button"
+          onClick={onNext}
+          disabled={isNextDisabled || loading}
+        >
+          {loading ? (
+            <FiLoader className="animate-spin mx-auto" />
+          ) : (
+            <>
+              Save & Next <FiSave className="inline-block ml-1" />
+            </>
+          )}
+        </Button>
+      );
+    }
+
+    // Intermediate "Next" button
+    return (
+      <Button
+        type="button"
+        onClick={onNext}
+        disabled={isNextDisabled || loading}
+      >
+        Next
+        <FiChevronRight className="inline-block ml-1" />
+      </Button>
+    );
+  };
+
   return (
     <div className="mt-8 md:hidden">
       <hr className="my-4 border-border" />
-      {/* --- UPDATED: Justify end on the first step --- */}
       <div
         className={`flex items-center ${
-          currentStep === 0 ? "justify-end" : "justify-between"
+          isFirstStep ? "justify-end" : "justify-between"
         }`}
       >
-        {/* --- UPDATED: Only show if not the first step --- */}
-        {currentStep > 0 && (
-          <Button variant="secondary" onClick={onPrev} disabled={loading}>
-            <FiChevronLeft className="inline-block mr-1" />
-            Prev
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onPrev}
+          disabled={loading || isFirstStep}
+          className={isFirstStep ? "invisible" : ""}
+        >
+          <FiChevronLeft className="inline-block mr-1" />
+          Prev
+        </Button>
 
-        {/* --- UPDATED: Only show if not the first step --- */}
-        {currentStep > 0 && currentStep < totalSteps - 1 && onSkip && (
+        {!isFirstStep && currentStep < totalSteps - 1 && onSkip && (
           <Button
+            type="button"
             variant="secondary"
             onClick={onSkip}
             disabled={isSkipDisabled || loading}
@@ -51,34 +116,7 @@ const StepperButtons = ({
           </Button>
         )}
 
-        {/* Conditional "Next" or "Submit" Button */}
-        {isSubmitStep ? (
-          <Button
-            type="submit"
-            form={formId}
-            variant={mode === "create" ? "success" : "warning"}
-            disabled={isNextDisabled || loading}
-          >
-            {loading ? (
-              <FiLoader className="animate-spin mx-auto" />
-            ) : mode === "create" ? (
-              <>
-                <FiPlus className="inline-block mr-2" />
-                Create
-              </>
-            ) : (
-              <>
-                <FiEdit className="inline-block mr-2" />
-                Update
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button onClick={onNext} disabled={isNextDisabled || loading}>
-            Next
-            <FiChevronRight className="inline-block ml-1" />
-          </Button>
-        )}
+        {renderRightButton()}
       </div>
     </div>
   );

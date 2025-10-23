@@ -1,14 +1,19 @@
 // frontend/src/pages/GroupsPage.jsx
 
+import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { getAllChitGroups, deleteChitGroup } from "../services/chitsService";
+import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { getAllChitGroups } from "../services/chitsService";
-import { useSelector } from "react-redux";
 import Message from "../components/ui/Message";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Table from "../components/ui/Table";
+import StatusBadge from "../components/ui/StatusBadge";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
   FiPlus,
   FiLoader,
@@ -16,19 +21,22 @@ import {
   FiEye,
   FiBarChart2,
   FiSearch,
+  FiTrash2,
 } from "react-icons/fi";
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
-import Table from "../components/ui/Table";
-import StatusBadge from "../components/ui/StatusBadge";
 
 const GroupsPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
+
+  // State for delete confirmation
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -46,6 +54,37 @@ const GroupsPage = () => {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  const handleDeleteClick = (group) => {
+    setItemToDelete(group);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setDeleteLoading(true);
+    setError(null);
+    try {
+      await deleteChitGroup(itemToDelete.id, token);
+      setGroups((prevGroups) =>
+        prevGroups.filter((g) => g.id !== itemToDelete.id)
+      );
+      setSuccess(`Group "${itemToDelete.name}" has been deleted.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleteLoading(false);
+      setIsModalOpen(false);
+      setItemToDelete(null);
+    }
+  };
+
   const filteredGroups = useMemo(() => {
     if (!searchQuery) {
       return groups;
@@ -57,14 +96,6 @@ const GroupsPage = () => {
       return nameMatch || valueMatch;
     });
   }, [groups, searchQuery]);
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    // Adding one day to the date to fix the timezone issue
-    date.setDate(date.getDate() + 1);
-    const options = { year: "numeric", month: "short", day: "numeric" };
-    return date.toLocaleDateString("en-IN", options);
-  };
 
   const columns = [
     {
@@ -83,12 +114,6 @@ const GroupsPage = () => {
       accessor: "chit_value",
       className: "text-center",
       cell: (row) => `₹${row.chit_value.toLocaleString("en-IN")}`,
-    },
-    {
-      header: "Monthly Installment",
-      accessor: "monthly_installment",
-      className: "text-center",
-      cell: (row) => `₹${row.monthly_installment.toLocaleString("en-IN")}`,
     },
     {
       header: "Chit Cycle",
@@ -112,44 +137,33 @@ const GroupsPage = () => {
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="View"
           >
-            {" "}
-            <FiEye />{" "}
+            <FiEye />
           </Link>
           <Link
             to={`/groups/edit/${row.id}`}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit"
           >
-            {" "}
-            <FiEdit />{" "}
+            <FiEdit />
           </Link>
           <button
-            className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Reports"
+            onClick={() => handleDeleteClick(row)}
+            className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
+            title="Delete"
           >
-            {" "}
-            <FiBarChart2 />{" "}
+            <FiTrash2 />
           </button>
         </div>
       ),
     },
   ];
 
-  const dummyNavLinkClick = () => {};
-  const dummyActiveSection = "groups";
-  const dummyLoginClick = () => {};
-
   return (
     <>
       <div
         className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
       >
-        <Header
-          onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection={dummyActiveSection}
-          onNavLinkClick={dummyNavLinkClick}
-          onLoginClick={dummyLoginClick}
-        />
+        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="groups" />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
@@ -160,7 +174,14 @@ const GroupsPage = () => {
               </div>
               <hr className="my-4 border-border" />
 
-              {/* --- UPDATED SEARCH BAR --- */}
+              {/* Success/Error Messages */}
+              {success && <Message type="success">{success}</Message>}
+              {error && (
+                <Message type="error" onClose={() => setError(null)}>
+                  {error}
+                </Message>
+              )}
+
               <div className="mb-6">
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -176,7 +197,6 @@ const GroupsPage = () => {
                   />
                 </div>
               </div>
-              {/* --- END OF SEARCH BAR --- */}
 
               {loading && (
                 <div className="flex justify-center items-center h-64">
@@ -184,13 +204,7 @@ const GroupsPage = () => {
                 </div>
               )}
 
-              {error && (
-                <Message type="error" title="Error">
-                  {error}
-                </Message>
-              )}
-
-              {!loading && !error && filteredGroups.length === 0 && (
+              {!loading && filteredGroups.length === 0 && (
                 <Card className="text-center p-8">
                   <h2 className="text-2xl font-bold text-text-primary mb-2">
                     {searchQuery
@@ -205,7 +219,7 @@ const GroupsPage = () => {
                 </Card>
               )}
 
-              {!loading && !error && filteredGroups.length > 0 && (
+              {!loading && filteredGroups.length > 0 && (
                 <Table columns={columns} data={filteredGroups} />
               )}
             </div>
@@ -216,9 +230,7 @@ const GroupsPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection={dummyActiveSection}
-        onNavLinkClick={dummyNavLinkClick}
-        onLoginClick={dummyLoginClick}
+        activeSection="groups"
       />
       <BottomNav />
       <Link to="/groups/create" className="group">
@@ -226,6 +238,14 @@ const GroupsPage = () => {
           <FiPlus className="w-6 h-6" />
         </Button>
       </Link>
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Chit Group?"
+        message={`Are you sure you want to permanently delete "${itemToDelete?.name}"? This action cannot be undone.`}
+        loading={deleteLoading}
+      />
     </>
   );
 };

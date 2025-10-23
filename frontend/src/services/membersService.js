@@ -83,3 +83,20 @@ export const getMemberById = async (memberId, token) => {
   }
   return response.json();
 };
+
+export const deleteMember = async (memberId, token) => {
+  const response = await fetch(`${API_URL}/${memberId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    if (response.status === 409) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "This member cannot be deleted.");
+    }
+    throw new Error("Failed to delete member.");
+  }
+  // No content is returned on successful deletion (204)
+  return;
+};

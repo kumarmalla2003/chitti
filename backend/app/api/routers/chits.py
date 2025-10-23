@@ -14,6 +14,7 @@ from app.schemas.chits import ChitGroupCreate, ChitGroupUpdate, ChitGroupRespons
 from app.models.chits import ChitGroup
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
+from app.crud import crud_chits, crud_assignments
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
@@ -200,3 +201,27 @@ async def update_chit_group(
         status=status,
         chit_cycle=chit_cycle
     )
+
+@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chit_group(
+    group_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Deletes a chit group, only if it has no members assigned to it.
+    """
+    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
+    if not db_group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+
+    # Safety Check: Ensure no members are assigned to this group
+    assignments = await crud_assignments.get_assignments_by_group_id(session, group_id=group_id)
+    if assignments:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete group: Members are still assigned to it."
+        )
+
+    await crud_chits.delete_group_by_id(session=session, db_group=db_group)
+    return

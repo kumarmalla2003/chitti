@@ -1,6 +1,6 @@
 // frontend/src/pages/MemberDetailPage.jsx
 
-import { useState, useEffect, useMemo, useRef } from "react"; // <-- IMPORT useRef
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -37,22 +37,10 @@ import {
   FiEdit,
 } from "react-icons/fi";
 
-// --- Helper Components ---
-
-const DetailsSection = ({
-  mode,
-  formData,
-  onFormChange,
-  handleDetailsSubmit,
-  sectionRef, // <-- Add ref prop
-}) => (
+// --- Helper Components (Extracted) ---
+const DetailsSection = ({ mode, formData, onFormChange }) => (
   <Card className="h-full">
-    {/* --- ADD tabIndex and ref --- */}
-    <h2
-      ref={sectionRef}
-      tabIndex={-1}
-      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
-    >
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <FiUser /> Member Details
     </h2>
     <hr className="border-border mb-4" />
@@ -60,7 +48,6 @@ const DetailsSection = ({
       mode={mode}
       formData={formData}
       onFormChange={onFormChange}
-      onFormSubmit={handleDetailsSubmit}
     />
   </Card>
 );
@@ -81,19 +68,14 @@ const ChitsSection = ({
   availableMonths,
   assignmentLoading,
   formatDate,
-  sectionRef, // <-- Add ref prop
+  createdMemberId,
 }) => (
   <Card className="flex-1 flex flex-col">
     <div className="relative flex justify-center items-center mb-2">
-      {/* --- ADD tabIndex and ref --- */}
-      <h2
-        ref={sectionRef}
-        tabIndex={-1}
-        className="text-xl font-bold text-text-primary flex items-center gap-2 outline-none"
-      >
+      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
         <FiBox /> Chits
       </h2>
-      {mode !== "create" && (
+      {(mode === "edit" || (mode === "create" && createdMemberId)) && (
         <div className="absolute right-0">
           <Button
             variant="secondary"
@@ -199,39 +181,30 @@ const ChitsSection = ({
               </select>
             </div>
           </div>
-          {mode !== "create" && (
-            <Button
-              type="submit"
-              className="w-full"
-              variant="success"
-              disabled={assignmentLoading}
-            >
-              {assignmentLoading ? (
-                <FiLoader className="animate-spin mx-auto" />
-              ) : (
-                <>
-                  <FiPlus className="inline mr-2" />
-                  Assign Member
-                </>
-              )}
-            </Button>
-          )}
+          <Button
+            type="submit"
+            className="w-full"
+            variant="success"
+            disabled={assignmentLoading}
+          >
+            {assignmentLoading ? (
+              <FiLoader className="animate-spin mx-auto" />
+            ) : (
+              <>
+                <FiPlus className="inline mr-2" />
+                Assign Member
+              </>
+            )}
+          </Button>
         </form>
       )}
     </div>
   </Card>
 );
 
-const PaymentsSection = (
-  { sectionRef } // <-- Add ref prop
-) => (
+const PaymentsSection = () => (
   <Card className="flex-1 flex flex-col">
-    {/* --- ADD tabIndex and ref --- */}
-    <h2
-      ref={sectionRef}
-      tabIndex={-1}
-      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
-    >
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <RupeeIcon className="w-5 h-5" /> Payments
     </h2>
     <hr className="border-border mb-4" />
@@ -243,7 +216,6 @@ const PaymentsSection = (
 
 const DesktopActionButton = ({ mode, loading }) => {
   if (mode === "view") return null;
-
   return (
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
@@ -271,21 +243,146 @@ const DesktopActionButton = ({ mode, loading }) => {
   );
 };
 
-// --- Main Page Component ---
+const TabButton = ({
+  name,
+  icon,
+  label,
+  activeTab,
+  setActiveTab,
+  disabled,
+}) => {
+  const isActive = activeTab === name;
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && setActiveTab(name)}
+      disabled={disabled}
+      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
+        isActive
+          ? "bg-background-secondary text-accent border-b-2 border-accent"
+          : "text-text-secondary hover:bg-background-tertiary"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+};
 
+// --- Extracted MobileContent Component ---
+const MobileContent = ({
+  TABS,
+  activeTab,
+  setActiveTab,
+  mode,
+  createdMemberId,
+  formData,
+  onFormChange,
+  assignments,
+  showAssignForm,
+  setShowAssignForm,
+  handleAssignmentSubmit,
+  error,
+  setError,
+  selectedGroupId,
+  setSelectedGroupId,
+  groups,
+  selectedMonth,
+  setSelectedMonth,
+  availableMonths,
+  assignmentLoading,
+  formatDate,
+  activeTabIndex,
+  isDetailsFormValid,
+  detailsLoading,
+  handleNext,
+}) => {
+  return (
+    <div className="w-full max-w-2xl mx-auto md:hidden">
+      <div className="flex items-center border-b border-border mb-6">
+        <TabButton
+          name="details"
+          icon={<FiUser />}
+          label="Details"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+        <TabButton
+          name="chits"
+          icon={<FiBox />}
+          label="Chits"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          disabled={mode === "create" && !createdMemberId}
+        />
+        <TabButton
+          name="payments"
+          icon={<RupeeIcon className="w-4 h-4" />}
+          label="Payments"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          disabled={mode === "create" && !createdMemberId}
+        />
+      </div>
+      {activeTab === "details" && (
+        <DetailsSection
+          mode={mode}
+          formData={formData}
+          onFormChange={onFormChange}
+        />
+      )}
+      {activeTab === "chits" && (
+        <ChitsSection
+          mode={mode}
+          assignments={assignments}
+          showAssignForm={showAssignForm}
+          setShowAssignForm={setShowAssignForm}
+          handleAssignmentSubmit={handleAssignmentSubmit}
+          error={error}
+          setError={setError}
+          selectedGroupId={selectedGroupId}
+          setSelectedGroupId={setSelectedGroupId}
+          groups={groups}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          availableMonths={availableMonths}
+          assignmentLoading={assignmentLoading}
+          formatDate={formatDate}
+          createdMemberId={createdMemberId}
+        />
+      )}
+      {activeTab === "payments" && <PaymentsSection />}
+      {mode !== "view" && (
+        <StepperButtons
+          currentStep={activeTabIndex}
+          totalSteps={TABS.length}
+          onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+          onNext={handleNext}
+          onSkip={handleNext}
+          isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+          isSkipDisabled={activeTabIndex === 0}
+          isSubmitStep={activeTabIndex === TABS.length - 1}
+          loading={detailsLoading || assignmentLoading}
+          formId="member-details-form"
+          mode={mode}
+        />
+      )}
+    </div>
+  );
+};
+
+// --- Main Page Component ---
 const MemberDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
+  const titleRef = useRef(null);
 
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [formData, setFormData] = useState({
-    full_name: "",
-    phone_number: "",
-  });
+  const [formData, setFormData] = useState({ full_name: "", phone_number: "" });
   const [assignments, setAssignments] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -297,36 +394,17 @@ const MemberDetailPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-
-  // --- NEW: Refs for focus management ---
-  const detailsRef = useRef(null);
-  const chitsRef = useRef(null);
-  const paymentsRef = useRef(null);
-  // ------------------------------------
+  const [createdMemberId, setCreatedMemberId] = useState(null);
 
   const TABS = ["details", "chits", "payments"];
   const activeTabIndex = TABS.indexOf(activeTab);
 
-  const isDetailsFormValid = useMemo(() => {
-    return (
+  const isDetailsFormValid = useMemo(
+    () =>
       formData.full_name.trim() !== "" &&
-      formData.phone_number.trim().length === 10
-    );
-  }, [formData]);
-
-  // --- NEW: useEffect for focus management ---
-  useEffect(() => {
-    setTimeout(() => {
-      if (activeTab === "details" && detailsRef.current) {
-        detailsRef.current.focus();
-      } else if (activeTab === "chits" && chitsRef.current) {
-        chitsRef.current.focus();
-      } else if (activeTab === "payments" && paymentsRef.current) {
-        paymentsRef.current.focus();
-      }
-    }, 100);
-  }, [activeTab]);
-  // -----------------------------------------
+      formData.phone_number.trim().length === 10,
+    [formData]
+  );
 
   const fetchMemberAndAssignments = async () => {
     if (!id) return;
@@ -342,7 +420,7 @@ const MemberDetailPage = () => {
       });
       setAssignments(assignmentsData);
     } catch (err) {
-      setError(err.message);
+      setError({ message: err.message, context: "page" });
     } finally {
       setPageLoading(false);
     }
@@ -352,11 +430,9 @@ const MemberDetailPage = () => {
     const path = location.pathname;
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
-
     if (isCreate) {
       setMode("create");
       setPageLoading(false);
-      setShowAssignForm(true);
     } else if (isEdit) {
       setMode("edit");
       fetchMemberAndAssignments();
@@ -378,8 +454,10 @@ const MemberDetailPage = () => {
         }
       }
     };
-    fetchGroups();
-  }, [token]);
+    if (mode === "create" || mode === "edit") {
+      fetchGroups();
+    }
+  }, [token, mode]);
 
   useEffect(() => {
     if (!selectedGroupId) {
@@ -398,8 +476,25 @@ const MemberDetailPage = () => {
     fetchMonths();
   }, [selectedGroupId, token]);
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+      }, 3000); // Hide after 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      titleRef.current.focus({ preventScroll: true });
+    }
+  }, [activeTab]);
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
+    setError(null);
+    setSuccess(null);
     let processedValue = value;
     if (name === "phone_number") {
       processedValue = value.replace(/\D/g, "").slice(0, 10);
@@ -407,41 +502,24 @@ const MemberDetailPage = () => {
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
-  const handleDetailsSubmit = async (currentFormData) => {
+  const handleDetailsSubmit = async (e) => {
+    if (e) e.preventDefault();
     setError(null);
     setSuccess(null);
     setDetailsLoading(true);
     try {
-      let memberId = id;
-      let successMessage = "";
       if (mode === "create") {
-        const newMember = await createMember(currentFormData, token);
-        memberId = newMember.id;
-        successMessage = "Member created successfully!";
-        if (newMember.id && selectedGroupId && selectedMonth) {
-          await createAssignment(
-            {
-              member_id: newMember.id,
-              chit_group_id: parseInt(selectedGroupId),
-              chit_month: selectedMonth,
-            },
-            token
-          );
-          successMessage += " And assigned to the chit group.";
-        }
-        setSuccess(successMessage);
-        setTimeout(() => navigate(`/members/view/${newMember.id}`), 1500);
+        const newMember = await createMember(formData, token);
+        setSuccess("Member details saved. You can now assign them to a chit.");
+        setCreatedMemberId(newMember.id);
+        setActiveTab("chits");
       } else {
-        const updatedMember = await updateMember(id, currentFormData, token);
-        setFormData({
-          full_name: updatedMember.full_name,
-          phone_number: updatedMember.phone_number,
-        });
+        await updateMember(id, formData, token);
         setSuccess("Member details updated successfully!");
         setTimeout(() => navigate(`/members/view/${id}`), 1500);
       }
     } catch (err) {
-      setError(err.message);
+      setError({ context: "details", message: err.message });
     } finally {
       setDetailsLoading(false);
     }
@@ -449,6 +527,7 @@ const MemberDetailPage = () => {
 
   const handleAssignmentSubmit = async (e) => {
     e.preventDefault();
+    const memberIdToAssign = mode === "create" ? createdMemberId : parseInt(id);
     if (!selectedGroupId || !selectedMonth) {
       setError({
         context: "assignment",
@@ -462,7 +541,7 @@ const MemberDetailPage = () => {
     try {
       await createAssignment(
         {
-          member_id: parseInt(id),
+          member_id: memberIdToAssign,
           chit_group_id: parseInt(selectedGroupId),
           chit_month: selectedMonth,
         },
@@ -472,7 +551,9 @@ const MemberDetailPage = () => {
       setSelectedGroupId("");
       setSelectedMonth("");
       setShowAssignForm(false);
-      await fetchMemberAndAssignments();
+      if (mode !== "create") {
+        await fetchMemberAndAssignments();
+      }
     } catch (err) {
       setError({ context: "assignment", message: err.message });
     } finally {
@@ -494,6 +575,29 @@ const MemberDetailPage = () => {
     return date.toLocaleDateString("en-IN", options);
   };
 
+  const handleNext = () => {
+    // In CREATE mode, only submit on the first step
+    if (mode === "create" && activeTabIndex === 0) {
+      handleDetailsSubmit();
+      return;
+    }
+
+    // In EDIT mode, only submit on the final step
+    if (mode === "edit" && activeTabIndex === TABS.length - 1) {
+      handleDetailsSubmit();
+      return;
+    }
+
+    // For all other cases, just navigate
+    if (activeTabIndex < TABS.length - 1) {
+      setActiveTab(TABS[activeTabIndex + 1]);
+    } else {
+      navigate(
+        createdMemberId ? `/members/view/${createdMemberId}` : "/members"
+      );
+    }
+  };
+
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -501,24 +605,6 @@ const MemberDetailPage = () => {
       </div>
     );
   }
-
-  const TabButton = ({ name, icon, label }) => {
-    const isActive = activeTab === name;
-    return (
-      <button
-        type="button"
-        onClick={() => setActiveTab(name)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
-          isActive
-            ? "bg-background-secondary text-accent border-b-2 border-accent"
-            : "text-text-secondary hover:bg-background-tertiary"
-        }`}
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
-    );
-  };
 
   return (
     <>
@@ -539,12 +625,15 @@ const MemberDetailPage = () => {
                 >
                   <FiArrowLeft className="w-6 h-6" />
                 </Link>
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
+                <h1
+                  ref={titleRef}
+                  tabIndex="-1"
+                  className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
+                >
                   {getTitle()}
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-
               <div className="w-full max-w-2xl mx-auto">
                 {success && (
                   <Message type="success" title="Success">
@@ -562,28 +651,20 @@ const MemberDetailPage = () => {
                 )}
               </div>
 
-              <div className="w-full max-w-2xl mx-auto md:hidden">
-                <div className="flex items-center border-b border-border mb-6">
-                  <TabButton name="details" icon={<FiUser />} label="Details" />
-                  <TabButton name="chits" icon={<FiBox />} label="Chits" />
-                  <TabButton
-                    name="payments"
-                    icon={<RupeeIcon className="w-4 h-4" />}
-                    label="Payments"
-                  />
-                </div>
-                {activeTab === "details" && (
-                  <DetailsSection
+              {/* Mobile View */}
+              <div className="md:hidden">
+                <form
+                  id="member-details-form-mobile"
+                  onSubmit={handleDetailsSubmit}
+                >
+                  <MobileContent
+                    TABS={TABS}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
                     mode={mode}
+                    createdMemberId={createdMemberId}
                     formData={formData}
                     onFormChange={handleFormChange}
-                    handleDetailsSubmit={handleDetailsSubmit}
-                    sectionRef={detailsRef} // <-- Pass ref
-                  />
-                )}
-                {activeTab === "chits" && (
-                  <ChitsSection
-                    mode={mode}
                     assignments={assignments}
                     showAssignForm={showAssignForm}
                     setShowAssignForm={setShowAssignForm}
@@ -598,68 +679,54 @@ const MemberDetailPage = () => {
                     availableMonths={availableMonths}
                     assignmentLoading={assignmentLoading}
                     formatDate={formatDate}
-                    sectionRef={chitsRef} // <-- Pass ref
+                    activeTabIndex={activeTabIndex}
+                    isDetailsFormValid={isDetailsFormValid}
+                    detailsLoading={detailsLoading}
+                    handleNext={handleNext}
                   />
-                )}
-                {activeTab === "payments" && (
-                  <PaymentsSection sectionRef={paymentsRef} />
-                )}{" "}
-                {/* <-- Pass ref */}
-                {mode !== "view" && (
-                  <StepperButtons
-                    currentStep={activeTabIndex}
-                    totalSteps={TABS.length}
-                    onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-                    onNext={() => setActiveTab(TABS[activeTabIndex + 1])}
-                    onSkip={() => setActiveTab(TABS[activeTabIndex + 1])}
-                    isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-                    isSkipDisabled={activeTabIndex === 0}
-                    isSubmitStep={activeTabIndex === TABS.length - 1}
-                    loading={detailsLoading || assignmentLoading}
-                    formId="member-details-form"
-                    mode={mode}
-                  />
-                )}
+                </form>
               </div>
 
-              <div className="hidden md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
-                <div className="md:col-span-1">
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    onFormChange={handleFormChange}
-                    handleDetailsSubmit={handleDetailsSubmit}
-                    sectionRef={detailsRef} // <-- Pass ref
-                  />
-                </div>
-                <div className="flex flex-col gap-8">
-                  <ChitsSection
-                    mode={mode}
-                    assignments={assignments}
-                    showAssignForm={showAssignForm}
-                    setShowAssignForm={setShowAssignForm}
-                    handleAssignmentSubmit={handleAssignmentSubmit}
-                    error={error}
-                    setError={setError}
-                    selectedGroupId={selectedGroupId}
-                    setSelectedGroupId={setSelectedGroupId}
-                    groups={groups}
-                    selectedMonth={selectedMonth}
-                    setSelectedMonth={setSelectedMonth}
-                    availableMonths={availableMonths}
-                    assignmentLoading={assignmentLoading}
-                    formatDate={formatDate}
-                    sectionRef={chitsRef} // <-- Pass ref
-                  />
-                  <PaymentsSection sectionRef={paymentsRef} />{" "}
-                  {/* <-- Pass ref */}
-                </div>
-                <div className="md:col-span-2">
-                  <DesktopActionButton
-                    mode={mode}
-                    loading={detailsLoading || assignmentLoading}
-                  />
-                </div>
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <form id="member-details-form" onSubmit={handleDetailsSubmit}>
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
+                    <div className="md:col-span-1">
+                      <DetailsSection
+                        mode={mode}
+                        formData={formData}
+                        onFormChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-8">
+                      <ChitsSection
+                        mode={mode}
+                        assignments={assignments}
+                        showAssignForm={showAssignForm}
+                        setShowAssignForm={setShowAssignForm}
+                        handleAssignmentSubmit={handleAssignmentSubmit}
+                        error={error}
+                        setError={setError}
+                        selectedGroupId={selectedGroupId}
+                        setSelectedGroupId={setSelectedGroupId}
+                        groups={groups}
+                        selectedMonth={selectedMonth}
+                        setSelectedMonth={setSelectedMonth}
+                        availableMonths={availableMonths}
+                        assignmentLoading={assignmentLoading}
+                        formatDate={formatDate}
+                        createdMemberId={createdMemberId}
+                      />
+                      <PaymentsSection />
+                    </div>
+                    <div className="md:col-span-2">
+                      <DesktopActionButton
+                        mode={mode}
+                        loading={detailsLoading}
+                      />
+                    </div>
+                  </div>
+                </form>
               </div>
             </div>
           </main>

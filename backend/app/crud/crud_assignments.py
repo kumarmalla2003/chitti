@@ -34,10 +34,10 @@ async def get_unassigned_months_for_group(session: AsyncSession, group_id: int) 
     assigned_months_statement = select(ChitAssignment.chit_month).where(ChitAssignment.chit_group_id == group_id)
     assigned_months_result = await session.execute(assigned_months_statement)
     assigned_months = set(assigned_months_result.scalars().all())
-    
+
     # 4. Find the difference
     available_months = sorted(list(all_possible_months - assigned_months))
-    
+
     return available_months
 
 async def get_assignments_by_member_id(session: AsyncSession, member_id: int) -> list[ChitAssignment]:
@@ -50,5 +50,12 @@ async def get_assignments_by_member_id(session: AsyncSession, member_id: int) ->
         )
         .order_by(ChitAssignment.chit_month)
     )
+    result = await session.execute(statement)
+    return result.scalars().all()
+
+# --- ADD THIS NEW FUNCTION ---
+async def get_assignments_by_group_id(session: AsyncSession, group_id: int) -> list[ChitAssignment]:
+    """Retrieves all assignments for a specific group."""
+    statement = select(ChitAssignment).where(ChitAssignment.chit_group_id == group_id)
     result = await session.execute(statement)
     return result.scalars().all()

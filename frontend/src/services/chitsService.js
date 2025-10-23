@@ -83,3 +83,20 @@ export const updateChitGroup = async (groupId, groupData, token) => {
 
   return response.json();
 };
+
+export const deleteChitGroup = async (groupId, token) => {
+  const response = await fetch(`${API_URL}/${groupId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    if (response.status === 409) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "This group cannot be deleted.");
+    }
+    throw new Error("Failed to delete chit group.");
+  }
+  // No content is returned on successful deletion (204)
+  return;
+};

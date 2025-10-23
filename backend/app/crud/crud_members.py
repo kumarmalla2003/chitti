@@ -47,3 +47,9 @@ async def update_member(session: AsyncSession, db_member: Member, member_in: Mem
     await session.commit()
     await session.refresh(db_member)
     return db_member
+
+# --- ADD THIS NEW FUNCTION ---
+async def delete_member_by_id(session: AsyncSession, db_member: Member):
+    """Deletes a member from the database."""
+    await session.delete(db_member)
+    await session.commit()

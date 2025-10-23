@@ -1,6 +1,6 @@
 // frontend/src/pages/GroupDetailPage.jsx
 
-import { useState, useEffect, useMemo, useRef } from "react"; // <-- IMPORT useRef
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -28,9 +28,7 @@ import {
 } from "../services/chitsService";
 
 // --- Helper Functions ---
-
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
-
 const toYearMonth = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -38,7 +36,6 @@ const toYearMonth = (dateString) => {
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   return `${year}-${month}`;
 };
-
 const calculateEndDate = (startYearMonth, durationMonths) => {
   if (!startYearMonth || !durationMonths || durationMonths <= 0) return "";
   const [year, month] = startYearMonth.split("-").map(Number);
@@ -46,7 +43,6 @@ const calculateEndDate = (startYearMonth, durationMonths) => {
   startDate.setMonth(startDate.getMonth() + parseInt(durationMonths) - 1);
   return toYearMonth(startDate.toISOString());
 };
-
 const calculateStartDate = (endYearMonth, durationMonths) => {
   if (!endYearMonth || !durationMonths || durationMonths <= 0) return "";
   const [year, month] = endYearMonth.split("-").map(Number);
@@ -54,7 +50,6 @@ const calculateStartDate = (endYearMonth, durationMonths) => {
   endDate.setMonth(endDate.getMonth() - parseInt(durationMonths) + 1);
   return toYearMonth(endDate.toISOString());
 };
-
 const calculateDuration = (startYearMonth, endYearMonth) => {
   if (!startYearMonth || !endYearMonth) return "";
   const [startYear, startMonth] = startYearMonth.split("-").map(Number);
@@ -66,21 +61,9 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
 };
 
 // --- Helper Components (Extracted) ---
-
-const DetailsSection = ({
-  mode,
-  formData,
-  handleFormChange,
-  handleSubmit,
-  sectionRef, // <-- Add ref prop
-}) => (
+const DetailsSection = ({ mode, formData, handleFormChange }) => (
   <Card className="h-full">
-    {/* --- ADD tabIndex and ref --- */}
-    <h2
-      ref={sectionRef}
-      tabIndex={-1}
-      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
-    >
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <FiInfo /> Details
     </h2>
     <hr className="border-border mb-4" />
@@ -88,21 +71,12 @@ const DetailsSection = ({
       mode={mode}
       formData={formData}
       onFormChange={handleFormChange}
-      onFormSubmit={handleSubmit}
     />
   </Card>
 );
-
-const MembersSection = (
-  { sectionRef } // <-- Add ref prop
-) => (
+const MembersSection = () => (
   <Card className="flex-1 flex flex-col">
-    {/* --- ADD tabIndex and ref --- */}
-    <h2
-      ref={sectionRef}
-      tabIndex={-1}
-      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
-    >
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <FiUsers /> Members
     </h2>
     <hr className="border-border mb-4" />
@@ -111,17 +85,9 @@ const MembersSection = (
     </div>
   </Card>
 );
-
-const PaymentsSection = (
-  { sectionRef } // <-- Add ref prop
-) => (
+const PaymentsSection = () => (
   <Card className="flex-1 flex flex-col">
-    {/* --- ADD tabIndex and ref --- */}
-    <h2
-      ref={sectionRef}
-      tabIndex={-1}
-      className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2 outline-none"
-    >
+    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <RupeeIcon className="w-5 h-5" /> Payments
     </h2>
     <hr className="border-border mb-4" />
@@ -131,11 +97,8 @@ const PaymentsSection = (
   </Card>
 );
 
-// --- Action Buttons for different screen sizes ---
-
 const DesktopActionButton = ({ mode, loading }) => {
   if (mode === "view") return null;
-
   return (
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
@@ -163,13 +126,106 @@ const DesktopActionButton = ({ mode, loading }) => {
   );
 };
 
-// --- Main Page Component ---
+const TabButton = ({
+  name,
+  icon,
+  label,
+  activeTab,
+  setActiveTab,
+  disabled,
+}) => {
+  const isActive = activeTab === name;
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && setActiveTab(name)}
+      disabled={disabled}
+      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
+        isActive
+          ? "bg-background-secondary text-accent border-b-2 border-accent"
+          : "text-text-secondary hover:bg-background-tertiary"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+};
 
+// --- Extracted MobileContent Component ---
+const MobileContent = ({
+  TABS,
+  activeTab,
+  setActiveTab,
+  mode,
+  createdGroupId,
+  formData,
+  handleFormChange,
+  activeTabIndex,
+  isDetailsFormValid,
+  loading,
+  handleNext,
+}) => {
+  return (
+    <div className="w-full max-w-2xl mx-auto md:hidden">
+      <div className="flex items-center border-b border-border mb-6">
+        <TabButton
+          name="details"
+          icon={<FiInfo />}
+          label="Details"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+        <TabButton
+          name="members"
+          icon={<FiUsers />}
+          label="Members"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          disabled={mode === "create" && !createdGroupId}
+        />
+        <TabButton
+          name="payments"
+          icon={<RupeeIcon className="w-4 h-4" />}
+          label="Payments"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          disabled={mode === "create" && !createdGroupId}
+        />
+      </div>
+      {activeTab === "details" && (
+        <DetailsSection
+          mode={mode}
+          formData={formData}
+          handleFormChange={handleFormChange}
+        />
+      )}
+      {activeTab === "members" && <MembersSection />}
+      {activeTab === "payments" && <PaymentsSection />}
+      {mode !== "view" && (
+        <StepperButtons
+          currentStep={activeTabIndex}
+          totalSteps={TABS.length}
+          onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+          onNext={handleNext}
+          isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+          isSubmitStep={activeTabIndex === TABS.length - 1}
+          loading={loading}
+          formId="group-details-form"
+          mode={mode}
+        />
+      )}
+    </div>
+  );
+};
+
+// --- Main Page Component ---
 const GroupDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
+  const titleRef = useRef(null);
 
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -187,41 +243,21 @@ const GroupDetailPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-
-  // --- NEW: Refs for focus management ---
-  const detailsRef = useRef(null);
-  const membersRef = useRef(null);
-  const paymentsRef = useRef(null);
-  // ------------------------------------
+  const [createdGroupId, setCreatedGroupId] = useState(null);
 
   const TABS = ["details", "members", "payments"];
   const activeTabIndex = TABS.indexOf(activeTab);
 
-  const isDetailsFormValid = useMemo(() => {
-    return (
+  const isDetailsFormValid = useMemo(
+    () =>
       formData.name.trim() !== "" &&
       formData.chit_value.trim() !== "" &&
       formData.group_size.trim() !== "" &&
       formData.monthly_installment.trim() !== "" &&
       formData.duration_months.trim() !== "" &&
-      formData.start_date.trim() !== ""
-    );
-  }, [formData]);
-
-  // --- NEW: useEffect for focus management ---
-  useEffect(() => {
-    // A short timeout is needed to allow the DOM to update before focusing
-    setTimeout(() => {
-      if (activeTab === "details" && detailsRef.current) {
-        detailsRef.current.focus();
-      } else if (activeTab === "members" && membersRef.current) {
-        membersRef.current.focus();
-      } else if (activeTab === "payments" && paymentsRef.current) {
-        paymentsRef.current.focus();
-      }
-    }, 100);
-  }, [activeTab]);
-  // -----------------------------------------
+      formData.start_date.trim() !== "",
+    [formData]
+  );
 
   useEffect(() => {
     const path = location.pathname;
@@ -260,12 +296,27 @@ const GroupDetailPage = () => {
     }
   }, [id, location.pathname, token]);
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+      }, 3000); // Hide after 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      titleRef.current.focus({ preventScroll: true });
+    }
+  }, [activeTab]);
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-
+    setError(null);
+    setSuccess(null);
     setFormData((prevFormData) => {
       let newFormData = { ...prevFormData, [name]: value };
-
       if (name === "chit_value" || name === "monthly_installment") {
         newFormData[name] = value.replace(/[^0-9]/g, "");
       } else if (name === "group_size") {
@@ -316,38 +367,32 @@ const GroupDetailPage = () => {
     });
   };
 
-  const handleSubmit = async (currentFormData) => {
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
     const dataToSend = {
-      ...currentFormData,
-      start_date: getFirstDayOfMonth(currentFormData.start_date),
-      chit_value: Number(currentFormData.chit_value),
-      group_size: Number(currentFormData.group_size),
-      monthly_installment: Number(currentFormData.monthly_installment),
-      duration_months: Number(currentFormData.duration_months),
+      ...formData,
+      start_date: getFirstDayOfMonth(formData.start_date),
+      chit_value: Number(formData.chit_value),
+      group_size: Number(formData.group_size),
+      monthly_installment: Number(formData.monthly_installment),
+      duration_months: Number(formData.duration_months),
     };
     delete dataToSend.end_date;
 
     try {
       if (mode === "create") {
-        await createChitGroup(dataToSend, token);
-        setSuccess("Chit group created successfully!");
+        const newGroup = await createChitGroup(dataToSend, token);
+        setSuccess("Group details saved. You can now add members.");
+        setCreatedGroupId(newGroup.id);
+        setActiveTab("members");
       } else if (mode === "edit") {
-        const updatedGroup = await updateChitGroup(id, dataToSend, token);
-        setFormData({
-          name: updatedGroup.name,
-          chit_value: updatedGroup.chit_value.toString(),
-          group_size: updatedGroup.group_size.toString(),
-          monthly_installment: updatedGroup.monthly_installment.toString(),
-          duration_months: updatedGroup.duration_months.toString(),
-          start_date: toYearMonth(updatedGroup.start_date),
-          end_date: toYearMonth(updatedGroup.end_date),
-        });
+        await updateChitGroup(id, dataToSend, token);
         setSuccess("Chit group updated successfully!");
+        setTimeout(() => navigate("/groups"), 1500);
       }
-      setTimeout(() => navigate("/groups"), 1500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -361,6 +406,27 @@ const GroupDetailPage = () => {
     return formData.name || "Group Details";
   };
 
+  const handleNext = () => {
+    // In CREATE mode, only submit on the first step
+    if (mode === "create" && activeTabIndex === 0) {
+      handleSubmit();
+      return;
+    }
+
+    // In EDIT mode, only submit on the final step
+    if (mode === "edit" && activeTabIndex === TABS.length - 1) {
+      handleSubmit();
+      return;
+    }
+
+    // For all other cases, just navigate
+    if (activeTabIndex < TABS.length - 1) {
+      setActiveTab(TABS[activeTabIndex + 1]);
+    } else {
+      navigate(createdGroupId ? `/groups/view/${createdGroupId}` : "/groups");
+    }
+  };
+
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -368,24 +434,6 @@ const GroupDetailPage = () => {
       </div>
     );
   }
-
-  const TabButton = ({ name, icon, label }) => {
-    const isActive = activeTab === name;
-    return (
-      <button
-        type="button"
-        onClick={() => setActiveTab(name)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
-          isActive
-            ? "bg-background-secondary text-accent border-b-2 border-accent"
-            : "text-text-secondary hover:bg-background-tertiary"
-        }`}
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
-    );
-  };
 
   return (
     <>
@@ -403,12 +451,15 @@ const GroupDetailPage = () => {
                 >
                   <FiArrowLeft className="w-6 h-6" />
                 </Link>
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
+                <h1
+                  ref={titleRef}
+                  tabIndex="-1"
+                  className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
+                >
                   {getTitle()}
                 </h1>
               </div>
               <hr className="my-4 border-border" />
-
               <div className="w-full max-w-2xl mx-auto">
                 {success && (
                   <Message type="success" title="Success">
@@ -426,73 +477,47 @@ const GroupDetailPage = () => {
                 )}
               </div>
 
-              <div className="w-full max-w-2xl mx-auto md:hidden">
-                <div className="flex items-center border-b border-border mb-6">
-                  <TabButton name="details" icon={<FiInfo />} label="Details" />
-                  <TabButton
-                    name="members"
-                    icon={<FiUsers />}
-                    label="Members"
-                  />
-                  <TabButton
-                    name="payments"
-                    icon={<RupeeIcon className="w-4 h-4" />}
-                    label="Payments"
-                  />
-                </div>
-                {activeTab === "details" && (
-                  <DetailsSection
+              {/* Mobile View */}
+              <div className="md:hidden">
+                <form id="group-details-form-mobile" onSubmit={handleSubmit}>
+                  <MobileContent
+                    TABS={TABS}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
                     mode={mode}
+                    createdGroupId={createdGroupId}
                     formData={formData}
                     handleFormChange={handleFormChange}
-                    handleSubmit={handleSubmit}
-                    sectionRef={detailsRef} // <-- Pass ref
-                  />
-                )}
-                {activeTab === "members" && (
-                  <MembersSection sectionRef={membersRef} />
-                )}{" "}
-                {/* <-- Pass ref */}
-                {activeTab === "payments" && (
-                  <PaymentsSection sectionRef={paymentsRef} />
-                )}{" "}
-                {/* <-- Pass ref */}
-                {mode !== "view" && (
-                  <StepperButtons
-                    currentStep={activeTabIndex}
-                    totalSteps={TABS.length}
-                    onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-                    onNext={() => setActiveTab(TABS[activeTabIndex + 1])}
-                    onSkip={() => setActiveTab(TABS[activeTabIndex + 1])}
-                    isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-                    isSkipDisabled={activeTabIndex === 0}
-                    isSubmitStep={activeTabIndex === TABS.length - 1}
+                    activeTabIndex={activeTabIndex}
+                    isDetailsFormValid={isDetailsFormValid}
                     loading={loading}
-                    formId="group-details-form"
-                    mode={mode}
+                    handleNext={handleNext}
                   />
-                )}
+                </form>
               </div>
 
-              <div className="hidden md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
-                <div className="md:col-span-1">
-                  <DetailsSection
-                    mode={mode}
-                    formData={formData}
-                    handleFormChange={handleFormChange}
-                    handleSubmit={handleSubmit}
-                    sectionRef={detailsRef} // <-- Pass ref
-                  />
-                </div>
-                <div className="flex flex-col gap-8">
-                  <MembersSection sectionRef={membersRef} />{" "}
-                  {/* <-- Pass ref */}
-                  <PaymentsSection sectionRef={paymentsRef} />{" "}
-                  {/* <-- Pass ref */}
-                </div>
-                <div className="md:col-span-2">
-                  <DesktopActionButton mode={mode} loading={loading} />
-                </div>
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <form id="group-details-form" onSubmit={handleSubmit}>
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8">
+                    <div className="md:col-span-1">
+                      <DetailsSection
+                        mode={mode}
+                        formData={formData}
+                        handleFormChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-8">
+                      <MembersSection />
+                      <PaymentsSection />
+                    </div>
+                    {mode !== "view" && (
+                      <div className="md:col-span-2">
+                        <DesktopActionButton mode={mode} loading={loading} />
+                      </div>
+                    )}
+                  </div>
+                </form>
               </div>
             </div>
           </main>
