@@ -23,16 +23,12 @@ const GroupDetailsForm = ({
     }
   }, [mode]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onFormSubmit(formData);
-  };
-
   const isFormDisabled = mode === "view";
 
-  // The form now has an ID to be targetted by the external button
+  // REMOVED the form wrapper - this component now only returns the fieldset
+  // The parent component (GroupDetailPage) will wrap this in a form
   return (
-    <form id="group-details-form" onSubmit={handleSubmit}>
+    <>
       {success && (
         <Message type="success" title="Success">
           {success}
@@ -216,8 +212,7 @@ const GroupDetailsForm = ({
           </div>
         </div>
       </fieldset>
-      {/* The submit button has been removed from here */}
-    </form>
+    </>
   );
 };
 

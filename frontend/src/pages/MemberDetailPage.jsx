@@ -220,7 +220,7 @@ const DesktopActionButton = ({ mode, loading }) => {
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
         type="submit"
-        form="member-details-form"
+        form="member-details-form-desktop"
         variant={mode === "create" ? "success" : "warning"}
         disabled={loading}
         className="w-full md:w-auto"
@@ -503,6 +503,25 @@ const MemberDetailPage = () => {
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
+  const handleMobileFormSubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Determine which action to take based on current step
+    if (activeTabIndex === TABS.length - 1) {
+      // Last step: Finish/Update action
+      handleFinalAction();
+    } else if (mode === "create" && activeTabIndex === 0) {
+      // First step in create mode: Save & Next
+      await handleDetailsSubmit();
+    } else {
+      // All other cases: Just navigate to next tab
+      if (activeTabIndex < TABS.length - 1) {
+        setActiveTab(TABS[activeTabIndex + 1]);
+      }
+    }
+  };
+
   const handleDetailsSubmit = async (e) => {
     if (e) e.preventDefault();
     setError(null);
@@ -693,7 +712,7 @@ const MemberDetailPage = () => {
               <div className="md:hidden">
                 <form
                   id="member-details-form-mobile"
-                  onSubmit={handleDetailsSubmit}
+                  onSubmit={handleMobileFormSubmit}
                 >
                   <MobileContent
                     TABS={TABS}
@@ -728,7 +747,10 @@ const MemberDetailPage = () => {
 
               {/* Desktop View */}
               <div className="hidden md:block">
-                <form id="member-details-form" onSubmit={handleDetailsSubmit}>
+                <form
+                  id="member-details-form-desktop"
+                  onSubmit={handleDetailsSubmit}
+                >
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
                     <div className="md:col-span-1">
                       <DetailsSection

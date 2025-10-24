@@ -19,7 +19,6 @@ const AssignNewMemberForm = ({
   const [selectedMonth, setSelectedMonth] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const nameInputRef = useRef(null);
 
   useEffect(() => {
     // Auto-focus the name input when the form appears
@@ -40,7 +39,10 @@ const AssignNewMemberForm = ({
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
-  const handleCreateMember = async () => {
+  const handleCreateMember = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!formData.full_name || formData.phone_number.length !== 10) {
       setError("Please provide a full name and a valid 10-digit phone number.");
       return;
@@ -57,7 +59,10 @@ const AssignNewMemberForm = ({
     }
   };
 
-  const handleConfirmAssignment = () => {
+  const handleConfirmAssignment = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!selectedMonth) {
       setError("Please select a chit month to assign.");
       return;
@@ -79,15 +84,14 @@ const AssignNewMemberForm = ({
 
       {!createdMember ? (
         // Step 1: Create Member
-        <div>
+        <form onSubmit={handleCreateMember}>
           <MemberDetailsForm
             formData={formData}
             onFormChange={handleFormChange}
           />
           <div className="flex justify-end gap-2 mt-6">
             <Button
-              type="button" // <-- PREVENT FORM SUBMISSION
-              onClick={handleCreateMember}
+              type="submit"
               disabled={loading}
               className="flex items-center justify-center"
             >
@@ -100,10 +104,10 @@ const AssignNewMemberForm = ({
               )}
             </Button>
           </div>
-        </div>
+        </form>
       ) : (
         // Step 2: Assign Month
-        <div>
+        <form onSubmit={handleConfirmAssignment}>
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
             Assign Month for {createdMember.full_name}
           </h3>
@@ -127,16 +131,15 @@ const AssignNewMemberForm = ({
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <Button
-              type="button" // <-- PREVENT FORM SUBMISSION
+              type="submit"
               variant="success"
-              onClick={handleConfirmAssignment}
               disabled={!selectedMonth}
               className="flex items-center justify-center"
             >
               <FiCheck className="mr-2" /> Confirm Assignment
             </Button>
           </div>
-        </div>
+        </form>
       )}
     </div>
   );

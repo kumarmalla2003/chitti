@@ -104,7 +104,7 @@ const DesktopActionButton = ({ mode, loading, onSave }) => {
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
         type="submit"
-        form="group-details-form"
+        form="group-details-form-desktop"
         variant={mode === "create" ? "success" : "warning"}
         disabled={loading}
         className="w-full md:w-auto"
@@ -368,6 +368,27 @@ const GroupDetailPage = () => {
     });
   };
 
+  const handleMobileFormSubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log("Mobile form submitted", { mode, activeTabIndex, activeTab });
+
+    // Determine which action to take based on current step
+    if (activeTabIndex === TABS.length - 1) {
+      // Last step: Finish/Update action
+      handleFinalAction();
+    } else if (mode === "create" && activeTabIndex === 0) {
+      // First step in create mode: Save & Next
+      await handleSubmit();
+    } else {
+      // All other cases: Just navigate to next tab
+      if (activeTabIndex < TABS.length - 1) {
+        setActiveTab(TABS[activeTabIndex + 1]);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (createdGroupId && mode === "create" && activeTabIndex === 0) return; // Allow submit only on step 1 of create or step 3 of edit
@@ -532,10 +553,12 @@ const GroupDetailPage = () => {
                   </Message>
                 )}
               </div>
-
               {/* Mobile View */}
               <div className="md:hidden">
-                <form id="group-details-form-mobile" onSubmit={handleSubmit}>
+                <form
+                  id="group-details-form-mobile"
+                  onSubmit={handleMobileFormSubmit}
+                >
                   <MobileContent
                     TABS={TABS}
                     activeTab={activeTab}
@@ -555,7 +578,7 @@ const GroupDetailPage = () => {
 
               {/* Desktop View */}
               <div className="hidden md:block">
-                <form id="group-details-form" onSubmit={handleSubmit}>
+                <form id="group-details-form-desktop" onSubmit={handleSubmit}>
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
                     <div className="md:col-span-1">
                       <DetailsSection

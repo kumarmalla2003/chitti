@@ -32,8 +32,7 @@ const StepperButtons = ({
           <hr className="my-4 border-border" />
           <div className="flex items-center justify-end">
             <Button
-              type="button"
-              onClick={onNext}
+              type="submit"
               variant="success"
               disabled={isNextDisabled || loading}
               className="w-full"
@@ -68,11 +67,7 @@ const StepperButtons = ({
               Skip
             </Button>
 
-            <Button
-              type="button"
-              onClick={onNext}
-              disabled={isNextDisabled || loading}
-            >
+            <Button type="submit" disabled={isNextDisabled || loading}>
               Next
               <FiChevronRight className="inline-block ml-1" />
             </Button>
@@ -108,11 +103,7 @@ const StepperButtons = ({
             Skip
           </Button>
 
-          <Button
-            type="button"
-            onClick={onNext}
-            disabled={isNextDisabled || loading}
-          >
+          <Button type="submit" disabled={isNextDisabled || loading}>
             Next
             <FiChevronRight className="inline-block ml-1" />
           </Button>
@@ -122,7 +113,7 @@ const StepperButtons = ({
   }
 
   // --- LAST STEP (Payments Section) ---
-  // Both CREATE and EDIT: Prev | Skip/Finish/Update | (no next button)
+  // Both CREATE and EDIT: Prev | Skip | Finish/Update
   return (
     <div className="mt-8 md:hidden">
       <hr className="my-4 border-border" />
@@ -147,8 +138,7 @@ const StepperButtons = ({
         </Button>
 
         <Button
-          type="button"
-          onClick={onMiddle}
+          type="submit"
           variant={mode === "create" ? "success" : "warning"}
           disabled={loading}
         >

@@ -1,10 +1,11 @@
 const Button = ({
   children,
   onClick,
+  type = "button", // <-- EXPLICITLY HANDLE TYPE
   variant = "primary",
   className = "",
   disabled,
-  ...props // <-- ADD THIS to collect other props
+  ...props
 }) => {
   // Base styles are now more generic
   const baseStyles =
@@ -27,10 +28,11 @@ const Button = ({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       className={`${baseStyles} ${variants[variant]} ${className}`}
       disabled={disabled}
-      {...props} // <-- SPREAD THE REST OF THE PROPS HERE
+      {...props}
     >
       {children}
     </button>

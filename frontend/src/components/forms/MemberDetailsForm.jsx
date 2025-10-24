@@ -21,15 +21,12 @@ const MemberDetailsForm = ({
     }
   }, [mode]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onFormSubmit(formData);
-  };
-
   const isFormDisabled = mode === "view";
 
+  // REMOVED the form wrapper - this component now only returns the fieldset
+  // The parent component (MemberDetailPage) will wrap this in a form
   return (
-    <form id="member-details-form" onSubmit={handleSubmit}>
+    <>
       {success && <Message type="success">{success}</Message>}
       {error && (
         <Message type="error" onClose={() => {}}>
@@ -86,7 +83,7 @@ const MemberDetailsForm = ({
           </div>
         </div>
       </fieldset>
-    </form>
+    </>
   );
 };
 
