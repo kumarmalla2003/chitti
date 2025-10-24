@@ -162,9 +162,11 @@ const MobileContent = ({
   loading,
   handleNext,
   handleMiddle,
+  handleMobileFormSubmit, // <-- NEW PROP
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto md:hidden">
+      {/* Tab Navigation */}
       <div className="flex items-center border-b border-border mb-6">
         <TabButton
           name="details"
@@ -190,28 +192,66 @@ const MobileContent = ({
           disabled={mode === "create" && !groupId}
         />
       </div>
+
+      {/* DETAILS TAB - Wrapped in form for Enter key support */}
       {activeTab === "details" && (
-        <DetailsSection
-          mode={mode}
-          formData={formData}
-          handleFormChange={handleFormChange}
-        />
+        <form onSubmit={handleMobileFormSubmit}>
+          <DetailsSection
+            mode={mode}
+            formData={formData}
+            handleFormChange={handleFormChange}
+          />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+              loading={loading}
+              mode={mode}
+            />
+          )}
+        </form>
       )}
+
+      {/* MEMBERS TAB - NO form wrapper (AssignNewMemberForm has its own forms) */}
       {activeTab === "members" && (
-        <MembersSection mode={mode} groupId={groupId} />
+        <>
+          <MembersSection mode={mode} groupId={groupId} />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={false}
+              loading={loading}
+              mode={mode}
+            />
+          )}
+        </>
       )}
-      {activeTab === "payments" && <PaymentsSection />}
-      {mode !== "view" && (
-        <StepperButtons
-          currentStep={activeTabIndex}
-          totalSteps={TABS.length}
-          onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-          onNext={handleNext}
-          onMiddle={handleMiddle}
-          isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-          loading={loading}
-          mode={mode}
-        />
+
+      {/* PAYMENTS TAB - NO form wrapper (no inputs) */}
+      {activeTab === "payments" && (
+        <>
+          <PaymentsSection />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={false}
+              loading={loading}
+              mode={mode}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -374,6 +414,12 @@ const GroupDetailPage = () => {
 
     console.log("Mobile form submitted", { mode, activeTabIndex, activeTab });
 
+    // ⚠️ CRITICAL FIX: Don't process form submission when on members or payments tab
+    if (activeTab === "members" || activeTab === "payments") {
+      console.log("Ignoring submit - on members/payments tab");
+      return;
+    }
+
     // Determine which action to take based on current step
     if (activeTabIndex === TABS.length - 1) {
       // Last step: Finish/Update action
@@ -390,7 +436,11 @@ const GroupDetailPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // ⚠️ ADD THIS LINE
+    }
+
     if (createdGroupId && mode === "create" && activeTabIndex === 0) return; // Allow submit only on step 1 of create or step 3 of edit
 
     setLoading(true);
@@ -470,7 +520,7 @@ const GroupDetailPage = () => {
       return;
     }
 
-    // 2. All other cases ('Next' button)
+    // 2. All other cases ('Next' button) - Just navigate to next tab
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
@@ -555,25 +605,21 @@ const GroupDetailPage = () => {
               </div>
               {/* Mobile View */}
               <div className="md:hidden">
-                <form
-                  id="group-details-form-mobile"
-                  onSubmit={handleMobileFormSubmit}
-                >
-                  <MobileContent
-                    TABS={TABS}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    mode={mode}
-                    groupId={id || createdGroupId}
-                    formData={formData}
-                    handleFormChange={handleFormChange}
-                    activeTabIndex={activeTabIndex}
-                    isDetailsFormValid={isDetailsFormValid}
-                    loading={loading}
-                    handleNext={handleNext}
-                    handleMiddle={handleMiddle}
-                  />
-                </form>
+                <MobileContent
+                  TABS={TABS}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  mode={mode}
+                  groupId={id || createdGroupId}
+                  formData={formData}
+                  handleFormChange={handleFormChange}
+                  activeTabIndex={activeTabIndex}
+                  isDetailsFormValid={isDetailsFormValid}
+                  loading={loading}
+                  handleNext={handleNext}
+                  handleMiddle={handleMiddle}
+                  handleMobileFormSubmit={handleMobileFormSubmit} // <-- ADDED THIS LINE
+                />
               </div>
 
               {/* Desktop View */}

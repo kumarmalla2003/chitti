@@ -67,7 +67,11 @@ const StepperButtons = ({
               Skip
             </Button>
 
-            <Button type="submit" disabled={isNextDisabled || loading}>
+            <Button
+              type="button"
+              onClick={onNext}
+              disabled={isNextDisabled || loading}
+            >
               Next
               <FiChevronRight className="inline-block ml-1" />
             </Button>
@@ -77,7 +81,7 @@ const StepperButtons = ({
     }
   }
 
-  // --- MIDDLE STEPS (Members/Chits Section) ---
+  // --- MIDDLE STEPS (Members/Payments Section) ---
   if (!isLastStep) {
     // Both CREATE and EDIT: Prev | Skip | Next
     return (
@@ -103,7 +107,11 @@ const StepperButtons = ({
             Skip
           </Button>
 
-          <Button type="submit" disabled={isNextDisabled || loading}>
+          <Button
+            type="button"
+            onClick={onNext}
+            disabled={isNextDisabled || loading}
+          >
             Next
             <FiChevronRight className="inline-block ml-1" />
           </Button>
@@ -138,7 +146,8 @@ const StepperButtons = ({
         </Button>
 
         <Button
-          type="submit"
+          type="button"
+          onClick={onMiddle}
           variant={mode === "create" ? "success" : "warning"}
           disabled={loading}
         >

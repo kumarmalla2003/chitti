@@ -1,6 +1,6 @@
 // frontend/src/components/forms/AssignNewMemberForm.jsx
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import MemberDetailsForm from "./MemberDetailsForm";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
@@ -40,8 +40,11 @@ const AssignNewMemberForm = ({
   };
 
   const handleCreateMember = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    // CRITICAL: Prevent both default behavior and propagation
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     if (!formData.full_name || formData.phone_number.length !== 10) {
       setError("Please provide a full name and a valid 10-digit phone number.");
@@ -59,19 +62,39 @@ const AssignNewMemberForm = ({
     }
   };
 
-  const handleConfirmAssignment = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleConfirmAssignment = async (e) => {
+    // CRITICAL: Prevent both default behavior and propagation
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     if (!selectedMonth) {
       setError("Please select a chit month to assign.");
       return;
     }
-    onAssignment({
+
+    await onAssignment({
       member_id: createdMember.id,
       chit_group_id: groupId,
       chit_month: selectedMonth,
     });
+  };
+
+  // Handle Enter key press in inputs
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!createdMember) {
+        // If on member creation step
+        handleCreateMember(e);
+      } else if (selectedMonth) {
+        // If on month assignment step and month is selected
+        handleConfirmAssignment(e);
+      }
+    }
   };
 
   return (
@@ -83,15 +106,16 @@ const AssignNewMemberForm = ({
       )}
 
       {!createdMember ? (
-        // Step 1: Create Member
-        <form onSubmit={handleCreateMember}>
+        // Step 1: Create Member - NO FORM TAG, just a div
+        <div onKeyDown={handleKeyDown}>
           <MemberDetailsForm
             formData={formData}
             onFormChange={handleFormChange}
           />
           <div className="flex justify-end gap-2 mt-6">
             <Button
-              type="submit"
+              type="button"
+              onClick={handleCreateMember}
               disabled={loading}
               className="flex items-center justify-center"
             >
@@ -104,10 +128,10 @@ const AssignNewMemberForm = ({
               )}
             </Button>
           </div>
-        </form>
+        </div>
       ) : (
-        // Step 2: Assign Month
-        <form onSubmit={handleConfirmAssignment}>
+        // Step 2: Assign Month - NO FORM TAG, just a div
+        <div onKeyDown={handleKeyDown}>
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
             Assign Month for {createdMember.full_name}
           </h3>
@@ -131,7 +155,8 @@ const AssignNewMemberForm = ({
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <Button
-              type="submit"
+              type="button"
+              onClick={handleConfirmAssignment}
               variant="success"
               disabled={!selectedMonth}
               className="flex items-center justify-center"
@@ -139,7 +164,7 @@ const AssignNewMemberForm = ({
               <FiCheck className="mr-2" /> Confirm Assignment
             </Button>
           </div>
-        </form>
+        </div>
       )}
     </div>
   );

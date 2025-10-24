@@ -25,8 +25,23 @@ const GroupDetailsForm = ({
 
   const isFormDisabled = mode === "view";
 
-  // REMOVED the form wrapper - this component now only returns the fieldset
-  // The parent component (GroupDetailPage) will wrap this in a form
+  // Handle Enter key press to submit form
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !isFormDisabled) {
+      e.preventDefault();
+      // Find the form element and trigger submit
+      const form = e.target.closest("form");
+      if (form) {
+        // Create and dispatch a submit event
+        const submitEvent = new Event("submit", {
+          bubbles: true,
+          cancelable: true,
+        });
+        form.dispatchEvent(submitEvent);
+      }
+    }
+  };
+
   return (
     <>
       {success && (
@@ -39,7 +54,11 @@ const GroupDetailsForm = ({
           {error}
         </Message>
       )}
-      <fieldset disabled={isFormDisabled} className="space-y-6">
+      <fieldset
+        disabled={isFormDisabled}
+        className="space-y-6"
+        onKeyDown={handleKeyDown}
+      >
         <div>
           <label
             htmlFor="name"
