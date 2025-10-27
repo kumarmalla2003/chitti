@@ -19,6 +19,17 @@ const AssignNewMemberForm = ({
   const [selectedMonth, setSelectedMonth] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [memberCreatedSuccess, setMemberCreatedSuccess] = useState(null);
+
+  // Auto-dismiss success message after 3 seconds
+  useEffect(() => {
+    if (memberCreatedSuccess) {
+      const timer = setTimeout(() => {
+        setMemberCreatedSuccess(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [memberCreatedSuccess]);
 
   useEffect(() => {
     // Auto-focus the name input when the form appears
@@ -55,6 +66,9 @@ const AssignNewMemberForm = ({
     try {
       const newMember = await createMember(formData, token);
       setCreatedMember(newMember);
+      setMemberCreatedSuccess(
+        `Member "${newMember.full_name}" created successfully!`
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -132,6 +146,9 @@ const AssignNewMemberForm = ({
       ) : (
         // Step 2: Assign Month - NO FORM TAG, just a div
         <div onKeyDown={handleKeyDown}>
+          {memberCreatedSuccess && (
+            <Message type="success">{memberCreatedSuccess}</Message>
+          )}
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
             Assign Month for {createdMember.full_name}
           </h3>

@@ -17,6 +17,8 @@ from app.models.chits import ChitGroup
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
 from app.crud import crud_chits, crud_assignments
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
@@ -29,13 +31,23 @@ async def create_chit_group(
     """
     Creates a new chit group for the authenticated user.
     """
+    
+    # Check for duplicate name (case-insensitive)
+    trimmed_name = chit_group.name.strip()
+    existing_group = await session.execute(
+        select(ChitGroup).where(func.lower(ChitGroup.name) == func.lower(trimmed_name))
+    )
+    if existing_group.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A chit group with this name already exists. Please choose a different name."
+        )
 
     # Calculate end_date based on duration_months from start_date
     end_date = chit_group.start_date + relativedelta(months=chit_group.duration_months -1)
 
-
     db_chit_group = ChitGroup(
-        name=chit_group.name,
+        name=trimmed_name,
         chit_value=chit_group.chit_value,
         group_size=chit_group.group_size,
         monthly_installment=chit_group.monthly_installment,
@@ -44,8 +56,16 @@ async def create_chit_group(
         end_date=end_date,
     )
     session.add(db_chit_group)
-    await session.commit()
-    await session.refresh(db_chit_group)
+    
+    try:
+        await session.commit()
+        await session.refresh(db_chit_group)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A chit group with this name already exists. Please choose a different name."
+        )
     
     response_details = await crud_chits.get_group_by_id_with_details(session, group_id=db_chit_group.id)
     return response_details
@@ -176,6 +196,23 @@ async def patch_chit_group(
     group_data = chit_group.model_dump(exclude_unset=True)
     date_or_duration_changed = "start_date" in group_data or "duration_months" in group_data
 
+    # Strip name if provided and check for duplicates
+    if "name" in group_data:
+        trimmed_name = group_data["name"].strip()
+        # Check if another group has this name (excluding current group)
+        existing_group = await session.execute(
+            select(ChitGroup).where(
+                func.lower(ChitGroup.name) == func.lower(trimmed_name),
+                ChitGroup.id != group_id
+            )
+        )
+        if existing_group.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A chit group with this name already exists. Please choose a different name."
+            )
+        group_data["name"] = trimmed_name
+
     for key, value in group_data.items():
         setattr(db_chit_group, key, value)
     
@@ -184,8 +221,16 @@ async def patch_chit_group(
         db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
 
     session.add(db_chit_group)
-    await session.commit()
-    await session.refresh(db_chit_group)
+    
+    try:
+        await session.commit()
+        await session.refresh(db_chit_group)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A chit group with this name already exists. Please choose a different name."
+        )
 
     response_details = await crud_chits.get_group_by_id_with_details(session, group_id=db_chit_group.id)
     return response_details

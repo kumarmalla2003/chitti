@@ -1,6 +1,7 @@
 // frontend/src/pages/MemberDetailPage.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import useScrollToTop from "../hooks/useScrollToTop";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -394,6 +395,8 @@ const MemberDetailPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [createdMemberId, setCreatedMemberId] = useState(null);
+  // Auto-scroll to top when messages change
+  useScrollToTop(success || error);
 
   const TABS = ["details", "chits", "payments"];
   const activeTabIndex = TABS.indexOf(activeTab);
@@ -442,6 +445,15 @@ const MemberDetailPage = () => {
       fetchMemberAndAssignments();
     }
   }, [id, location.pathname, token]);
+
+  // Handle success message from navigation state
+  useEffect(() => {
+    if (location.state?.success) {
+      setSuccess(location.state.success);
+      // Clear the state to prevent showing message on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -544,8 +556,12 @@ const MemberDetailPage = () => {
         if (Object.keys(changes).length > 0) {
           await patchMember(id, changes, token);
         }
-        setSuccess("Member details updated successfully!");
-        setTimeout(() => navigate(`/members/view/${id}`), 1500);
+        // Navigate with success message
+        navigate(`/members/view/${id}`, {
+          state: {
+            success: `Member "${formData.full_name}" has been updated successfully!`,
+          },
+        });
       }
     } catch (err) {
       setError({ context: "details", message: err.message });
@@ -645,10 +661,13 @@ const MemberDetailPage = () => {
       handleDetailsSubmit(); // Patches the member and navigates away.
       return;
     }
-    // In create mode, the final button only needs to navigate away since saving details
-    // is mandatory on step 1 and assignments are optional on the 'Chits' tab.
+    // In create mode, navigate with success message
     if (createdMemberId) {
-      navigate(`/members/view/${createdMemberId}`);
+      navigate(`/members/view/${createdMemberId}`, {
+        state: {
+          success: `Member "${formData.full_name}" has been created successfully!`,
+        },
+      });
     } else {
       // Fallback.
       navigate("/members");

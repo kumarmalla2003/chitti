@@ -19,6 +19,7 @@ const StepperButtons = ({
   isNextDisabled,
   loading,
   mode,
+  isPostCreation = false, // ADD THIS LINE
 }) => {
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
@@ -26,14 +27,18 @@ const StepperButtons = ({
   // --- FIRST STEP (Details Section) ---
   if (isFirstStep) {
     if (mode === "create") {
-      // CREATE MODE: Only "Save & Next" button (full width, green)
+      // Determine button variant and text based on whether group is already created
+      const buttonVariant = isPostCreation ? "warning" : "success";
+      const buttonText = isPostCreation ? "Update & Next" : "Save & Next";
+      const ButtonIcon = isPostCreation ? FiEdit : FiSave;
+
       return (
         <div className="mt-8 md:hidden">
           <hr className="my-4 border-border" />
           <div className="flex items-center justify-end">
             <Button
               type="submit"
-              variant="success"
+              variant={buttonVariant}
               disabled={isNextDisabled || loading}
               className="w-full"
             >
@@ -41,8 +46,8 @@ const StepperButtons = ({
                 <FiLoader className="animate-spin mx-auto" />
               ) : (
                 <>
-                  <FiSave className="inline-block mr-2" />
-                  Save & Next
+                  <ButtonIcon className="inline-block mr-2" />
+                  {buttonText}
                 </>
               )}
             </Button>

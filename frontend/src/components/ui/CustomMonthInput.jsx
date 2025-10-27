@@ -3,8 +3,30 @@
 import { useRef } from "react";
 import { FiCalendar } from "react-icons/fi";
 
-const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
+const CustomMonthInput = ({
+  name,
+  value,
+  onChange,
+  disabled,
+  required,
+  enterKeyHint = "next",
+}) => {
   const hiddenInputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const focusable = Array.from(
+        document.querySelectorAll(
+          "input:not([disabled]):not([tabindex='-1']), select, textarea, button"
+        )
+      );
+      const index = focusable.indexOf(e.target);
+      if (index !== -1 && index + 1 < focusable.length) {
+        focusable[index + 1].focus();
+      }
+    }
+  };
 
   const handleTextChange = (e) => {
     let inputValue = e.target.value.replace(/[^0-9/]/g, "");
@@ -66,19 +88,28 @@ const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
         name={name}
         value={displayValue()}
         onChange={handleTextChange}
+        onKeyDown={handleKeyDown} // ← add this line
         className="w-full pl-12 pr-10 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
         disabled={disabled}
         placeholder="MM/YYYY"
         required={required}
         maxLength="7"
+        inputMode="numeric"
+        enterKeyHint={enterKeyHint}
       />
 
       {/* Right Clickable Icon */}
       <span className="absolute inset-y-0 right-0 flex items-center pr-3">
-        <FiCalendar
-          className="w-5 h-5 text-text-secondary/70 hover:text-text-primary cursor-pointer transition-colors"
+        <div
+          className={`p-2 rounded-full bg-background-tertiary transition-all duration-200 ${
+            !disabled
+              ? "hover:bg-accent hover:text-white cursor-pointer"
+              : "opacity-50 cursor-not-allowed"
+          }`}
           onClick={() => !disabled && handleIconClick()}
-        />
+        >
+          <FiCalendar className="w-5 h-5" />
+        </div>
       </span>
 
       {/* Hidden Month Picker */}

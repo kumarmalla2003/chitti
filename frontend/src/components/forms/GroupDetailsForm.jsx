@@ -13,32 +13,35 @@ const GroupDetailsForm = ({
   onFormSubmit,
   error,
   success,
+  isPostCreation = false,
+  onEnterKeyOnLastInput,
 }) => {
   const nameInputRef = useRef(null);
 
   useEffect(() => {
-    // Only auto-focus on the 'create' screen
-    if (mode === "create") {
+    // Only auto-focus on the 'create' screen and NOT during post-creation edit
+    if (mode === "create" && !isPostCreation) {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
-  }, [mode]);
+  }, [mode, isPostCreation]);
 
   const isFormDisabled = mode === "view";
 
-  // Handle Enter key press to submit form
+  // Handle Enter key press
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !isFormDisabled) {
-      e.preventDefault();
-      // Find the form element and trigger submit
-      const form = e.target.closest("form");
-      if (form) {
-        // Create and dispatch a submit event
-        const submitEvent = new Event("submit", {
-          bubbles: true,
-          cancelable: true,
-        });
-        form.dispatchEvent(submitEvent);
+      // Get the input element (might be inside the CustomMonthInput wrapper)
+      const inputName = e.target.name || e.target.getAttribute("name");
+
+      if (inputName === "end_date") {
+        // This is the End Date input (last input) - trigger submission
+        e.preventDefault();
+        e.stopPropagation();
+        if (onEnterKeyOnLastInput) {
+          onEnterKeyOnLastInput();
+        }
       }
+      // For other inputs, do nothing - let browser handle focus movement naturally
     }
   };
 
@@ -64,7 +67,12 @@ const GroupDetailsForm = ({
             htmlFor="name"
             className="block text-lg font-medium text-text-secondary mb-1"
           >
-            Group Name
+            Group Name{" "}
+            {mode === "edit" && (
+              <span className="text-xs text-text-secondary">
+                (Cannot be changed)
+              </span>
+            )}
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -82,6 +90,7 @@ const GroupDetailsForm = ({
               maxLength={50}
               placeholder="Kasi Malla Family Chit"
               required
+              disabled={isFormDisabled || mode === "edit"}
             />
           </div>
         </div>
@@ -213,6 +222,7 @@ const GroupDetailsForm = ({
               onChange={onFormChange}
               required
               disabled={isFormDisabled}
+              enterKeyHint="next"
             />
           </div>
           <div>
@@ -227,6 +237,7 @@ const GroupDetailsForm = ({
               value={formData.end_date}
               onChange={onFormChange}
               disabled={isFormDisabled}
+              enterKeyHint="go"
             />
           </div>
         </div>

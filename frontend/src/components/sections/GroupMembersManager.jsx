@@ -149,16 +149,16 @@ const GroupMembersManager = ({ mode, groupId }) => {
       cell: (row) => formatDate(row.chit_month),
       className: "text-center",
     },
-    ...(mode === "edit"
+    ...(mode !== "view"
       ? [
           {
             header: "Actions",
             className: "text-center",
             cell: (row) => (
               <button
-                type="button" // <-- PREVENT FORM SUBMISSION
+                type="button"
                 onClick={() => handleDeleteClick(row)}
-                className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white"
+                className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
               >
                 <FiTrash2 />
               </button>

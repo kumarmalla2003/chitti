@@ -1,7 +1,8 @@
 // frontend/src/pages/GroupsPage.jsx
 
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import useScrollToTop from "../hooks/useScrollToTop";
+import { Link, useLocation } from "react-router-dom";
 import { getAllChitGroups, deleteChitGroup } from "../services/chitsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -26,6 +27,7 @@ import {
 
 const GroupsPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,6 +39,8 @@ const GroupsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Auto-scroll to top when messages change
+  useScrollToTop(success || error);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -53,6 +57,15 @@ const GroupsPage = () => {
       fetchGroups();
     }
   }, [token]);
+
+  // Handle success message from navigation state
+  useEffect(() => {
+    if (location.state?.success) {
+      setSuccess(location.state.success);
+      // Clear the state to prevent showing message on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (success) {

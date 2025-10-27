@@ -6,7 +6,7 @@ from sqlmodel import Field, SQLModel
 
 class ChitGroup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True, max_length=50)
+    name: str = Field(index=True, unique=True, max_length=50)
     chit_value: int
     group_size: int
     monthly_installment: int

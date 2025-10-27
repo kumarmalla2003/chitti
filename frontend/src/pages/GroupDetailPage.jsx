@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import useScrollToTop from "../hooks/useScrollToTop";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
@@ -62,7 +63,13 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
 };
 
 // --- Helper Components (Extracted) ---
-const DetailsSection = ({ mode, formData, handleFormChange }) => (
+const DetailsSection = ({
+  mode,
+  formData,
+  handleFormChange,
+  isPostCreation,
+  onEnterKeyOnLastInput,
+}) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <FiInfo /> Details
@@ -72,6 +79,8 @@ const DetailsSection = ({ mode, formData, handleFormChange }) => (
       mode={mode}
       formData={formData}
       onFormChange={handleFormChange}
+      isPostCreation={isPostCreation}
+      onEnterKeyOnLastInput={onEnterKeyOnLastInput}
     />
   </Card>
 );
@@ -94,18 +103,34 @@ const PaymentsSection = () => (
   </Card>
 );
 
-const DesktopActionButton = ({ mode, loading, onSave }) => {
+const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "view") return null;
-  const buttonText =
-    mode === "create" ? "Create Chit Group" : "Update Chit Group";
-  const Icon = mode === "create" ? FiPlus : FiEdit;
+
+  // Determine button properties based on mode and creation state
+  let buttonText, Icon, buttonVariant;
+
+  if (mode === "create") {
+    if (isPostCreation) {
+      buttonText = "Update Chit Group";
+      Icon = FiEdit;
+      buttonVariant = "warning";
+    } else {
+      buttonText = "Create Chit Group";
+      Icon = FiPlus;
+      buttonVariant = "success";
+    }
+  } else {
+    buttonText = "Update Chit Group";
+    Icon = FiEdit;
+    buttonVariant = "warning";
+  }
 
   return (
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
         type="submit"
         form="group-details-form-desktop"
-        variant={mode === "create" ? "success" : "warning"}
+        variant={buttonVariant}
         disabled={loading}
         className="w-full md:w-auto"
       >
@@ -163,6 +188,7 @@ const MobileContent = ({
   handleNext,
   handleMiddle,
   handleMobileFormSubmit, // <-- NEW PROP
+  isPostCreation,
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto md:hidden">
@@ -200,6 +226,8 @@ const MobileContent = ({
             mode={mode}
             formData={formData}
             handleFormChange={handleFormChange}
+            isPostCreation={isPostCreation}
+            onEnterKeyOnLastInput={handleNext}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -211,6 +239,7 @@ const MobileContent = ({
               isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
               loading={loading}
               mode={mode}
+              isPostCreation={isPostCreation} // ADD THIS LINE
             />
           )}
         </form>
@@ -230,6 +259,7 @@ const MobileContent = ({
               isNextDisabled={false}
               loading={loading}
               mode={mode}
+              isPostCreation={isPostCreation} // ADD THIS LINE
             />
           )}
         </>
@@ -249,6 +279,7 @@ const MobileContent = ({
               isNextDisabled={false}
               loading={loading}
               mode={mode}
+              isPostCreation={isPostCreation} // ADD THIS LINE
             />
           )}
         </>
@@ -283,6 +314,9 @@ const GroupDetailPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [createdGroupId, setCreatedGroupId] = useState(null);
+  const [createdGroupName, setCreatedGroupName] = useState(null);
+  // Auto-scroll to top when messages change
+  useScrollToTop(success || error);
 
   const TABS = ["details", "members", "payments"];
   const activeTabIndex = TABS.indexOf(activeTab);
@@ -336,6 +370,15 @@ const GroupDetailPage = () => {
       fetchGroup();
     }
   }, [id, location.pathname, token]);
+
+  // Handle success message from navigation state
+  useEffect(() => {
+    if (location.state?.success) {
+      setSuccess(location.state.success);
+      // Clear the state to prevent showing message on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (success) {
@@ -438,17 +481,16 @@ const GroupDetailPage = () => {
   const handleSubmit = async (e) => {
     if (e) {
       e.preventDefault();
-      e.stopPropagation(); // ⚠️ ADD THIS LINE
+      e.stopPropagation();
     }
-
-    if (createdGroupId && mode === "create" && activeTabIndex === 0) return; // Allow submit only on step 1 of create or step 3 of edit
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      if (mode === "create") {
+      if (mode === "create" && !createdGroupId) {
+        // Initial creation
         const dataToSend = {
           ...formData,
           start_date: getFirstDayOfMonth(formData.start_date),
@@ -459,11 +501,63 @@ const GroupDetailPage = () => {
         };
         delete dataToSend.end_date;
         const newGroup = await createChitGroup(dataToSend, token);
-        setSuccess("Group details saved. You can now add members.");
         setCreatedGroupId(newGroup.id);
+        setCreatedGroupName(newGroup.name);
+        setOriginalData({
+          name: newGroup.name,
+          chit_value: newGroup.chit_value.toString(),
+          group_size: newGroup.group_size.toString(),
+          monthly_installment: newGroup.monthly_installment.toString(),
+          duration_months: newGroup.duration_months.toString(),
+          start_date: toYearMonth(newGroup.start_date),
+          end_date: toYearMonth(newGroup.end_date),
+        });
         setActiveTab("members");
+        setSuccess("Group details saved. You can now add members.");
+      } else if (mode === "create" && createdGroupId) {
+        // Updating after creation (post-creation edit)
+        const changes = {};
+        for (const key in formData) {
+          if (formData[key] !== originalData[key]) {
+            changes[key] = formData[key];
+          }
+        }
+
+        if (Object.keys(changes).length > 0) {
+          const patchData = { ...changes };
+          if (patchData.start_date)
+            patchData.start_date = getFirstDayOfMonth(patchData.start_date);
+          if (patchData.chit_value)
+            patchData.chit_value = Number(patchData.chit_value);
+          if (patchData.group_size)
+            patchData.group_size = Number(patchData.group_size);
+          if (patchData.monthly_installment)
+            patchData.monthly_installment = Number(
+              patchData.monthly_installment
+            );
+          if (patchData.duration_months)
+            patchData.duration_months = Number(patchData.duration_months);
+
+          const updatedGroup = await patchChitGroup(
+            createdGroupId,
+            patchData,
+            token
+          );
+          setCreatedGroupName(updatedGroup.name);
+          setOriginalData({
+            name: updatedGroup.name,
+            chit_value: updatedGroup.chit_value.toString(),
+            group_size: updatedGroup.group_size.toString(),
+            monthly_installment: updatedGroup.monthly_installment.toString(),
+            duration_months: updatedGroup.duration_months.toString(),
+            start_date: toYearMonth(updatedGroup.start_date),
+            end_date: toYearMonth(updatedGroup.end_date),
+          });
+        }
+        setActiveTab("members");
+        setSuccess("Group details updated successfully!");
       } else if (mode === "edit") {
-        // This 'edit' block remains for the dedicated edit page
+        // Edit mode - save changes and navigate
         const changes = {};
         for (const key in formData) {
           if (formData[key] !== originalData[key]) {
@@ -487,9 +581,20 @@ const GroupDetailPage = () => {
             patchData.duration_months = Number(patchData.duration_months);
 
           await patchChitGroup(id, patchData, token);
+
+          // Show success message
+          setSuccess("Chit group updated successfully!");
+
+          // Navigate to next tab
+          if (activeTabIndex < TABS.length - 1) {
+            setActiveTab(TABS[activeTabIndex + 1]);
+          }
+        } else {
+          // No changes, just navigate
+          if (activeTabIndex < TABS.length - 1) {
+            setActiveTab(TABS[activeTabIndex + 1]);
+          }
         }
-        setSuccess("Chit group updated successfully!");
-        setTimeout(() => navigate("/groups"), 1500);
       }
     } catch (err) {
       setError(err.message);
@@ -499,7 +604,9 @@ const GroupDetailPage = () => {
   };
 
   const getTitle = () => {
-    if (mode === "create") return "Create New Chit Group";
+    if (mode === "create") {
+      return createdGroupName || "Create New Chit Group";
+    }
     if (mode === "edit") return formData.name || "Edit Chit Group";
     return formData.name || "Group Details";
   };
@@ -512,15 +619,19 @@ const GroupDetailPage = () => {
   };
 
   const handleNext = () => {
-    // This is for the right-side button ('Save & Next', 'Next')
-
     // 1. First step in CREATE mode: Must submit details
     if (mode === "create" && activeTabIndex === 0) {
-      handleSubmit(); // Submits form, saves group, sets createdGroupId, and navigates to 'members' tab
+      handleSubmit(); // Submits form, creates/updates group, and navigates
       return;
     }
 
-    // 2. All other cases ('Next' button) - Just navigate to next tab
+    // 2. First step in EDIT mode: Save changes and navigate
+    if (mode === "edit" && activeTabIndex === 0) {
+      handleSubmit(); // Saves changes and navigates
+      return;
+    }
+
+    // 3. All other cases ('Next' button) - Just navigate
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
@@ -538,18 +649,23 @@ const GroupDetailPage = () => {
   };
 
   const handleFinalAction = () => {
-    // This is the logic that executes when the final button (Update/Finish) is pressed.
     if (mode === "edit") {
-      handleSubmit(); // Patches the group and navigates away.
+      // In edit mode, navigate to groups list with success message
+      navigate("/groups", {
+        state: {
+          success: `Chit group "${formData.name}" has been updated successfully!`,
+        },
+      });
       return;
     }
-    // In create mode, after the Details step saves and moves to the 'Members' tab,
-    // the final button only needs to navigate away since saving details is mandatory
-    // on step 1 and assignments are handled on the 'Members' tab.
+    // In create mode, navigate to view page with success message
     if (createdGroupId) {
-      navigate(`/groups/view/${createdGroupId}`);
+      navigate(`/groups/view/${createdGroupId}`, {
+        state: {
+          success: `Chit group "${createdGroupName}" has been created successfully!`,
+        },
+      });
     } else {
-      // Fallback.
       navigate("/groups");
     }
   };
@@ -619,6 +735,7 @@ const GroupDetailPage = () => {
                   handleNext={handleNext}
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit} // <-- ADDED THIS LINE
+                  isPostCreation={!!(mode === "create" && createdGroupId)} // ADD THIS LINE
                 />
               </div>
 
@@ -631,6 +748,8 @@ const GroupDetailPage = () => {
                         mode={mode}
                         formData={formData}
                         handleFormChange={handleFormChange}
+                        isPostCreation={!!(mode === "create" && createdGroupId)}
+                        onEnterKeyOnLastInput={handleNext}
                       />
                     </div>
                     <div className="flex flex-col gap-8">
@@ -642,7 +761,13 @@ const GroupDetailPage = () => {
                     </div>
                     {mode !== "view" && (
                       <div className="md:col-span-2">
-                        <DesktopActionButton mode={mode} loading={loading} />
+                        <DesktopActionButton
+                          mode={mode}
+                          loading={loading}
+                          isPostCreation={
+                            !!(mode === "create" && createdGroupId)
+                          }
+                        />
                       </div>
                     )}
                   </div>

@@ -39,6 +39,13 @@ export const createChitGroup = async (groupData, token) => {
     if (response.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
     }
+    if (response.status === 409) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.detail ||
+          "A chit group with this name already exists. Please choose a different name."
+      );
+    }
     throw new Error("Failed to create chit group. Please try again.");
   }
 
@@ -98,6 +105,13 @@ export const patchChitGroup = async (groupId, groupData, token) => {
     }
     if (response.status === 404) {
       throw new Error("Chit group not found.");
+    }
+    if (response.status === 409) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.detail ||
+          "A chit group with this name already exists. Please choose a different name."
+      );
     }
     throw new Error("Failed to update chit group. Please try again.");
   }
