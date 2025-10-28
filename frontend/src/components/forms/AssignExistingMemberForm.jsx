@@ -14,6 +14,7 @@ const AssignExistingMemberForm = ({
   onAssignment,
   formatDate,
   assignedMemberIds,
+  onMemberNameChange, // New prop
 }) => {
   const [allMembers, setAllMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,7 +30,6 @@ const AssignExistingMemberForm = ({
       setError(null);
       try {
         const data = await getAllMembers(token);
-        // ALLOW ALL MEMBERS TO BE SHOWN
         setAllMembers(data.members);
       } catch (err) {
         setError(err.message);
@@ -52,6 +52,7 @@ const AssignExistingMemberForm = ({
 
   const handleSelectClick = (member) => {
     setSelectedMember(member);
+    onMemberNameChange(member.full_name); // Update parent's state
     setSelectedMonth(""); // Reset month selection
   };
 
@@ -99,6 +100,7 @@ const AssignExistingMemberForm = ({
   if (selectedMember) {
     return (
       <div className="my-4">
+        {/* The title is now handled by the parent, but you can keep this as a sub-header if you like */}
         <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
           Assign Month for {selectedMember.full_name}
         </h3>
@@ -121,10 +123,8 @@ const AssignExistingMemberForm = ({
           </select>
         </div>
         <div className="flex justify-end mt-6">
-          {" "}
-          {/* <-- REMOVED justify-between */}
           <Button
-            type="button" // <-- PREVENT FORM SUBMISSION
+            type="button"
             variant="success"
             onClick={handleConfirmAssignment}
             disabled={!selectedMonth}

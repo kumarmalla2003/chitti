@@ -23,7 +23,10 @@ const CustomMonthInput = ({
       );
       const index = focusable.indexOf(e.target);
       if (index !== -1 && index + 1 < focusable.length) {
-        focusable[index + 1].focus();
+        const nextElement = focusable[index + 1];
+        // Using a timeout of 0 helps ensure the browser has time to update the
+        // virtual keyboard's enter key hint after the focus changes.
+        setTimeout(() => nextElement.focus(), 0);
       }
     }
   };
@@ -88,7 +91,7 @@ const CustomMonthInput = ({
         name={name}
         value={displayValue()}
         onChange={handleTextChange}
-        onKeyDown={handleKeyDown} // ← add this line
+        onKeyDown={handleKeyDown}
         className="w-full pl-12 pr-10 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
         disabled={disabled}
         placeholder="MM/YYYY"

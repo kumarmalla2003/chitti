@@ -13,6 +13,7 @@ const AssignNewMemberForm = ({
   availableMonths,
   onAssignment,
   formatDate,
+  onMemberNameChange, // New prop
 }) => {
   const [formData, setFormData] = useState({ full_name: "", phone_number: "" });
   const [createdMember, setCreatedMember] = useState(null);
@@ -21,7 +22,6 @@ const AssignNewMemberForm = ({
   const [error, setError] = useState(null);
   const [memberCreatedSuccess, setMemberCreatedSuccess] = useState(null);
 
-  // Auto-dismiss success message after 3 seconds
   useEffect(() => {
     if (memberCreatedSuccess) {
       const timer = setTimeout(() => {
@@ -32,7 +32,6 @@ const AssignNewMemberForm = ({
   }, [memberCreatedSuccess]);
 
   useEffect(() => {
-    // Auto-focus the name input when the form appears
     setTimeout(() => {
       const input = document.getElementById("full_name");
       if (input) {
@@ -46,12 +45,13 @@ const AssignNewMemberForm = ({
     let processedValue = value;
     if (name === "phone_number") {
       processedValue = value.replace(/\D/g, "").slice(0, 10);
+    } else if (name === "full_name") {
+      onMemberNameChange(value); // Update parent's state on name change
     }
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleCreateMember = async (e) => {
-    // CRITICAL: Prevent both default behavior and propagation
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -77,7 +77,6 @@ const AssignNewMemberForm = ({
   };
 
   const handleConfirmAssignment = async (e) => {
-    // CRITICAL: Prevent both default behavior and propagation
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -95,17 +94,14 @@ const AssignNewMemberForm = ({
     });
   };
 
-  // Handle Enter key press in inputs
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
 
       if (!createdMember) {
-        // If on member creation step
         handleCreateMember(e);
       } else if (selectedMonth) {
-        // If on month assignment step and month is selected
         handleConfirmAssignment(e);
       }
     }
@@ -120,7 +116,6 @@ const AssignNewMemberForm = ({
       )}
 
       {!createdMember ? (
-        // Step 1: Create Member - NO FORM TAG, just a div
         <div onKeyDown={handleKeyDown}>
           <MemberDetailsForm
             formData={formData}
@@ -144,7 +139,6 @@ const AssignNewMemberForm = ({
           </div>
         </div>
       ) : (
-        // Step 2: Assign Month - NO FORM TAG, just a div
         <div onKeyDown={handleKeyDown}>
           {memberCreatedSuccess && (
             <Message type="success">{memberCreatedSuccess}</Message>

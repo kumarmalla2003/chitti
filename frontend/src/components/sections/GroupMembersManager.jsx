@@ -33,6 +33,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeMemberName, setActiveMemberName] = useState(""); // State for the member being assigned
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -82,6 +83,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
       await createAssignment(assignmentData, token);
       setSuccess("Member assigned successfully!");
       setView("list"); // Go back to the list view
+      setActiveMemberName(""); // Reset active member name
       fetchData(); // Refresh all data
     } catch (err) {
       setError(err.message);
@@ -110,6 +112,15 @@ const GroupMembersManager = ({ mode, groupId }) => {
       setIsModalOpen(false);
       setItemToDelete(null);
     }
+  };
+
+  const handleViewChange = (newView) => {
+    setView(newView);
+    setActiveMemberName(""); // Reset name when view changes
+  };
+
+  const handleActiveMemberNameChange = (name) => {
+    setActiveMemberName(name);
   };
 
   const formatDate = (dateString) =>
@@ -177,6 +188,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
           formatDate={formatDate}
+          onMemberNameChange={handleActiveMemberNameChange} // Pass handler
         />
       );
     }
@@ -189,6 +201,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
           onAssignment={handleAssignment}
           formatDate={formatDate}
           assignedMemberIds={assignedMemberIds}
+          onMemberNameChange={handleActiveMemberNameChange} // Pass handler
         />
       );
     }
@@ -200,14 +213,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
           <div className="mb-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
-                onClick={() => setView("new")}
+                onClick={() => handleViewChange("new")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
                 <FiUserPlus className="w-5 h-5 mr-2" />
                 <span>Add New Member</span>
               </Button>
               <Button
-                onClick={() => setView("existing")}
+                onClick={() => handleViewChange("existing")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
                 <FiSearch className="mr-2" />
@@ -254,6 +267,9 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const getHeaderTitle = () => {
+    if (activeMemberName) {
+      return `${activeMemberName}`;
+    }
     if (view === "new") return "Add New Member";
     if (view === "existing") return "Add Existing Member";
     return "Members";
@@ -266,7 +282,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
       <div className="relative flex justify-center items-center mb-2">
         {view !== "list" && (
           <button
-            onClick={() => setView("list")}
+            onClick={() => handleViewChange("list")}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
             <FiArrowLeft className="w-6 h-6" />
