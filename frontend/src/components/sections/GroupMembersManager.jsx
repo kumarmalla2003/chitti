@@ -8,6 +8,7 @@ import ConfirmationModal from "../ui/ConfirmationModal";
 import Message from "../ui/Message";
 import AssignNewMemberForm from "../forms/AssignNewMemberForm";
 import AssignExistingMemberForm from "../forms/AssignExistingMemberForm";
+import AssignedMemberCard from "../ui/AssignedMemberCard";
 import {
   FiSearch,
   FiUsers,
@@ -251,11 +252,23 @@ const GroupMembersManager = ({ mode, groupId }) => {
                 />
               </div>
             )}
-            <Table
-              columns={columns}
-              data={filteredAssignments}
-              variant="secondary"
-            />
+            {/* --- RESPONSIVE VIEW LOGIC --- */}
+            <div className="hidden md:block">
+              <Table
+                columns={columns}
+                data={filteredAssignments}
+                variant="secondary"
+              />
+            </div>
+            <div className="block md:hidden space-y-4">
+              {filteredAssignments.map((assignment) => (
+                <AssignedMemberCard
+                  key={assignment.id}
+                  assignment={assignment}
+                  onDelete={() => handleDeleteClick(assignment)}
+                />
+              ))}
+            </div>
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">
