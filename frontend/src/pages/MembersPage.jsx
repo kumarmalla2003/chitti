@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
-import { Link, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAllMembers, deleteMember } from "../services/membersService";
+import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import MobileNav from "../components/layout/MobileNav";
@@ -13,6 +13,7 @@ import Message from "../components/ui/Message";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
+import MemberCard from "../components/ui/MemberCard";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
   FiPlus,
@@ -24,6 +25,7 @@ import {
 } from "react-icons/fi";
 
 const MembersPage = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const [members, setMembers] = useState([]);
@@ -129,22 +131,31 @@ const MembersPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <Link
-            to={`/members/view/${row.id}`}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/members/view/${row.id}`);
+            }}
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="View Details"
           >
             <FiEye />
-          </Link>
-          <Link
-            to={`/members/edit/${row.id}`}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/members/edit/${row.id}`);
+            }}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit Member"
           >
             <FiEdit />
-          </Link>
+          </button>
           <button
-            onClick={() => handleDeleteClick(row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick(row);
+            }}
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Delete Member"
           >
@@ -218,7 +229,29 @@ const MembersPage = () => {
               )}
 
               {!loading && !error && filteredMembers.length > 0 && (
-                <Table columns={columns} data={filteredMembers} />
+                <>
+                  {/* Table View for Medium screens and up */}
+                  <div className="hidden md:block">
+                    <Table
+                      columns={columns}
+                      data={filteredMembers}
+                      onRowClick={(row) => navigate(`/members/view/${row.id}`)}
+                    />
+                  </div>
+
+                  {/* Card View for screens smaller than Medium */}
+                  <div className="block md:hidden space-y-4">
+                    {filteredMembers.map((member) => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        onView={() => navigate(`/members/view/${member.id}`)}
+                        onEdit={() => navigate(`/members/edit/${member.id}`)}
+                        onDelete={() => handleDeleteClick(member)}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </main>

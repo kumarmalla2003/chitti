@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import GroupCard from "../components/ui/GroupCard";
 import { getAllChitGroups, deleteChitGroup } from "../services/chitsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
@@ -20,12 +21,12 @@ import {
   FiLoader,
   FiEdit,
   FiEye,
-  FiBarChart2,
   FiSearch,
   FiTrash2,
 } from "react-icons/fi";
 
 const GroupsPage = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const [groups, setGroups] = useState([]);
@@ -145,24 +146,33 @@ const GroupsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <Link
-            to={`/groups/view/${row.id}`}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/groups/view/${row.id}`);
+            }}
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="View"
+            title="View Details"
           >
             <FiEye />
-          </Link>
-          <Link
-            to={`/groups/edit/${row.id}`}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/groups/edit/${row.id}`);
+            }}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Edit"
+            title="Edit Group"
           >
             <FiEdit />
-          </Link>
+          </button>
           <button
-            onClick={() => handleDeleteClick(row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick(row);
+            }}
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Delete"
+            title="Delete Group"
           >
             <FiTrash2 />
           </button>
@@ -233,7 +243,29 @@ const GroupsPage = () => {
               )}
 
               {!loading && filteredGroups.length > 0 && (
-                <Table columns={columns} data={filteredGroups} />
+                <>
+                  {/* Table View for Medium screens and up */}
+                  <div className="hidden md:block">
+                    <Table
+                      columns={columns}
+                      data={filteredGroups}
+                      onRowClick={(row) => navigate(`/groups/view/${row.id}`)}
+                    />
+                  </div>
+
+                  {/* Card View for screens smaller than Medium */}
+                  <div className="block md:hidden space-y-4">
+                    {filteredGroups.map((group) => (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        onView={() => navigate(`/groups/view/${group.id}`)}
+                        onEdit={() => navigate(`/groups/edit/${group.id}`)}
+                        onDelete={() => handleDeleteClick(group)}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </main>

@@ -4,7 +4,7 @@ const getNestedValue = (obj, path) => {
   return path.split(".").reduce((acc, part) => acc && acc[part], obj);
 };
 
-const Table = ({ columns, data, variant = "primary" }) => {
+const Table = ({ columns, data, variant = "primary", onRowClick }) => {
   const headerClass =
     variant === "secondary"
       ? "bg-background-primary"
@@ -38,7 +38,10 @@ const Table = ({ columns, data, variant = "primary" }) => {
           {data.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={`group ${rowClass} hover:text-accent hover:shadow-[inset_0_0_0_1px_var(--color-accent)] transition-all duration-200 ease-in-out cursor-pointer`}
+              onClick={() => onRowClick && onRowClick(row)}
+              className={`group ${rowClass} hover:text-accent hover:shadow-[inset_0_0_0_1px_var(--color-accent)] transition-all duration-200 ease-in-out ${
+                onRowClick ? "cursor-pointer" : ""
+              }`}
             >
               {columns.map((col) => (
                 <td
