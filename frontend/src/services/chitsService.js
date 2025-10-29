@@ -39,12 +39,13 @@ export const createChitGroup = async (groupData, token) => {
     if (response.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
     }
-    if (response.status === 409) {
+    // Updated error handling for 422 and 409
+    if (response.status === 422 || response.status === 409) {
       const errorData = await response.json();
-      throw new Error(
-        errorData.detail ||
-          "A chit group with this name already exists. Please choose a different name."
-      );
+      // Extract the specific detail message from the backend response
+      const detail =
+        errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
+      throw new Error(detail);
     }
     throw new Error("Failed to create chit group. Please try again.");
   }
@@ -91,7 +92,6 @@ export const updateChitGroup = async (groupId, groupData, token) => {
   return response.json();
 };
 
-// --- ADD THIS NEW FUNCTION ---
 export const patchChitGroup = async (groupId, groupData, token) => {
   const response = await fetch(`${API_URL}/${groupId}`, {
     method: "PATCH",
@@ -106,12 +106,13 @@ export const patchChitGroup = async (groupId, groupData, token) => {
     if (response.status === 404) {
       throw new Error("Chit group not found.");
     }
-    if (response.status === 409) {
+    // Updated error handling for 422 and 409
+    if (response.status === 422 || response.status === 409) {
       const errorData = await response.json();
-      throw new Error(
-        errorData.detail ||
-          "A chit group with this name already exists. Please choose a different name."
-      );
+      // Extract the specific detail message from the backend response
+      const detail =
+        errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
+      throw new Error(detail);
     }
     throw new Error("Failed to update chit group. Please try again.");
   }

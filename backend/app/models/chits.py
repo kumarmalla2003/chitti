@@ -13,3 +13,5 @@ class ChitGroup(SQLModel, table=True):
     duration_months: int
     start_date: date
     end_date: date
+    collection_day: int = Field(ge=1, le=28)
+    payout_day: int = Field(ge=1, le=28)

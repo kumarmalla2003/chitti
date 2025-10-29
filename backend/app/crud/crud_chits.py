@@ -12,7 +12,7 @@ async def get_group_by_id(session: AsyncSession, group_id: int) -> ChitGroup | N
     group = await session.get(ChitGroup, group_id)
     return group
 
-# --- ADD THIS NEW HELPER FUNCTION ---
+# --- THIS FUNCTION HAS BEEN UPDATED ---
 async def get_group_by_id_with_details(session: AsyncSession, group_id: int) -> ChitGroupResponse | None:
     """Gets a group and constructs the full response model with dynamic fields."""
     db_group = await session.get(ChitGroup, group_id)
@@ -30,10 +30,18 @@ async def get_group_by_id_with_details(session: AsyncSession, group_id: int) -> 
         chit_cycle = f"-/{db_group.duration_months}"
 
     return ChitGroupResponse(
-        id=db_group.id, name=db_group.name, chit_value=db_group.chit_value,
-        group_size=db_group.group_size, monthly_installment=db_group.monthly_installment,
-        duration_months=db_group.duration_months, start_date=db_group.start_date,
-        end_date=db_group.end_date, status=status, chit_cycle=chit_cycle
+        id=db_group.id,
+        name=db_group.name,
+        chit_value=db_group.chit_value,
+        group_size=db_group.group_size,
+        monthly_installment=db_group.monthly_installment,
+        duration_months=db_group.duration_months,
+        start_date=db_group.start_date,
+        end_date=db_group.end_date,
+        status=status,
+        chit_cycle=chit_cycle,
+        collection_day=db_group.collection_day,  # <-- FIX: Add this line
+        payout_day=db_group.payout_day,          # <-- FIX: Add this line
     )
 
 async def delete_group_by_id(session: AsyncSession, db_group: ChitGroup):

@@ -308,6 +308,8 @@ const GroupDetailPage = () => {
     duration_months: "",
     start_date: "",
     end_date: "",
+    collection_day: "",
+    payout_day: "",
   });
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -328,7 +330,9 @@ const GroupDetailPage = () => {
       formData.group_size.trim() !== "" &&
       formData.monthly_installment.trim() !== "" &&
       formData.duration_months.trim() !== "" &&
-      formData.start_date.trim() !== "",
+      formData.start_date.trim() !== "" &&
+      formData.collection_day.trim() !== "" &&
+      formData.payout_day.trim() !== "",
     [formData]
   );
 
@@ -349,6 +353,8 @@ const GroupDetailPage = () => {
           duration_months: group.duration_months.toString(),
           start_date: toYearMonth(group.start_date),
           end_date: toYearMonth(group.end_date),
+          collection_day: group.collection_day.toString(),
+          payout_day: group.payout_day.toString(),
         };
         setFormData(fetchedData);
         setOriginalData(fetchedData);
@@ -401,7 +407,12 @@ const GroupDetailPage = () => {
     setSuccess(null);
     setFormData((prevFormData) => {
       let newFormData = { ...prevFormData, [name]: value };
-      if (name === "chit_value" || name === "monthly_installment") {
+      if (
+        name === "chit_value" ||
+        name === "monthly_installment" ||
+        name === "collection_day" ||
+        name === "payout_day"
+      ) {
         newFormData[name] = value.replace(/[^0-9]/g, "");
       } else if (name === "group_size") {
         newFormData.duration_months = value;
@@ -498,6 +509,8 @@ const GroupDetailPage = () => {
           group_size: Number(formData.group_size),
           monthly_installment: Number(formData.monthly_installment),
           duration_months: Number(formData.duration_months),
+          collection_day: Number(formData.collection_day),
+          payout_day: Number(formData.payout_day),
         };
         delete dataToSend.end_date;
         const newGroup = await createChitGroup(dataToSend, token);
@@ -511,6 +524,8 @@ const GroupDetailPage = () => {
           duration_months: newGroup.duration_months.toString(),
           start_date: toYearMonth(newGroup.start_date),
           end_date: toYearMonth(newGroup.end_date),
+          collection_day: newGroup.collection_day.toString(),
+          payout_day: newGroup.payout_day.toString(),
         });
         setActiveTab("members");
         setSuccess("Group details saved. You can now add members.");
@@ -537,6 +552,10 @@ const GroupDetailPage = () => {
             );
           if (patchData.duration_months)
             patchData.duration_months = Number(patchData.duration_months);
+          if (patchData.collection_day)
+            patchData.collection_day = Number(patchData.collection_day);
+          if (patchData.payout_day)
+            patchData.payout_day = Number(patchData.payout_day);
 
           const updatedGroup = await patchChitGroup(
             createdGroupId,
@@ -552,6 +571,8 @@ const GroupDetailPage = () => {
             duration_months: updatedGroup.duration_months.toString(),
             start_date: toYearMonth(updatedGroup.start_date),
             end_date: toYearMonth(updatedGroup.end_date),
+            collection_day: updatedGroup.collection_day.toString(),
+            payout_day: updatedGroup.payout_day.toString(),
           });
         }
         setActiveTab("members");
@@ -579,6 +600,10 @@ const GroupDetailPage = () => {
             );
           if (patchData.duration_months)
             patchData.duration_months = Number(patchData.duration_months);
+          if (patchData.collection_day)
+            patchData.collection_day = Number(patchData.collection_day);
+          if (patchData.payout_day)
+            patchData.payout_day = Number(patchData.payout_day);
 
           await patchChitGroup(id, patchData, token);
 

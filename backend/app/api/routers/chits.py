@@ -54,6 +54,8 @@ async def create_chit_group(
         duration_months=chit_group.duration_months,
         start_date=chit_group.start_date,
         end_date=end_date,
+        collection_day=chit_group.collection_day,
+        payout_day=chit_group.payout_day,
     )
     session.add(db_chit_group)
     

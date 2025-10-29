@@ -9,11 +9,13 @@ const CustomMonthInput = ({
   onChange,
   disabled,
   required,
-  enterKeyHint = "next",
+  // enterKeyHint prop removed
 }) => {
   const hiddenInputRef = useRef(null);
 
   const handleKeyDown = (e) => {
+    // Keep this logic for general Enter key behavior if needed elsewhere,
+    // but it won't use enterKeyHint anymore.
     if (e.key === "Enter") {
       e.preventDefault();
       const focusable = Array.from(
@@ -24,8 +26,6 @@ const CustomMonthInput = ({
       const index = focusable.indexOf(e.target);
       if (index !== -1 && index + 1 < focusable.length) {
         const nextElement = focusable[index + 1];
-        // Using a timeout of 0 helps ensure the browser has time to update the
-        // virtual keyboard's enter key hint after the focus changes.
         setTimeout(() => nextElement.focus(), 0);
       }
     }
@@ -98,7 +98,7 @@ const CustomMonthInput = ({
         required={required}
         maxLength="7"
         inputMode="numeric"
-        enterKeyHint={enterKeyHint}
+        // enterKeyHint attribute removed from input
       />
 
       {/* Right Clickable Icon */}
