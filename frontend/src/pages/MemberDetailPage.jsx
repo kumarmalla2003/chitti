@@ -1,6 +1,6 @@
 // frontend/src/pages/MemberDetailPage.jsx
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -244,31 +244,27 @@ const DesktopActionButton = ({ mode, loading }) => {
   );
 };
 
-const TabButton = ({
-  name,
-  icon,
-  label,
-  activeTab,
-  setActiveTab,
-  disabled,
-}) => {
-  const isActive = activeTab === name;
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && setActiveTab(name)}
-      disabled={disabled}
-      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
-        isActive
-          ? "bg-background-secondary text-accent border-b-2 border-accent"
-          : "text-text-secondary hover:bg-background-tertiary"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-};
+const TabButton = React.forwardRef(
+  ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
+    const isActive = activeTab === name;
+    return (
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => !disabled && setActiveTab(name)}
+        disabled={disabled}
+        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
+          isActive
+            ? "bg-background-secondary text-accent border-b-2 border-accent"
+            : "text-text-secondary hover:bg-background-tertiary"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+  }
+);
 
 // --- Extracted MobileContent Component ---
 const MobileContent = ({
@@ -297,12 +293,26 @@ const MobileContent = ({
   isDetailsFormValid,
   detailsLoading,
   handleNext,
-  handleMiddle, // <-- UPDATED PROP NAME
+  handleMiddle,
 }) => {
+  const tabRefs = useRef({});
+
+  useEffect(() => {
+    const activeTabRef = tabRefs.current[activeTab];
+    if (activeTabRef) {
+      activeTabRef.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [activeTab]);
+
   return (
     <div className="w-full max-w-2xl mx-auto md:hidden">
-      <div className="flex items-center border-b border-border mb-6">
+      <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
         <TabButton
+          ref={(el) => (tabRefs.current["details"] = el)}
           name="details"
           icon={<FiUser />}
           label="Details"
@@ -310,6 +320,7 @@ const MobileContent = ({
           setActiveTab={setActiveTab}
         />
         <TabButton
+          ref={(el) => (tabRefs.current["chits"] = el)}
           name="chits"
           icon={<FiBox />}
           label="Chits"
@@ -318,6 +329,7 @@ const MobileContent = ({
           disabled={mode === "create" && !createdMemberId}
         />
         <TabButton
+          ref={(el) => (tabRefs.current["payments"] = el)}
           name="payments"
           icon={<RupeeIcon className="w-4 h-4" />}
           label="Payments"

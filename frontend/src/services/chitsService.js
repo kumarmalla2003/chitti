@@ -39,10 +39,8 @@ export const createChitGroup = async (groupData, token) => {
     if (response.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
     }
-    // Updated error handling for 422 and 409
     if (response.status === 422 || response.status === 409) {
       const errorData = await response.json();
-      // Extract the specific detail message from the backend response
       const detail =
         errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
       throw new Error(detail);
@@ -106,10 +104,8 @@ export const patchChitGroup = async (groupId, groupData, token) => {
     if (response.status === 404) {
       throw new Error("Chit group not found.");
     }
-    // Updated error handling for 422 and 409
     if (response.status === 422 || response.status === 409) {
       const errorData = await response.json();
-      // Extract the specific detail message from the backend response
       const detail =
         errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
       throw new Error(detail);
@@ -133,6 +129,30 @@ export const deleteChitGroup = async (groupId, token) => {
     }
     throw new Error("Failed to delete chit group.");
   }
-  // No content is returned on successful deletion (204)
   return;
+};
+
+// --- Payouts Service Functions ---
+
+export const getPayouts = async (groupId, token) => {
+  const response = await fetch(`${API_URL}/${groupId}/payouts`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch payouts.");
+  }
+  return response.json();
+};
+
+export const updatePayout = async (payoutId, payoutData, token) => {
+  const response = await fetch(`${API_URL}/payouts/${payoutId}`, {
+    method: "PUT",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(payoutData),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to update payout.");
+  }
+  return response.json();
 };

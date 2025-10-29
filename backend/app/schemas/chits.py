@@ -4,6 +4,27 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import List, Optional
 from datetime import date
 
+# --- Payout Schemas ---
+class PayoutBase(BaseModel):
+    month: int
+    payout_amount: float
+
+class PayoutCreate(PayoutBase):
+    pass
+
+class PayoutUpdate(BaseModel):
+    payout_amount: float
+
+class PayoutResponse(PayoutBase):
+    id: int
+    chit_group_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PayoutListResponse(BaseModel):
+    payouts: List[PayoutResponse]
+
+# --- ChitGroup Schemas ---
 class ChitGroupBase(BaseModel):
     name: str
     chit_value: int
@@ -53,8 +74,8 @@ class ChitGroupPatch(BaseModel):
 class ChitGroupResponse(ChitGroupBase):
     id: int
     end_date: date
-    status: str  # Added status field
-    chit_cycle: str  # Added chit_cycle field
+    status: str
+    chit_cycle: str
 
     model_config = ConfigDict(from_attributes=True)
 

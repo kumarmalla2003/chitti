@@ -14,6 +14,10 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
       ? "even:bg-background-primary"
       : "even:bg-background-secondary";
 
+  const rowHoverClass = onRowClick
+    ? "hover:text-accent hover:shadow-[inset_0_0_0_1px_var(--color-accent)] cursor-pointer"
+    : "";
+
   return (
     <div className="overflow-x-auto border border-border shadow-md rounded-lg">
       <table className="w-full text-sm text-text-secondary">
@@ -39,9 +43,7 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
             <tr
               key={rowIndex}
               onClick={() => onRowClick && onRowClick(row)}
-              className={`group ${rowClass} hover:text-accent hover:shadow-[inset_0_0_0_1px_var(--color-accent)] transition-all duration-200 ease-in-out ${
-                onRowClick ? "cursor-pointer" : ""
-              }`}
+              className={`group ${rowClass} transition-all duration-200 ease-in-out ${rowHoverClass}`}
             >
               {columns.map((col) => (
                 <td

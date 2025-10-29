@@ -10,9 +10,12 @@ from dateutil.relativedelta import relativedelta
 from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from app.schemas.chits import ChitGroupCreate, ChitGroupUpdate, ChitGroupResponse, ChitGroupListResponse, ChitGroupPatch
+from app.schemas.chits import (
+    ChitGroupCreate, ChitGroupUpdate, ChitGroupResponse, ChitGroupListResponse, 
+    ChitGroupPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
+)
 from app.schemas.assignments import ChitAssignmentPublic, ChitAssignmentListResponse
-from app.schemas.members import MemberPublic # <-- ADD THIS IMPORT
+from app.schemas.members import MemberPublic
 from app.models.chits import ChitGroup
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
@@ -32,7 +35,6 @@ async def create_chit_group(
     Creates a new chit group for the authenticated user.
     """
     
-    # Check for duplicate name (case-insensitive)
     trimmed_name = chit_group.name.strip()
     existing_group = await session.execute(
         select(ChitGroup).where(func.lower(ChitGroup.name) == func.lower(trimmed_name))
@@ -43,7 +45,6 @@ async def create_chit_group(
             detail="A chit group with this name already exists. Please choose a different name."
         )
 
-    # Calculate end_date based on duration_months from start_date
     end_date = chit_group.start_date + relativedelta(months=chit_group.duration_months -1)
 
     db_chit_group = ChitGroup(
@@ -62,6 +63,12 @@ async def create_chit_group(
     try:
         await session.commit()
         await session.refresh(db_chit_group)
+        # --- Create initial payouts ---
+        await crud_chits.create_payouts_for_group(
+            session, 
+            group_id=db_chit_group.id, 
+            duration_months=db_chit_group.duration_months
+        )
     except IntegrityError:
         await session.rollback()
         raise HTTPException(
@@ -93,12 +100,11 @@ async def read_chit_groups(
         response_details = await crud_chits.get_group_by_id_with_details(session, group_id=group.id)
         response_groups.append(response_details)
 
-    # Sort groups: primarily by status (Active first), secondarily by start_date (desc)
     response_groups.sort(key=lambda g: (g.status != 'Active', g.start_date), reverse=False)
 
     return {"groups": response_groups}
 
-# --- ENDPOINT HAS BEEN UPDATED ---
+
 @router.get("/{group_id}/assignments", response_model=ChitAssignmentListResponse)
 async def get_group_assignments(
     group_id: int,
@@ -114,24 +120,20 @@ async def get_group_assignments(
         
     assignments = await crud_assignments.get_assignments_by_group_id(session, group_id=group_id)
     
-    # Manually construct the response to include calculated fields
     response_assignments = []
     for assignment in assignments:
-        # Get the detailed group response with calculated fields
         group_with_details = await crud_chits.get_group_by_id_with_details(session, group_id=assignment.chit_group_id)
         
-        # --- ADD THIS BLOCK TO CONSTRUCT THE MEMBER RESPONSE ---
         member_public = MemberPublic(
             id=assignment.member.id,
             full_name=assignment.member.full_name,
             phone_number=assignment.member.phone_number,
         )
 
-        # Create the final assignment response object
         assignment_public = ChitAssignmentPublic(
             id=assignment.id,
             chit_month=assignment.chit_month,
-            member=member_public, # <-- USE THE NEWLY CREATED OBJECT
+            member=member_public,
             chit_group=group_with_details
         )
         response_assignments.append(assignment_public)
@@ -171,7 +173,6 @@ async def update_chit_group(
     for key, value in group_data.items():
         setattr(db_chit_group, key, value)
     
-    # Recalculate end_date
     db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
 
     session.add(db_chit_group)
@@ -198,10 +199,8 @@ async def patch_chit_group(
     group_data = chit_group.model_dump(exclude_unset=True)
     date_or_duration_changed = "start_date" in group_data or "duration_months" in group_data
 
-    # Strip name if provided and check for duplicates
     if "name" in group_data:
         trimmed_name = group_data["name"].strip()
-        # Check if another group has this name (excluding current group)
         existing_group = await session.execute(
             select(ChitGroup).where(
                 func.lower(ChitGroup.name) == func.lower(trimmed_name),
@@ -218,7 +217,6 @@ async def patch_chit_group(
     for key, value in group_data.items():
         setattr(db_chit_group, key, value)
     
-    # If date or duration changes, recalculate the end date
     if date_or_duration_changed:
         db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
 
@@ -250,7 +248,6 @@ async def delete_chit_group(
     if not db_group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
 
-    # Safety Check: Ensure no members are assigned to this group
     assignments = await crud_assignments.get_assignments_by_group_id(session, group_id=group_id)
     if assignments:
         raise HTTPException(
@@ -260,3 +257,36 @@ async def delete_chit_group(
 
     await crud_chits.delete_group_by_id(session=session, db_group=db_group)
     return
+
+# --- Payout Endpoints ---
+
+@router.get("/{group_id}/payouts", response_model=PayoutListResponse)
+async def get_payouts_for_group(
+    group_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Retrieves all payouts for a specific chit group.
+    """
+    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
+    if not db_group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    
+    payouts = await crud_chits.get_payouts_by_group_id(session, group_id=group_id)
+    return {"payouts": payouts}
+
+@router.put("/payouts/{payout_id}", response_model=PayoutResponse)
+async def update_payout_amount(
+    payout_id: int,
+    payout: PayoutUpdate,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Updates the amount for a specific payout.
+    """
+    updated_payout = await crud_chits.update_payout(session, payout_id=payout_id, payout_data=payout)
+    if not updated_payout:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
+    return updated_payout
