@@ -1,7 +1,7 @@
 // frontend/src/pages/GroupDetailPage.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
+import { useNavigate, Link, useParams, useLocation } from "react-router-dom"; // Link is still used
 import { useSelector } from "react-redux";
 import useScrollToTop from "../hooks/useScrollToTop";
 import Header from "../components/layout/Header";
@@ -12,7 +12,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
 import GroupMembersManager from "../components/sections/GroupMembersManager";
-import PayoutsSection from "../components/sections/PayoutsSection"; // <-- IMPORT
+import PayoutsSection from "../components/sections/PayoutsSection";
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -23,7 +23,7 @@ import {
   FiArrowLeft,
   FiPlus,
   FiEdit,
-  FiTrendingUp, // Icon for Payouts
+  FiTrendingUp,
 } from "react-icons/fi";
 import {
   createChitGroup,
@@ -31,7 +31,7 @@ import {
   patchChitGroup,
 } from "../services/chitsService";
 
-// --- Helper Functions ---
+// --- Helper Functions (unchanged) ---
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
 const toYearMonth = (dateString) => {
   if (!dateString) return "";
@@ -64,9 +64,8 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
   return totalMonths > 0 ? totalMonths.toString() : "";
 };
 
-// --- Helper Components (Extracted) ---
+// --- Helper Components (unchanged) ---
 const DetailsSectionComponent = ({
-  // Renamed to avoid conflict
   mode,
   formData,
   handleFormChange,
@@ -88,18 +87,13 @@ const DetailsSectionComponent = ({
   </Card>
 );
 
-const PayoutsSectionComponent = (
-  { mode, groupId } // Renamed to avoid conflict
-) => (
+const PayoutsSectionComponent = ({ mode, groupId }) => (
   <Card className="flex-1 flex flex-col">
-    {/* The h2 and hr elements have been removed from here */}
     <PayoutsSection mode={mode} groupId={groupId} />
   </Card>
 );
 
-const MembersSectionComponent = (
-  { mode, groupId } // Renamed to avoid conflict
-) => (
+const MembersSectionComponent = ({ mode, groupId }) => (
   <Card className="flex-1 flex flex-col">
     <GroupMembersManager mode={mode} groupId={groupId} />
   </Card>
@@ -118,6 +112,7 @@ const PaymentsSection = () => (
 );
 
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
+  // ... (unchanged)
   if (mode === "view") return null;
   let buttonText, Icon, buttonVariant;
 
@@ -161,6 +156,7 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
 
 const TabButton = React.forwardRef(
   ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
+    // ... (unchanged)
     const isActive = activeTab === name;
     return (
       <button
@@ -197,6 +193,7 @@ const MobileContent = ({
   handleMobileFormSubmit,
   isPostCreation,
 }) => {
+  // ... (unchanged)
   const tabRefs = useRef({});
 
   useEffect(() => {
@@ -369,6 +366,7 @@ const GroupDetailPage = () => {
   const activeTabIndex = TABS.indexOf(activeTab);
 
   const isDetailsFormValid = useMemo(
+    // ... (unchanged)
     () =>
       formData.name.trim() !== "" &&
       formData.chit_value.trim() !== "" &&
@@ -382,6 +380,7 @@ const GroupDetailPage = () => {
   );
 
   useEffect(() => {
+    // ... (unchanged)
     const path = location.pathname;
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
@@ -423,6 +422,7 @@ const GroupDetailPage = () => {
   }, [id, location.pathname, token]);
 
   useEffect(() => {
+    // ... (unchanged)
     if (location.state?.success) {
       setSuccess(location.state.success);
       window.history.replaceState({}, document.title);
@@ -430,6 +430,7 @@ const GroupDetailPage = () => {
   }, [location.state]);
 
   useEffect(() => {
+    // ... (unchanged)
     if (success) {
       const timer = setTimeout(() => {
         setSuccess(null);
@@ -439,12 +440,14 @@ const GroupDetailPage = () => {
   }, [success]);
 
   useEffect(() => {
+    // ... (unchanged)
     if (titleRef.current) {
       titleRef.current.focus({ preventScroll: true });
     }
   }, [activeTab]);
 
   const handleFormChange = (e) => {
+    // ... (unchanged)
     const { name, value } = e.target;
     setError(null);
     setSuccess(null);
@@ -506,6 +509,7 @@ const GroupDetailPage = () => {
   };
 
   const handleMobileFormSubmit = async (e) => {
+    // ... (unchanged)
     e.preventDefault();
     e.stopPropagation();
     if (activeTab !== "details") {
@@ -523,6 +527,7 @@ const GroupDetailPage = () => {
   };
 
   const handleSubmit = async (e) => {
+    // ... (unchanged)
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -654,6 +659,7 @@ const GroupDetailPage = () => {
   };
 
   const getTitle = () => {
+    // ... (unchanged)
     if (mode === "create") {
       return createdGroupName || "Create New Chit Group";
     }
@@ -661,13 +667,26 @@ const GroupDetailPage = () => {
     return formData.name || "Group Details";
   };
 
+  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
+  const handleBackNavigation = () => {
+    if (activeTabIndex > 0) {
+      // If on "Payouts", "Members", or "Payments", go back one tab
+      setActiveTab(TABS[activeTabIndex - 1]);
+    } else {
+      // If on "Details", go back to the main groups list
+      navigate("/groups");
+    }
+  };
+
   const handleSkip = () => {
+    // ... (unchanged)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
   };
 
   const handleNext = () => {
+    // ... (unchanged)
     if (mode === "create" && activeTabIndex === 0) {
       handleSubmit();
       return;
@@ -684,6 +703,7 @@ const GroupDetailPage = () => {
   };
 
   const handleMiddle = () => {
+    // ... (unchanged)
     if (activeTabIndex === TABS.length - 1) {
       handleFinalAction();
     } else {
@@ -692,6 +712,7 @@ const GroupDetailPage = () => {
   };
 
   const handleFinalAction = () => {
+    // ... (unchanged)
     if (mode === "edit") {
       navigate("/groups", {
         state: {
@@ -712,6 +733,7 @@ const GroupDetailPage = () => {
   };
 
   if (pageLoading) {
+    // ... (unchanged)
     return (
       <div className="flex justify-center items-center h-screen">
         <FiLoader className="w-10 h-10 animate-spin text-accent" />
@@ -729,12 +751,13 @@ const GroupDetailPage = () => {
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="relative flex justify-center items-center mb-4">
-                <Link
-                  to="/groups"
+                {/* --- THIS BUTTON IS NOW "SMART" --- */}
+                <button
+                  onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
                 >
                   <FiArrowLeft className="w-6 h-6" />
-                </Link>
+                </button>
                 <h1
                   ref={titleRef}
                   tabIndex="-1"
@@ -779,30 +802,86 @@ const GroupDetailPage = () => {
                 />
               </div>
 
+              {/* --- MODIFIED DESKTOP VIEW --- */}
               <div className="hidden md:block">
                 <form id="group-details-form-desktop" onSubmit={handleSubmit}>
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-                    <div className="md:col-span-1 flex flex-col gap-8">
-                      <DetailsSectionComponent
-                        mode={mode}
-                        formData={formData}
-                        handleFormChange={handleFormChange}
-                        isPostCreation={!!(mode === "create" && createdGroupId)}
-                        onEnterKeyOnLastInput={handleNext}
+                    {/* --- We now conditionally render sections based on activeTab --- */}
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <DetailsSectionComponent
+                          mode={mode}
+                          formData={formData}
+                          handleFormChange={handleFormChange}
+                          isPostCreation={
+                            !!(mode === "create" && createdGroupId)
+                          }
+                          onEnterKeyOnLastInput={handleSubmit}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "payouts" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <PayoutsSectionComponent
+                          mode={mode}
+                          groupId={id || createdGroupId}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "members" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <MembersSectionComponent
+                          mode={mode}
+                          groupId={id || createdGroupId}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "payments" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <PaymentsSection />
+                      </div>
+                    )}
+
+                    {/* --- Desktop Tab Buttons --- */}
+                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                      <TabButton
+                        name="details"
+                        icon={<FiInfo />}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
                       />
-                      <PayoutsSectionComponent
-                        mode={mode}
-                        groupId={id || createdGroupId}
+                      <TabButton
+                        name="payouts"
+                        icon={<FiTrendingUp />}
+                        label="Payouts"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdGroupId}
+                      />
+                      <TabButton
+                        name="members"
+                        icon={<FiUsers />}
+                        label="Members"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdGroupId}
+                      />
+                      <TabButton
+                        name="payments"
+                        icon={<RupeeIcon className="w-4 h-4" />}
+                        label="Payments"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdGroupId}
                       />
                     </div>
-                    <div className="md:col-span-1 flex flex-col gap-8">
-                      <MembersSectionComponent
-                        mode={mode}
-                        groupId={id || createdGroupId}
-                      />
-                      <PaymentsSection />
-                    </div>
-                    {mode !== "view" && (
+
+                    {/* --- Action button only shows on "Details" tab --- */}
+                    {mode !== "view" && activeTab === "details" && (
                       <div className="md:col-span-2">
                         <DesktopActionButton
                           mode={mode}

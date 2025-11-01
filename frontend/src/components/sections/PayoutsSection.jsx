@@ -39,7 +39,7 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
-const PayoutsSection = ({ groupId, mode }) => {
+const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -221,20 +221,28 @@ const PayoutsSection = ({ groupId, mode }) => {
 
   return (
     <div>
-      <div className="relative flex justify-center items-center mb-2">
-        {isEditing && (
-          <button
-            onClick={() => setIsEditing(false)}
-            className="absolute left-0 text-text-primary hover:text-accent"
-          >
-            <FiArrowLeft className="w-6 h-6" />
-          </button>
-        )}
-        <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <FiTrendingUp /> {isEditing ? "Edit Payouts" : "Payouts"}
-        </h2>
-      </div>
-      <hr className="border-border mb-4" />
+      {/* --- MODIFICATION START --- */}
+      {/* Conditionally render the heading and hr */}
+      {showTitle && (
+        <>
+          <div className="relative flex justify-center items-center mb-2">
+            {isEditing && (
+              <button
+                onClick={() => setIsEditing(false)}
+                className="absolute left-0 text-text-primary hover:text-accent"
+              >
+                <FiArrowLeft className="w-6 h-6" />
+              </button>
+            )}
+            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+              <FiTrendingUp /> {isEditing ? "Edit Payouts" : "Payouts"}
+            </h2>
+          </div>
+          <hr className="border-border mb-4" />
+        </>
+      )}
+      {/* --- MODIFICATION END --- */}
+
       {success && (
         <Message type="success" title="Success">
           {success}

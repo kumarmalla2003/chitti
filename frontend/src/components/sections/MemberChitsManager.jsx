@@ -1,67 +1,58 @@
-// frontend/src/components/sections/GroupMembersManager.jsx
+// frontend/src/components/sections/MemberChitsManager.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 import Button from "../ui/Button";
+import Card from "../ui/Card";
 import Table from "../ui/Table";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import Message from "../ui/Message";
-import AssignNewMemberForm from "../forms/AssignNewMemberForm";
-import AssignExistingMemberForm from "../forms/AssignExistingMemberForm";
-import AssignedMemberCard from "../ui/AssignedMemberCard";
+import AssignNewGroupForm from "../forms/AssignNewGroupForm";
+import AssignExistingGroupForm from "../forms/AssignExistingGroupForm";
+import StatusBadge from "../ui/StatusBadge";
 import {
   FiSearch,
-  FiUsers,
+  FiBox,
   FiLoader,
   FiTrash2,
   FiArrowLeft,
-  FiUserPlus,
-} from "react-icons/fi"; // <-- FiUsers and FiUserPlus are imported
+  FiPlus,
+} from "react-icons/fi";
 import {
-  getAssignmentsForGroup,
-  getUnassignedMonths,
+  getAssignmentsForMember,
   createAssignment,
   deleteAssignment,
 } from "../../services/assignmentsService";
 
-const GroupMembersManager = ({ mode, groupId }) => {
+const MemberChitsManager = ({ mode, memberId }) => {
   const { token } = useSelector((state) => state.auth);
 
   const [view, setView] = useState("list"); // 'list', 'new', 'existing'
   const [assignments, setAssignments] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeMemberName, setActiveMemberName] = useState("");
+  const [activeGroupName, setActiveGroupName] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const formRef = useRef(null); // <-- Add ref
-
-  const assignedMemberIds = useMemo(
-    () => assignments.map((a) => a.member.id),
-    [assignments]
-  );
+  const formRef = useRef(null);
 
   const fetchData = async () => {
-    // ... (unchanged)
-    if (!groupId) {
+    if (!memberId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const [assignmentsData, monthsData] = await Promise.all([
-        getAssignmentsForGroup(groupId, token),
-        getUnassignedMonths(groupId, token),
-      ]);
-      setAssignments(assignmentsData.assignments);
-      setAvailableMonths(monthsData.available_months);
+      const assignmentsData = await getAssignmentsForMember(memberId, token);
+      // --- THIS IS THE FIX ---
+      // The API returns a direct list, so we set it directly.
+      setAssignments(assignmentsData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,11 +61,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [groupId, token]);
+    if (memberId) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [memberId, token]);
 
   useEffect(() => {
-    // ... (unchanged)
     if (success) {
       const timer = setTimeout(() => setSuccess(null), 3000);
       return () => clearTimeout(timer);
@@ -82,15 +76,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
   }, [success]);
 
   const handleAssignment = async (assignmentData) => {
-    // ... (unchanged)
     setLoading(true);
     setError(null);
     try {
       await createAssignment(assignmentData, token);
       setSuccess("Member assigned successfully!");
-      setView("list"); // Go back to the list view
-      setActiveMemberName(""); // Reset active member name
-      fetchData(); // Refresh all data
+      setView("list");
+      setActiveGroupName("");
+      fetchData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -99,20 +92,22 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const handleDeleteClick = (assignment) => {
-    // ... (unchanged)
     setItemToDelete(assignment);
     setIsModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    // ... (unchanged)
     if (!itemToDelete) return;
     setDeleteLoading(true);
     setError(null);
     try {
       await deleteAssignment(itemToDelete.id, token);
-      setSuccess(`"${itemToDelete.member.full_name}" has been unassigned.`);
-      fetchData(); // Refresh data
+      setSuccess(
+        `Assignment in "${itemToDelete.chit_group.name}" for ${formatDate(
+          itemToDelete.chit_month
+        )} has been removed.`
+      );
+      fetchData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -123,65 +118,58 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const handleViewChange = (newView) => {
-    // ... (unchanged)
     setView(newView);
-    setActiveMemberName(""); // Reset name when view changes
+    setActiveGroupName("");
+    setError(null);
+    setSuccess(null);
   };
 
-  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
   const handleBackNavigation = () => {
     if (formRef.current && typeof formRef.current.goBack === "function") {
-      // Ask the child form to handle navigation
       formRef.current.goBack();
     } else {
-      // Default action if ref is not set (failsafe)
       handleViewChange("list");
     }
   };
 
-  const handleActiveMemberNameChange = (name) => {
-    // ... (unchanged)
-    setActiveMemberName(name);
+  const handleActiveGroupNameChange = (name) => {
+    setActiveGroupName(name);
   };
 
   const formatDate = (dateString) =>
-    // ... (unchanged)
     new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
       month: "long",
     });
 
   const filteredAssignments = useMemo(() => {
-    // ... (unchanged)
     if (!searchQuery) return assignments;
     const lowercasedQuery = searchQuery.toLowerCase();
-    return assignments.filter(
-      (a) =>
-        a.member.full_name.toLowerCase().includes(lowercasedQuery) ||
-        a.member.phone_number.includes(lowercasedQuery)
+    return assignments.filter((a) =>
+      a.chit_group.name.toLowerCase().includes(lowercasedQuery)
     );
   }, [assignments, searchQuery]);
 
   const columns = [
-    // ... (unchanged)
     {
       header: "S.No",
       cell: (row, index) => index + 1,
       className: "text-center",
     },
     {
-      header: "Member Name",
-      accessor: "member.full_name",
+      header: "Group Name",
+      accessor: "chit_group.name",
       className: "text-left",
-    },
-    {
-      header: "Phone Number",
-      accessor: "member.phone_number",
-      className: "text-center",
     },
     {
       header: "Assigned Month",
       cell: (row) => formatDate(row.chit_month),
+      className: "text-center",
+    },
+    {
+      header: "Status",
+      accessor: "chit_group.status",
+      cell: (row) => <StatusBadge status={row.chit_group.status} />,
       className: "text-center",
     },
     ...(mode !== "view"
@@ -204,33 +192,38 @@ const GroupMembersManager = ({ mode, groupId }) => {
   ];
 
   const renderContent = () => {
-    // ... (This logic is now "ref-aware")
+    if (!memberId && mode === "create") {
+      return (
+        <p className="text-center text-text-secondary py-8">
+          Please save the member's details first to enable chit assignments.
+        </p>
+      );
+    }
+
     if (view === "new") {
       return (
-        <AssignNewMemberForm
-          ref={formRef} // <-- Pass the ref
+        <AssignNewGroupForm
+          ref={formRef}
           token={token}
-          groupId={groupId}
-          availableMonths={availableMonths}
+          memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
-          onMemberNameChange={handleActiveMemberNameChange}
-          onBackToList={() => handleViewChange("list")} // <-- Pass the "back to list" handler
+          onGroupNameChange={handleActiveGroupNameChange}
+          onBackToList={() => handleViewChange("list")}
         />
       );
     }
     if (view === "existing") {
       return (
-        <AssignExistingMemberForm
-          ref={formRef} // <-- Pass the ref
+        <AssignExistingGroupForm
+          ref={formRef}
           token={token}
-          groupId={groupId}
-          availableMonths={availableMonths}
+          memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
-          assignedMemberIds={assignedMemberIds}
-          onMemberNameChange={handleActiveMemberNameChange}
-          onBackToList={() => handleViewChange("list")} // <-- Pass the "back to list" handler
+          existingAssignments={assignments}
+          onGroupNameChange={handleActiveGroupNameChange}
+          onBackToList={() => handleViewChange("list")}
         />
       );
     }
@@ -245,15 +238,15 @@ const GroupMembersManager = ({ mode, groupId }) => {
                 onClick={() => handleViewChange("new")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiUserPlus className="w-5 h-5 mr-2" />
-                <span>Add New Member</span>
+                <FiPlus className="w-5 h-5 mr-2" />
+                <span>Assign to New Group</span>
               </Button>
               <Button
                 onClick={() => handleViewChange("existing")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
                 <FiSearch className="mr-2" />
-                <span>Add Existing Member</span>
+                <span>Assign to Existing Group</span>
               </Button>
             </div>
           </div>
@@ -273,34 +266,22 @@ const GroupMembersManager = ({ mode, groupId }) => {
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <input
                   type="text"
-                  placeholder="Search assigned members..."
+                  placeholder="Search assigned groups..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
                 />
               </div>
             )}
-            {/* --- RESPONSIVE VIEW LOGIC --- */}
-            <div className="hidden md:block">
-              <Table
-                columns={columns}
-                data={filteredAssignments}
-                variant="secondary"
-              />
-            </div>
-            <div className="block md:hidden space-y-4">
-              {filteredAssignments.map((assignment) => (
-                <AssignedMemberCard
-                  key={assignment.id}
-                  assignment={assignment}
-                  onDelete={() => handleDeleteClick(assignment)}
-                />
-              ))}
-            </div>
+            <Table
+              columns={columns}
+              data={filteredAssignments}
+              variant="secondary"
+            />
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">
-            No members have been assigned to this group yet.
+            This member has no active assignments.
           </p>
         )}
       </>
@@ -308,31 +289,27 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const getHeaderTitle = () => {
-    // ... (unchanged)
-    if (activeMemberName) {
-      return `${activeMemberName}`;
+    if (activeGroupName) {
+      return `${activeGroupName}`;
     }
-    if (view === "new") return "Add New Member";
-    if (view === "existing") return "Add Existing Member";
-    return "Members";
+    if (view === "new") return "Assign to New Group";
+    if (view === "existing") return "Assign to Existing Group";
+    return "Chits";
   };
 
-  // --- THIS IS THE FIX FOR THE CRASH ---
-  const HeaderIcon = view === "list" ? FiUsers : FiUserPlus;
-
   return (
-    <div className="flex-1 flex flex-col">
+    <Card className="flex-1 flex flex-col">
       <div className="relative flex justify-center items-center mb-2">
         {view !== "list" && (
           <button
-            onClick={handleBackNavigation} // <-- Use the smart handler
+            onClick={handleBackNavigation}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
             <FiArrowLeft className="w-6 h-6" />
           </button>
         )}
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <HeaderIcon /> {getHeaderTitle()} {/* <-- Use the variable */}
+          <FiBox /> {getHeaderTitle()}
         </h2>
       </div>
       <hr className="border-border mb-4" />
@@ -350,13 +327,17 @@ const GroupMembersManager = ({ mode, groupId }) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Unassign Member?"
-        message={`Are you sure you want to unassign "${itemToDelete?.member.full_name}"? Their assigned month will become available again.`}
-        confirmText="Unassign"
+        title="Remove Assignment?"
+        message={`Are you sure you want to remove this member from "${
+          itemToDelete?.chit_group.name
+        }" for ${
+          itemToDelete ? formatDate(itemToDelete.chit_month) : ""
+        }? This month will become available again.`}
+        confirmText="Remove"
         loading={deleteLoading}
       />
-    </div>
+    </Card>
   );
 };
 
-export default GroupMembersManager;
+export default MemberChitsManager;

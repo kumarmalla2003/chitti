@@ -11,20 +11,14 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
-import StatusBadge from "../components/ui/StatusBadge";
+import MemberChitsManager from "../components/sections/MemberChitsManager";
 import Message from "../components/ui/Message";
 import StepperButtons from "../components/ui/StepperButtons";
 import {
   getMemberById,
   createMember,
-  patchMember, // Using patch instead of update
+  patchMember,
 } from "../services/membersService";
-import { getAllChitGroups } from "../services/chitsService";
-import {
-  getUnassignedMonths,
-  createAssignment,
-  getAssignmentsForMember,
-} from "../services/assignmentsService";
 import { RupeeIcon } from "../components/ui/Icons";
 import {
   FiLoader,
@@ -32,14 +26,13 @@ import {
   FiBox,
   FiArrowLeft,
   FiPlus,
-  FiCalendar,
-  FiUsers,
-  FiChevronUp,
   FiEdit,
 } from "react-icons/fi";
 
 // --- Helper Components (Extracted) ---
-const DetailsSection = ({ mode, formData, onFormChange }) => (
+const DetailsSection = (
+  { mode, formData, onFormChange, onEnterKeyOnLastInput, isPostCreation } // Added onEnterKeyOnLastInput
+) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <FiUser /> Member Details
@@ -49,157 +42,9 @@ const DetailsSection = ({ mode, formData, onFormChange }) => (
       mode={mode}
       formData={formData}
       onFormChange={onFormChange}
+      onEnterKeyOnLastInput={onEnterKeyOnLastInput}
+      isPostCreation={isPostCreation} // <-- PASS PROP
     />
-  </Card>
-);
-
-const ChitsSection = ({
-  mode,
-  assignments,
-  showAssignForm,
-  setShowAssignForm,
-  handleAssignmentSubmit,
-  error,
-  setError,
-  selectedGroupId,
-  setSelectedGroupId,
-  groups,
-  selectedMonth,
-  setSelectedMonth,
-  availableMonths,
-  assignmentLoading,
-  formatDate,
-  createdMemberId,
-}) => (
-  <Card className="flex-1 flex flex-col">
-    <div className="relative flex justify-center items-center mb-2">
-      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-        <FiBox /> Chits
-      </h2>
-      {(mode === "edit" || (mode === "create" && createdMemberId)) && (
-        <div className="absolute right-0">
-          <Button
-            variant="secondary"
-            onClick={() => setShowAssignForm((p) => !p)}
-          >
-            {showAssignForm ? <FiChevronUp /> : <FiPlus />}
-          </Button>
-        </div>
-      )}
-    </div>
-    <hr className="border-border mb-4" />
-    <div className="flex-grow">
-      {mode !== "create" && assignments.length > 0 && (
-        <div className="space-y-3 mb-6">
-          {assignments.map((a) => (
-            <div
-              key={a.id}
-              className="p-3 bg-background-primary rounded-md border border-border flex justify-between items-center"
-            >
-              <div>
-                <p className="font-bold text-text-primary">
-                  {a.chit_group.name}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {formatDate(a.chit_month)}
-                </p>
-              </div>
-              <StatusBadge status={a.chit_group.status} />
-            </div>
-          ))}
-        </div>
-      )}
-      {mode !== "create" && assignments.length === 0 && !showAssignForm && (
-        <p className="text-center text-text-secondary py-4">
-          This member has no active assignments.
-        </p>
-      )}
-      {showAssignForm && (
-        <form onSubmit={handleAssignmentSubmit} className="space-y-6">
-          {error && error.context === "assignment" && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error.message}
-            </Message>
-          )}
-          <div>
-            <label
-              htmlFor="chit_group"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Active Chit Group
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiUsers className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <select
-                id="chit_group"
-                value={selectedGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
-              >
-                <option value="">Select an active group...</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} - (₹{group.chit_value.toLocaleString("en-IN")})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="chit_month"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Chit Month
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiCalendar className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <select
-                id="chit_month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent appearance-none"
-                disabled={!selectedGroupId || availableMonths.length === 0}
-              >
-                <option value="">
-                  {selectedGroupId
-                    ? availableMonths.length > 0
-                      ? "Select an available month..."
-                      : "No available months"
-                    : "Select a group first"}
-                </option>
-                {availableMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {formatDate(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <Button
-            type="submit"
-            className="w-full"
-            variant="success"
-            disabled={assignmentLoading}
-          >
-            {assignmentLoading ? (
-              <FiLoader className="animate-spin mx-auto" />
-            ) : (
-              <>
-                <FiPlus className="inline mr-2" />
-                Assign Member
-              </>
-            )}
-          </Button>
-        </form>
-      )}
-    </div>
   </Card>
 );
 
@@ -215,28 +60,43 @@ const PaymentsSection = () => (
   </Card>
 );
 
-const DesktopActionButton = ({ mode, loading }) => {
+// --- MODIFIED DesktopActionButton ---
+const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "view") return null;
+
+  let buttonText, Icon, buttonVariant;
+
+  if (mode === "create") {
+    if (isPostCreation) {
+      buttonText = "Update Member";
+      Icon = FiEdit;
+      buttonVariant = "warning";
+    } else {
+      buttonText = "Create Member";
+      Icon = FiPlus;
+      buttonVariant = "success";
+    }
+  } else {
+    buttonText = "Update Member";
+    Icon = FiEdit;
+    buttonVariant = "warning";
+  }
+
   return (
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
         type="submit"
         form="member-details-form-desktop"
-        variant={mode === "create" ? "success" : "warning"}
+        variant={buttonVariant}
         disabled={loading}
         className="w-full md:w-auto"
       >
         {loading ? (
           <FiLoader className="animate-spin mx-auto" />
-        ) : mode === "create" ? (
-          <>
-            <FiPlus className="inline-block mr-2" />
-            Create Member
-          </>
         ) : (
           <>
-            <FiEdit className="inline-block mr-2" />
-            Update Member
+            <Icon className="inline-block mr-2" />
+            {buttonText}
           </>
         )}
       </Button>
@@ -266,7 +126,7 @@ const TabButton = React.forwardRef(
   }
 );
 
-// --- Extracted MobileContent Component ---
+// --- MODIFIED MobileContent Component ---
 const MobileContent = ({
   TABS,
   activeTab,
@@ -275,25 +135,13 @@ const MobileContent = ({
   createdMemberId,
   formData,
   onFormChange,
-  assignments,
-  showAssignForm,
-  setShowAssignForm,
-  handleAssignmentSubmit,
-  error,
-  setError,
-  selectedGroupId,
-  setSelectedGroupId,
-  groups,
-  selectedMonth,
-  setSelectedMonth,
-  availableMonths,
-  assignmentLoading,
-  formatDate,
   activeTabIndex,
   isDetailsFormValid,
   detailsLoading,
   handleNext,
   handleMiddle,
+  handleMobileFormSubmit, // New prop
+  isPostCreation, // New prop
 }) => {
   const tabRefs = useRef({});
 
@@ -338,45 +186,68 @@ const MobileContent = ({
           disabled={mode === "create" && !createdMemberId}
         />
       </div>
+
       {activeTab === "details" && (
-        <DetailsSection
-          mode={mode}
-          formData={formData}
-          onFormChange={onFormChange}
-        />
+        <form onSubmit={handleMobileFormSubmit}>
+          <DetailsSection
+            mode={mode}
+            formData={formData}
+            onFormChange={onFormChange}
+            onEnterKeyOnLastInput={handleNext} // Pass stepper's next
+            isPostCreation={isPostCreation} // <-- ADD THIS LINE
+          />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+              loading={detailsLoading} // Only details loading controls stepper
+              mode={mode}
+              isPostCreation={isPostCreation} // Pass prop
+            />
+          )}
+        </form>
       )}
+
       {activeTab === "chits" && (
-        <ChitsSection
-          mode={mode}
-          assignments={assignments}
-          showAssignForm={showAssignForm}
-          setShowAssignForm={setShowAssignForm}
-          handleAssignmentSubmit={handleAssignmentSubmit}
-          error={error}
-          setError={setError}
-          selectedGroupId={selectedGroupId}
-          setSelectedGroupId={setSelectedGroupId}
-          groups={groups}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-          availableMonths={availableMonths}
-          assignmentLoading={assignmentLoading}
-          formatDate={formatDate}
-          createdMemberId={createdMemberId}
-        />
+        <>
+          <MemberChitsManager mode={mode} memberId={createdMemberId} />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={false} // Chits step doesn't disable 'next'
+              loading={detailsLoading}
+              mode={mode}
+              isPostCreation={isPostCreation} // Pass prop
+            />
+          )}
+        </>
       )}
-      {activeTab === "payments" && <PaymentsSection />}
-      {mode !== "view" && (
-        <StepperButtons
-          currentStep={activeTabIndex}
-          totalSteps={TABS.length}
-          onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-          onNext={handleNext}
-          onMiddle={handleMiddle}
-          isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-          loading={detailsLoading || assignmentLoading}
-          mode={mode}
-        />
+
+      {activeTab === "payments" && (
+        <>
+          <PaymentsSection />
+          {mode !== "view" && (
+            <StepperButtons
+              currentStep={activeTabIndex}
+              totalSteps={TABS.length}
+              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+              onNext={handleNext}
+              onMiddle={handleMiddle}
+              isNextDisabled={false} // Payments step doesn't disable 'next'
+              loading={detailsLoading}
+              mode={mode}
+              isPostCreation={isPostCreation} // Pass prop
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -395,19 +266,14 @@ const MemberDetailPage = () => {
   const [activeTab, setActiveTab] = useState("details");
   const [formData, setFormData] = useState({ full_name: "", phone_number: "" });
   const [originalData, setOriginalData] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState("");
-  const [availableMonths, setAvailableMonths] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [showAssignForm, setShowAssignForm] = useState(false);
+
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [createdMemberId, setCreatedMemberId] = useState(null);
-  // Auto-scroll to top when messages change
+  const [createdMemberName, setCreatedMemberName] = useState(null);
+
   useScrollToTop(success || error);
 
   const TABS = ["details", "chits", "payments"];
@@ -420,92 +286,52 @@ const MemberDetailPage = () => {
     [formData]
   );
 
-  const fetchMemberAndAssignments = async () => {
-    if (!id) return;
-    setPageLoading(true);
-    try {
-      const [memberData, assignmentsData] = await Promise.all([
-        getMemberById(id, token),
-        getAssignmentsForMember(id, token),
-      ]);
-      const fetchedData = {
-        full_name: memberData.full_name,
-        phone_number: memberData.phone_number,
-      };
-      setFormData(fetchedData);
-      setOriginalData(fetchedData);
-      setAssignments(assignmentsData);
-    } catch (err) {
-      setError({ message: err.message, context: "page" });
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
   useEffect(() => {
     const path = location.pathname;
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
+
+    const fetchMember = async () => {
+      setPageLoading(true);
+      try {
+        const memberData = await getMemberById(id, token);
+        const fetchedData = {
+          full_name: memberData.full_name,
+          phone_number: memberData.phone_number,
+        };
+        setFormData(fetchedData);
+        setOriginalData(fetchedData);
+      } catch (err) {
+        setError({ message: err.message, context: "page" });
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
     if (isCreate) {
       setMode("create");
       setPageLoading(false);
     } else if (isEdit) {
       setMode("edit");
-      fetchMemberAndAssignments();
+      fetchMember();
     } else {
       setMode("view");
-      fetchMemberAndAssignments();
+      fetchMember();
     }
   }, [id, location.pathname, token]);
 
-  // Handle success message from navigation state
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
-      // Clear the state to prevent showing message on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
   useEffect(() => {
-    const fetchGroups = async () => {
-      if (token) {
-        try {
-          const data = await getAllChitGroups(token);
-          const activeGroups = data.groups.filter((g) => g.status === "Active");
-          setGroups(activeGroups);
-        } catch (err) {
-          console.error("Failed to load chit groups:", err);
-        }
-      }
-    };
-    if (mode === "create" || mode === "edit") {
-      fetchGroups();
-    }
-  }, [token, mode]);
-
-  useEffect(() => {
-    if (!selectedGroupId) {
-      setAvailableMonths([]);
-      setSelectedMonth("");
-      return;
-    }
-    const fetchMonths = async () => {
-      try {
-        const data = await getUnassignedMonths(selectedGroupId, token);
-        setAvailableMonths(data.available_months);
-      } catch (err) {
-        setError({ context: "assignment", message: err.message });
-      }
-    };
-    fetchMonths();
-  }, [selectedGroupId, token]);
-
-  useEffect(() => {
     if (success) {
       const timer = setTimeout(() => {
         setSuccess(null);
-      }, 3000); // Hide after 3 seconds
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [success]);
@@ -531,34 +357,58 @@ const MemberDetailPage = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Determine which action to take based on current step
+    if (activeTab !== "details") {
+      return;
+    }
+
     if (activeTabIndex === TABS.length - 1) {
-      // Last step: Finish/Update action
       handleFinalAction();
     } else if (mode === "create" && activeTabIndex === 0) {
-      // First step in create mode: Save & Next
       await handleDetailsSubmit();
     } else {
-      // All other cases: Just navigate to next tab
-      if (activeTabIndex < TABS.length - 1) {
+      if (mode === "edit" && activeTabIndex === 0) {
+        await handleDetailsSubmit();
+      } else if (activeTabIndex < TABS.length - 1) {
         setActiveTab(TABS[activeTabIndex + 1]);
       }
     }
   };
 
   const handleDetailsSubmit = async (e) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setError(null);
     setSuccess(null);
     setDetailsLoading(true);
     try {
-      if (mode === "create") {
+      if (mode === "create" && !createdMemberId) {
         const newMember = await createMember(formData, token);
-        setSuccess("Member details saved. You can now assign them to a chit.");
         setCreatedMemberId(newMember.id);
+        setCreatedMemberName(newMember.full_name);
+        setOriginalData(formData);
         setActiveTab("chits");
-      } else {
-        // 'edit' mode
+        setSuccess("Member details saved. You can now assign them to a chit.");
+      } else if (mode === "create" && createdMemberId) {
+        const changes = {};
+        for (const key in formData) {
+          if (formData[key] !== originalData[key]) {
+            changes[key] = formData[key];
+          }
+        }
+        if (Object.keys(changes).length > 0) {
+          const updatedMember = await patchMember(
+            createdMemberId,
+            changes,
+            token
+          );
+          setCreatedMemberName(updatedMember.full_name);
+          setOriginalData(formData);
+          setSuccess("Member details updated.");
+        }
+        setActiveTab("chits");
+      } else if (mode === "edit") {
         const changes = {};
         for (const key in formData) {
           if (formData[key] !== originalData[key]) {
@@ -567,13 +417,12 @@ const MemberDetailPage = () => {
         }
         if (Object.keys(changes).length > 0) {
           await patchMember(id, changes, token);
+          setOriginalData(formData);
+          setSuccess("Member details updated.");
         }
-        // Navigate with success message
-        navigate(`/members/view/${id}`, {
-          state: {
-            success: `Member "${formData.full_name}" has been updated successfully!`,
-          },
-        });
+        if (activeTabIndex < TABS.length - 1) {
+          setActiveTab(TABS[activeTabIndex + 1]);
+        }
       }
     } catch (err) {
       setError({ context: "details", message: err.message });
@@ -582,108 +431,79 @@ const MemberDetailPage = () => {
     }
   };
 
-  const handleAssignmentSubmit = async (e) => {
-    e.preventDefault();
-    const memberIdToAssign = mode === "create" ? createdMemberId : parseInt(id);
-    if (!selectedGroupId || !selectedMonth) {
-      setError({
-        context: "assignment",
-        message: "Please select both a group and a month.",
-      });
-      return;
-    }
-    setError(null);
-    setSuccess(null);
-    setAssignmentLoading(true);
-    try {
-      await createAssignment(
-        {
-          member_id: memberIdToAssign,
-          chit_group_id: parseInt(selectedGroupId),
-          chit_month: selectedMonth,
-        },
-        token
-      );
-      setSuccess("Member successfully assigned to new chit group.");
-      setSelectedGroupId("");
-      setSelectedMonth("");
-      setShowAssignForm(false);
-      const assignmentsData = await getAssignmentsForMember(
-        memberIdToAssign,
-        token
-      );
-      setAssignments(assignmentsData);
-    } catch (err) {
-      setError({ context: "assignment", message: err.message });
-    } finally {
-      setAssignmentLoading(false);
-    }
-  };
-
   const getTitle = () => {
-    if (mode === "create") return "Create New Member";
-    if (mode === "edit") return formData.full_name || "Edit Member";
-    return formData.full_name || "Member Details";
+    if (mode === "create") {
+      return createdMemberName || "Create New Member";
+    }
+    return (
+      formData.full_name || (mode === "edit" ? "Edit Member" : "Member Details")
+    );
   };
 
-  const formatDate = (
-    dateString,
-    options = { year: "numeric", month: "long" }
-  ) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", options);
+  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
+  const handleBackNavigation = () => {
+    if (activeTabIndex > 0) {
+      // If on "Chits" (1) or "Payments" (2), go back one tab
+      setActiveTab(TABS[activeTabIndex - 1]);
+    } else {
+      // If on "Details" (0), go back to the main members list
+      navigate("/members");
+    }
   };
 
   const handleSkip = () => {
-    // Navigates to the next tab without saving anything (used by the middle 'Skip' button)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
   };
 
   const handleNext = () => {
-    // This is for the right-side button ('Save & Next', 'Next')
-
-    // 1. First step in CREATE mode: Must submit details
-    if (mode === "create" && activeTabIndex === 0) {
-      handleDetailsSubmit(); // Submits form, saves member, sets createdMemberId, and navigates to 'chits' tab
+    if (activeTabIndex === 0) {
+      handleDetailsSubmit();
       return;
     }
-
-    // 2. All other cases ('Next' button)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
   };
 
   const handleMiddle = () => {
-    // This is for the middle button ('Skip' or 'Update'/'Finish')
     if (activeTabIndex === TABS.length - 1) {
-      // Final step: Update/Finish button should trigger final submission/navigation
       handleFinalAction();
     } else {
-      // All other steps: Skip button should just navigate to the next tab
       handleSkip();
     }
   };
 
   const handleFinalAction = () => {
-    // This is the logic that executes when the final button (Update/Finish) is pressed.
-    if (mode === "edit") {
-      handleDetailsSubmit(); // Patches the member and navigates away.
-      return;
+    const memberIdToView = mode === "create" ? createdMemberId : id;
+    const memberName =
+      mode === "create" ? createdMemberName : formData.full_name;
+
+    const successMessage =
+      mode === "create"
+        ? `Member "${memberName}" has been created successfully!`
+        : `Member "${memberName}" has been updated successfully!`;
+
+    if (mode === "edit" && originalData) {
+      const changes = {};
+      for (const key in formData) {
+        if (formData[key] !== originalData[key]) {
+          changes[key] = formData[key];
+        }
+      }
+      if (Object.keys(changes).length > 0) {
+        handleDetailsSubmit();
+        navigate(`/members/view/${memberIdToView}`, {
+          state: { success: successMessage },
+        });
+        return;
+      }
     }
-    // In create mode, navigate with success message
-    if (createdMemberId) {
-      navigate(`/members/view/${createdMemberId}`, {
-        state: {
-          success: `Member "${formData.full_name}" has been created successfully!`,
-        },
-      });
-    } else {
-      // Fallback.
-      navigate("/members");
-    }
+
+    navigate(`/members/view/${memberIdToView}`, {
+      state: { success: successMessage },
+    });
   };
 
   if (pageLoading) {
@@ -693,6 +513,8 @@ const MemberDetailPage = () => {
       </div>
     );
   }
+
+  const isPostCreation = !!(mode === "create" && createdMemberId);
 
   return (
     <>
@@ -707,12 +529,13 @@ const MemberDetailPage = () => {
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="relative flex justify-center items-center mb-4">
-                <Link
-                  to="/members"
+                {/* --- THIS BUTTON IS NOW "SMART" --- */}
+                <button
+                  onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
                 >
                   <FiArrowLeft className="w-6 h-6" />
-                </Link>
+                </button>
                 <h1
                   ref={titleRef}
                   tabIndex="-1"
@@ -739,84 +562,109 @@ const MemberDetailPage = () => {
                 )}
               </div>
 
-              {/* Mobile View */}
+              {/* --- Mobile View --- */}
               <div className="md:hidden">
-                <form
-                  id="member-details-form-mobile"
-                  onSubmit={handleMobileFormSubmit}
-                >
-                  <MobileContent
-                    TABS={TABS}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    mode={mode}
-                    createdMemberId={createdMemberId}
-                    formData={formData}
-                    onFormChange={handleFormChange}
-                    assignments={assignments}
-                    showAssignForm={showAssignForm}
-                    setShowAssignForm={setShowAssignForm}
-                    handleAssignmentSubmit={handleAssignmentSubmit}
-                    error={error}
-                    setError={setError}
-                    selectedGroupId={selectedGroupId}
-                    setSelectedGroupId={setSelectedGroupId}
-                    groups={groups}
-                    selectedMonth={selectedMonth}
-                    setSelectedMonth={setSelectedMonth}
-                    availableMonths={availableMonths}
-                    assignmentLoading={assignmentLoading}
-                    formatDate={formatDate}
-                    activeTabIndex={activeTabIndex}
-                    isDetailsFormValid={isDetailsFormValid}
-                    detailsLoading={detailsLoading}
-                    handleNext={handleNext}
-                    handleMiddle={handleMiddle}
-                  />
-                </form>
+                <MobileContent
+                  TABS={TABS}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  mode={mode}
+                  createdMemberId={createdMemberId || id}
+                  formData={formData}
+                  onFormChange={handleFormChange}
+                  activeTabIndex={activeTabIndex}
+                  isDetailsFormValid={isDetailsFormValid}
+                  detailsLoading={detailsLoading}
+                  handleNext={handleNext}
+                  handleMiddle={handleMiddle}
+                  handleMobileFormSubmit={handleMobileFormSubmit}
+                  isPostCreation={isPostCreation}
+                />
               </div>
 
-              {/* Desktop View */}
+              {/* --- MODIFIED DESKTOP VIEW --- */}
               <div className="hidden md:block">
                 <form
                   id="member-details-form-desktop"
                   onSubmit={handleDetailsSubmit}
                 >
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-                    <div className="md:col-span-1">
-                      <DetailsSection
-                        mode={mode}
-                        formData={formData}
-                        onFormChange={handleFormChange}
+                    {/* --- We now conditionally render sections based on activeTab --- */}
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1">
+                        <DetailsSection
+                          mode={mode}
+                          formData={formData}
+                          onFormChange={handleFormChange}
+                          onEnterKeyOnLastInput={handleDetailsSubmit}
+                          isPostCreation={isPostCreation}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "chits" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <MemberChitsManager
+                          mode={mode}
+                          memberId={createdMemberId || id}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "payments" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <PaymentsSection />
+                      </div>
+                    )}
+
+                    {/* --- Render the other column ONLY if details is active --- */}
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <MemberChitsManager
+                          mode={mode}
+                          memberId={createdMemberId || id}
+                        />
+                        <PaymentsSection />
+                      </div>
+                    )}
+
+                    {/* --- Desktop Tab Buttons --- */}
+                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                      <TabButton
+                        name="details"
+                        icon={<FiUser />}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                      />
+                      <TabButton
+                        name="chits"
+                        icon={<FiBox />}
+                        label="Chits"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdMemberId}
+                      />
+                      <TabButton
+                        name="payments"
+                        icon={<RupeeIcon className="w-4 h-4" />}
+                        label="Payments"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdMemberId}
                       />
                     </div>
-                    <div className="flex flex-col gap-8">
-                      <ChitsSection
-                        mode={mode}
-                        assignments={assignments}
-                        showAssignForm={showAssignForm}
-                        setShowAssignForm={setShowAssignForm}
-                        handleAssignmentSubmit={handleAssignmentSubmit}
-                        error={error}
-                        setError={setError}
-                        selectedGroupId={selectedGroupId}
-                        setSelectedGroupId={setSelectedGroupId}
-                        groups={groups}
-                        selectedMonth={selectedMonth}
-                        setSelectedMonth={setSelectedMonth}
-                        availableMonths={availableMonths}
-                        assignmentLoading={assignmentLoading}
-                        formatDate={formatDate}
-                        createdMemberId={createdMemberId}
-                      />
-                      <PaymentsSection />
-                    </div>
-                    <div className="md:col-span-2">
-                      <DesktopActionButton
-                        mode={mode}
-                        loading={detailsLoading}
-                      />
-                    </div>
+
+                    {/* --- Action button only shows on "Details" tab --- */}
+                    {mode !== "view" && activeTab === "details" && (
+                      <div className="md:col-span-2">
+                        <DesktopActionButton
+                          mode={mode}
+                          loading={detailsLoading}
+                          isPostCreation={isPostCreation}
+                        />
+                      </div>
+                    )}
                   </div>
                 </form>
               </div>

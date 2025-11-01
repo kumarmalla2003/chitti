@@ -11,15 +11,17 @@ const MemberDetailsForm = ({
   onFormSubmit,
   error,
   success,
+  isPostCreation = false, // <-- ADD THIS
 }) => {
   const nameInputRef = useRef(null);
 
   useEffect(() => {
-    // Only auto-focus on the 'create' screen
-    if (mode === "create") {
+    // Only auto-focus on the 'create' screen, AND not in post-creation
+    if (mode === "create" && !isPostCreation) {
+      // <-- UPDATE THIS CONDITION
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
-  }, [mode]);
+  }, [mode, isPostCreation]); // <-- ADD DEPENDENCY
 
   const isFormDisabled = mode === "view";
 

@@ -153,7 +153,8 @@ async def get_member_assignments(
             id=group.id, name=group.name, chit_value=group.chit_value,
             group_size=group.group_size, monthly_installment=group.monthly_installment,
             duration_months=group.duration_months, start_date=group.start_date,
-            end_date=group.end_date, status=status_str, chit_cycle=chit_cycle_str
+            end_date=group.end_date, status=status_str, chit_cycle=chit_cycle_str,
+            collection_day=group.collection_day, payout_day=group.payout_day
         )
         
         # Construct the final ChitAssignmentPublic response
