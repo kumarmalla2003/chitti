@@ -2,6 +2,16 @@
 
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+from app.schemas.chits import ChitGroupNested # <-- This import is correct
+
+# --- DEFINE NESTED ASSIGNMENT SCHEMA HERE ---
+class AssignmentNestedInMember(BaseModel):
+    """Minimal assignment info for nesting inside MemberPublic."""
+    chit_group: ChitGroupNested
+
+    model_config = ConfigDict(from_attributes=True)
+# --- END OF DEFINITION ---
+
 
 # Basic Member Information
 class MemberBase(BaseModel):
@@ -14,20 +24,27 @@ class MemberCreate(MemberBase):
 class MemberUpdate(MemberBase):
     pass
 
-# --- ADD THIS NEW SCHEMA ---
 class MemberPatch(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
 
 
-# To display Member info without sensitive data
+# --- MODIFICATION: This is the simple schema for nesting ---
 class MemberPublic(MemberBase):
     id: int
-
+    # The 'assignments' field is REMOVED from here to prevent MissingGreenlet errors
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- NEW: This is the complex schema for the main members list page ---
+class MemberPublicWithAssignments(MemberPublic):
+    assignments: List[AssignmentNestedInMember] = []
+
+
+# --- MODIFICATION: This response now uses the complex schema ---
 class MemberListResponse(BaseModel):
-    members: List[MemberPublic]
+    members: List[MemberPublicWithAssignments]
+
 
 # Schema for searching members
 class MemberSearchResponse(BaseModel):

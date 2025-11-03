@@ -1,15 +1,26 @@
 // frontend/src/components/ui/MemberCard.jsx
 
-import { FiEye, FiEdit, FiTrash2, FiPhone, FiBox } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiPhone, FiBox } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 
 const MemberCard = ({ member, onView, onEdit, onDelete }) => {
   const navigate = useNavigate();
 
-  // Calculate number of active assignments
-  const activeChitsCount = member.assignments
-    ? member.assignments.filter((a) => a.chit_group?.status === "Active").length
-    : 0;
+  // This logic is correct and calculates the active count
+  const activeChitsCount = useMemo(() => {
+    if (!member.assignments || member.assignments.length === 0) {
+      return 0;
+    }
+    const today = new Date().toISOString().split("T")[0];
+    return member.assignments.filter((a) => {
+      if (!a.chit_group || !a.chit_group.start_date || !a.chit_group.end_date) {
+        return false;
+      }
+      const { start_date, end_date } = a.chit_group;
+      return today >= start_date && today <= end_date;
+    }).length;
+  }, [member.assignments]);
 
   return (
     <div
@@ -24,16 +35,7 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(member);
-            }}
-            className="p-2 rounded-full text-info-accent hover:bg-info-bg transition-colors duration-200"
-            title="View Details"
-          >
-            <FiEye className="w-5 h-5" />
-          </button>
+          {/* --- "VIEW" BUTTON REMOVED --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -57,26 +59,21 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Middle Row: Phone Number */}
-      <div className="flex items-center gap-2 text-text-primary mb-3 text-base">
-        <FiPhone className="w-5 h-5" />
-        <span className="font-semibold">{member.phone_number}</span>
-      </div>
-
-      {/* Bottom Separator */}
+      {/* --- <hr> ADDED FOR CONSISTENCY --- */}
       <hr className="border-border mb-3" />
 
-      {/* Bottom Row: Active Chits Count */}
-      <div className="flex items-center gap-2 text-text-secondary text-sm">
-        <FiBox className="w-4 h-4" />
-        <span>
-          {activeChitsCount === 0
-            ? "No active chits assigned"
-            : `${activeChitsCount} active ${
-                activeChitsCount === 1 ? "chit" : "chits"
-              } assigned`}
-        </span>
+      {/* --- MODIFIED: Bottom Row (Combined, styled as bottom row) --- */}
+      <div className="flex justify-between items-center text-text-secondary text-sm">
+        <div className="flex items-center gap-2">
+          <FiPhone className="w-4 h-4" />
+          <span>{member.phone_number}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <FiBox className="w-4 h-4" />
+          <span>Active: {activeChitsCount}</span>
+        </div>
       </div>
+      {/* --- END MODIFICATION --- */}
     </div>
   );
 };

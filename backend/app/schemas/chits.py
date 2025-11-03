@@ -25,6 +25,17 @@ class PayoutListResponse(BaseModel):
     payouts: List[PayoutResponse]
 
 # --- ChitGroup Schemas ---
+
+# --- ADD THIS NEW SCHEMA ---
+class ChitGroupNested(BaseModel):
+    """Minimal chit group info needed for nested responses."""
+    start_date: date
+    end_date: date
+
+    model_config = ConfigDict(from_attributes=True)
+# --- END OF NEW SCHEMA ---
+
+
 class ChitGroupBase(BaseModel):
     name: str
     chit_value: int

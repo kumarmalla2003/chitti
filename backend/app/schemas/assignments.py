@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List
 from app.schemas.members import MemberPublic
-from app.schemas.chits import ChitGroupResponse
+from app.schemas.chits import ChitGroupResponse # <-- ChitGroupNested is no longer needed here
 
 class ChitAssignmentBase(BaseModel):
     member_id: int
@@ -13,6 +13,8 @@ class ChitAssignmentBase(BaseModel):
 
 class ChitAssignmentCreate(ChitAssignmentBase):
     pass
+
+# --- AssignmentNestedInMember schema has been REMOVED from this file ---
 
 class ChitAssignmentPublic(BaseModel):
     id: int

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom"; // <-- IMPORT
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Table from "../ui/Table";
@@ -11,6 +11,7 @@ import Message from "../ui/Message";
 import AssignNewGroupForm from "../forms/AssignNewGroupForm";
 import AssignExistingGroupForm from "../forms/AssignExistingGroupForm";
 import StatusBadge from "../ui/StatusBadge";
+import AssignedGroupCard from "../ui/AssignedGroupCard"; // <-- IMPORT NEW CARD
 import {
   FiSearch,
   FiBox,
@@ -19,7 +20,7 @@ import {
   FiArrowLeft,
   FiPlus,
 } from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
+import { RupeeIcon } from "../ui/Icons";
 import {
   getAssignmentsForMember,
   createAssignment,
@@ -28,7 +29,7 @@ import {
 
 const MemberChitsManager = ({ mode, memberId }) => {
   const { token } = useSelector((state) => state.auth);
-  const navigate = useNavigate(); // <-- ADD HOOK
+  const navigate = useNavigate();
 
   const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
@@ -137,6 +138,7 @@ const MemberChitsManager = ({ mode, memberId }) => {
     setActiveGroupName(name);
   };
 
+  // --- MOVED formatDate to be used by modal ---
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
@@ -151,6 +153,7 @@ const MemberChitsManager = ({ mode, memberId }) => {
     );
   }, [assignments, searchQuery]);
 
+  // --- Table columns remain unchanged ---
   const columns = [
     {
       header: "S.No",
@@ -200,7 +203,6 @@ const MemberChitsManager = ({ mode, memberId }) => {
             className: "text-center",
             cell: (row) => (
               <div className="flex items-center justify-center space-x-2">
-                {/* --- ADD THIS BUTTON --- */}
                 <button
                   type="button"
                   onClick={() =>
@@ -211,7 +213,6 @@ const MemberChitsManager = ({ mode, memberId }) => {
                 >
                   <RupeeIcon className="w-5 h-5" />
                 </button>
-                {/* --- END OF ADD --- */}
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(row)}
@@ -308,11 +309,24 @@ const MemberChitsManager = ({ mode, memberId }) => {
                 />
               </div>
             )}
-            <Table
-              columns={columns}
-              data={filteredAssignments}
-              variant="secondary"
-            />
+            {/* --- MODIFICATION: Added mobile/desktop views --- */}
+            <div className="hidden md:block">
+              <Table
+                columns={columns}
+                data={filteredAssignments}
+                variant="secondary"
+              />
+            </div>
+            <div className="block md:hidden space-y-4">
+              {filteredAssignments.map((assignment) => (
+                <AssignedGroupCard
+                  key={assignment.id}
+                  assignment={assignment}
+                  onDelete={() => handleDeleteClick(assignment)}
+                />
+              ))}
+            </div>
+            {/* --- END MODIFICATION --- */}
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">

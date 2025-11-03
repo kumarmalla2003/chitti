@@ -1,7 +1,6 @@
 // frontend/src/components/ui/GroupCard.jsx
 
 import {
-  FiEye,
   FiEdit,
   FiTrash2,
   FiCalendar,
@@ -45,16 +44,7 @@ const GroupCard = ({ group, onView, onEdit, onDelete }) => {
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(group);
-            }}
-            className="p-2 rounded-full text-info-accent hover:bg-info-bg transition-colors duration-200"
-            title="View Details"
-          >
-            <FiEye className="w-5 h-5" />
-          </button>
+          {/* --- "VIEW" BUTTON REMOVED --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -80,18 +70,20 @@ const GroupCard = ({ group, onView, onEdit, onDelete }) => {
 
       {/* Middle Row: Values */}
       <div className="flex justify-between items-center text-text-primary mb-3 text-base">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title="Total Chit Value">
           <RupeeIcon className="w-5 h-5" />
           <span className="font-semibold">
             {group.chit_value.toLocaleString("en-IN")}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        {/* --- MODIFICATION: Removed all extra text --- */}
+        <div className="flex items-center gap-2" title="Monthly Installment">
           <FiRepeat className="w-5 h-5" />
           <span className="font-semibold">
-            ₹{group.monthly_installment.toLocaleString("en-IN")} / month
+            ₹{group.monthly_installment.toLocaleString("en-IN")}
           </span>
         </div>
+        {/* --- END MODIFICATION --- */}
       </div>
 
       {/* Bottom Separator */}

@@ -1,6 +1,12 @@
 // frontend/src/components/ui/PaymentCard.jsx
 
-import { FiEye, FiEdit, FiTrash2, FiBox, FiCalendar } from "react-icons/fi";
+import {
+  FiEdit,
+  FiTrash2,
+  FiBox,
+  FiCalendar,
+  FiCreditCard,
+} from "react-icons/fi";
 import { RupeeIcon } from "./Icons";
 import { useNavigate } from "react-router-dom";
 
@@ -27,16 +33,7 @@ const PaymentCard = ({ payment, onView, onEdit, onDelete }) => {
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(payment);
-            }}
-            className="p-2 rounded-full text-info-accent hover:bg-info-bg transition-colors duration-200"
-            title="View Details"
-          >
-            <FiEye className="w-5 h-5" />
-          </button>
+          {/* --- "VIEW" BUTTON REMOVED --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -60,35 +57,38 @@ const PaymentCard = ({ payment, onView, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Middle Row: Amount */}
-      <div className="flex items-center gap-2 text-text-primary mb-3 text-2xl">
-        <RupeeIcon className="w-6 h-6" />
-        <span className="font-semibold">
-          {payment.amount_paid.toLocaleString("en-IN")}
-        </span>
+      {/* --- MODIFIED: Middle Row (Combined & Resized) --- */}
+      <div className="flex justify-between items-center text-text-primary mb-3 text-base">
+        <div className="flex items-center gap-2">
+          <RupeeIcon className="w-5 h-5" />
+          {/* --- MODIFICATION: Added /- --- */}
+          <span className="font-semibold">
+            {payment.amount_paid.toLocaleString("en-IN")}/-
+          </span>
+          {/* --- END MODIFICATION --- */}
+        </div>
+        <div className="flex items-center gap-2">
+          <FiBox className="w-5 h-5" />
+          <span className="font-semibold">{payment.chit_group.name}</span>
+        </div>
       </div>
-
-      {/* Middle Row: Group */}
-      <div className="flex items-center gap-2 text-text-secondary mb-3 text-base">
-        <FiBox className="w-5 h-5" />
-        <span className="font-medium">{payment.chit_group.name}</span>
-      </div>
+      {/* --- END MODIFICATION --- */}
 
       {/* Bottom Separator */}
       <hr className="border-border mb-3" />
 
-      {/* Bottom Row: Date and Method */}
+      {/* --- MODIFIED: Bottom Row (Icon & Style) --- */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
           <FiCalendar className="w-4 h-4" />
           <span>{formatDate(payment.payment_date)}</span>
         </div>
-        <div className="text-right">
-          <span className="font-semibold text-text-primary">
-            {payment.payment_method}
-          </span>
+        <div className="flex items-center gap-2">
+          <FiCreditCard className="w-4 h-4" />
+          <span>{payment.payment_method}</span>
         </div>
       </div>
+      {/* --- END MODIFICATION --- */}
     </div>
   );
 };
