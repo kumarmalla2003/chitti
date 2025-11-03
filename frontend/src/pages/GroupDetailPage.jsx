@@ -1,7 +1,7 @@
 // frontend/src/pages/GroupDetailPage.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, Link, useParams, useLocation } from "react-router-dom"; // Link is still used
+import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import useScrollToTop from "../hooks/useScrollToTop";
 import Header from "../components/layout/Header";
@@ -13,6 +13,7 @@ import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
 import GroupMembersManager from "../components/sections/GroupMembersManager";
 import PayoutsSection from "../components/sections/PayoutsSection";
+import PaymentHistoryList from "../components/sections/PaymentHistoryList"; // <-- IMPORT NEW
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -99,20 +100,10 @@ const MembersSectionComponent = ({ mode, groupId }) => (
   </Card>
 );
 
-const PaymentsSection = () => (
-  <Card className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <RupeeIcon className="w-5 h-5" /> Payments
-    </h2>
-    <hr className="border-border mb-4" />
-    <div className="flex-grow flex items-center justify-center text-center text-text-secondary py-8">
-      This feature is coming soon!
-    </div>
-  </Card>
-);
+// --- DELETE THE PaymentsSection HELPER COMPONENT ---
+// (It's gone)
 
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
-  // ... (unchanged)
   if (mode === "view") return null;
   let buttonText, Icon, buttonVariant;
 
@@ -156,7 +147,6 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
 
 const TabButton = React.forwardRef(
   ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
-    // ... (unchanged)
     const isActive = activeTab === name;
     return (
       <button
@@ -193,7 +183,6 @@ const MobileContent = ({
   handleMobileFormSubmit,
   isPostCreation,
 }) => {
-  // ... (unchanged)
   const tabRefs = useRef({});
 
   useEffect(() => {
@@ -312,7 +301,15 @@ const MobileContent = ({
 
       {activeTab === "payments" && (
         <>
-          <PaymentsSection />
+          {/* --- REPLACE PaymentsSection --- */}
+          <Card className="flex-1 flex flex-col">
+            <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+              <RupeeIcon className="w-5 h-5" /> Payments
+            </h2>
+            <hr className="border-border mb-4" />
+            <PaymentHistoryList groupId={groupId} />
+          </Card>
+          {/* --- END OF REPLACEMENT --- */}
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -366,7 +363,6 @@ const GroupDetailPage = () => {
   const activeTabIndex = TABS.indexOf(activeTab);
 
   const isDetailsFormValid = useMemo(
-    // ... (unchanged)
     () =>
       formData.name.trim() !== "" &&
       formData.chit_value.trim() !== "" &&
@@ -380,7 +376,6 @@ const GroupDetailPage = () => {
   );
 
   useEffect(() => {
-    // ... (unchanged)
     const path = location.pathname;
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
@@ -422,7 +417,6 @@ const GroupDetailPage = () => {
   }, [id, location.pathname, token]);
 
   useEffect(() => {
-    // ... (unchanged)
     if (location.state?.success) {
       setSuccess(location.state.success);
       window.history.replaceState({}, document.title);
@@ -430,7 +424,6 @@ const GroupDetailPage = () => {
   }, [location.state]);
 
   useEffect(() => {
-    // ... (unchanged)
     if (success) {
       const timer = setTimeout(() => {
         setSuccess(null);
@@ -440,14 +433,12 @@ const GroupDetailPage = () => {
   }, [success]);
 
   useEffect(() => {
-    // ... (unchanged)
     if (titleRef.current) {
       titleRef.current.focus({ preventScroll: true });
     }
   }, [activeTab]);
 
   const handleFormChange = (e) => {
-    // ... (unchanged)
     const { name, value } = e.target;
     setError(null);
     setSuccess(null);
@@ -509,7 +500,6 @@ const GroupDetailPage = () => {
   };
 
   const handleMobileFormSubmit = async (e) => {
-    // ... (unchanged)
     e.preventDefault();
     e.stopPropagation();
     if (activeTab !== "details") {
@@ -527,7 +517,6 @@ const GroupDetailPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    // ... (unchanged)
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -659,7 +648,6 @@ const GroupDetailPage = () => {
   };
 
   const getTitle = () => {
-    // ... (unchanged)
     if (mode === "create") {
       return createdGroupName || "Create New Chit Group";
     }
@@ -667,26 +655,21 @@ const GroupDetailPage = () => {
     return formData.name || "Group Details";
   };
 
-  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
   const handleBackNavigation = () => {
     if (activeTabIndex > 0) {
-      // If on "Payouts", "Members", or "Payments", go back one tab
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
-      // If on "Details", go back to the main groups list
       navigate("/groups");
     }
   };
 
   const handleSkip = () => {
-    // ... (unchanged)
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
   };
 
   const handleNext = () => {
-    // ... (unchanged)
     if (mode === "create" && activeTabIndex === 0) {
       handleSubmit();
       return;
@@ -703,7 +686,6 @@ const GroupDetailPage = () => {
   };
 
   const handleMiddle = () => {
-    // ... (unchanged)
     if (activeTabIndex === TABS.length - 1) {
       handleFinalAction();
     } else {
@@ -712,7 +694,6 @@ const GroupDetailPage = () => {
   };
 
   const handleFinalAction = () => {
-    // ... (unchanged)
     if (mode === "edit") {
       navigate("/groups", {
         state: {
@@ -733,7 +714,6 @@ const GroupDetailPage = () => {
   };
 
   if (pageLoading) {
-    // ... (unchanged)
     return (
       <div className="flex justify-center items-center h-screen">
         <FiLoader className="w-10 h-10 animate-spin text-accent" />
@@ -751,7 +731,6 @@ const GroupDetailPage = () => {
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="relative flex justify-center items-center mb-4">
-                {/* --- THIS BUTTON IS NOW "SMART" --- */}
                 <button
                   onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
@@ -806,7 +785,6 @@ const GroupDetailPage = () => {
               <div className="hidden md:block">
                 <form id="group-details-form-desktop" onSubmit={handleSubmit}>
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-                    {/* --- We now conditionally render sections based on activeTab --- */}
                     {activeTab === "details" && (
                       <div className="md:col-span-1 flex flex-col gap-8">
                         <DetailsSectionComponent
@@ -841,7 +819,29 @@ const GroupDetailPage = () => {
 
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
-                        <PaymentsSection />
+                        {/* --- REPLACE PaymentsSection --- */}
+                        <Card className="flex-1 flex flex-col">
+                          <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+                            <RupeeIcon className="w-5 h-5" /> Payments
+                          </h2>
+                          <hr className="border-border mb-4" />
+                          <PaymentHistoryList groupId={id || createdGroupId} />
+                        </Card>
+                        {/* --- END OF REPLACEMENT --- */}
+                      </div>
+                    )}
+
+                    {/* --- Right Column on Details Tab (Original) --- */}
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <PayoutsSectionComponent
+                          mode={mode}
+                          groupId={id || createdGroupId}
+                        />
+                        <MembersSectionComponent
+                          mode={mode}
+                          groupId={id || createdGroupId}
+                        />
                       </div>
                     )}
 
@@ -880,7 +880,6 @@ const GroupDetailPage = () => {
                       />
                     </div>
 
-                    {/* --- Action button only shows on "Details" tab --- */}
                     {mode !== "view" && activeTab === "details" && (
                       <div className="md:col-span-2">
                         <DesktopActionButton

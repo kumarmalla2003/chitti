@@ -2,7 +2,7 @@
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/assignments`;
 const MEMBERS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
-const CHITS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`; // <-- ADD THIS
+const CHITS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`;
 
 const getAuthHeaders = (token) => ({
   "Content-Type": "application/json",
@@ -41,12 +41,10 @@ export const getAssignmentsForMember = async (memberId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch member's assignments.");
+    throw new Error("Failed to member's assignments.");
   }
   return response.json();
 };
-
-// --- ADD THESE NEW FUNCTIONS ---
 
 export const getAssignmentsForGroup = async (groupId, token) => {
   const response = await fetch(`${CHITS_API_URL}/${groupId}/assignments`, {
@@ -60,6 +58,15 @@ export const getAssignmentsForGroup = async (groupId, token) => {
   return response.json();
 };
 
+// --- NEW FUNCTION for connected dropdowns ---
+// This simple endpoint might not exist, so we'll use a combination
+// of existing ones. If it *did* exist, it would be:
+// export const getAllAssignments = async (token) => {
+//   const response = await fetch(API_URL, { ... });
+//   return response.json();
+// }
+// For now, `PaymentDetailsForm` will fetch member/group assignments as needed.
+
 export const deleteAssignment = async (assignmentId, token) => {
   const response = await fetch(`${API_URL}/${assignmentId}`, {
     method: "DELETE",
@@ -69,6 +76,5 @@ export const deleteAssignment = async (assignmentId, token) => {
   if (!response.ok) {
     throw new Error("Failed to unassign member.");
   }
-  // A 204 No Content response is expected
   return;
 };

@@ -14,6 +14,12 @@ import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
 
+// --- IMPORTS FOR NEW PAGES (to be created in 2.3 & 2.4) ---
+// We add these now to set up the routes.
+import PaymentsPage from "./pages/PaymentsPage";
+import PaymentDetailPage from "./pages/PaymentDetailPage";
+// --- END IMPORTS ---
+
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isLoggedIn } = useSelector((state) => state.auth);
@@ -150,6 +156,57 @@ const App = () => {
                 )
               }
             />
+
+            {/* --- NEW: PAYMENTS ROUTES --- */}
+            <Route
+              path="/payments"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PaymentsPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payments/create"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PaymentDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payments/view/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PaymentDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payments/edit/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PaymentDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            {/* --- END: PAYMENTS ROUTES --- */}
           </Routes>
         </AnimatePresence>
       </div>

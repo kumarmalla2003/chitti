@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom"; // <-- IMPORT
 import Button from "../ui/Button";
 import Table from "../ui/Table";
 import ConfirmationModal from "../ui/ConfirmationModal";
@@ -9,6 +10,7 @@ import Message from "../ui/Message";
 import AssignNewMemberForm from "../forms/AssignNewMemberForm";
 import AssignExistingMemberForm from "../forms/AssignExistingMemberForm";
 import AssignedMemberCard from "../ui/AssignedMemberCard";
+import StatusBadge from "../ui/StatusBadge";
 import {
   FiSearch,
   FiUsers,
@@ -16,7 +18,8 @@ import {
   FiTrash2,
   FiArrowLeft,
   FiUserPlus,
-} from "react-icons/fi"; // <-- FiUsers and FiUserPlus are imported
+} from "react-icons/fi";
+import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
 import {
   getAssignmentsForGroup,
   getUnassignedMonths,
@@ -26,8 +29,9 @@ import {
 
 const GroupMembersManager = ({ mode, groupId }) => {
   const { token } = useSelector((state) => state.auth);
+  const navigate = useNavigate(); // <-- ADD HOOK
 
-  const [view, setView] = useState("list"); // 'list', 'new', 'existing'
+  const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const formRef = useRef(null); // <-- Add ref
+  const formRef = useRef(null);
 
   const assignedMemberIds = useMemo(
     () => assignments.map((a) => a.member.id),
@@ -48,7 +52,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
   );
 
   const fetchData = async () => {
-    // ... (unchanged)
     if (!groupId) {
       setLoading(false);
       return;
@@ -74,7 +77,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
   }, [groupId, token]);
 
   useEffect(() => {
-    // ... (unchanged)
     if (success) {
       const timer = setTimeout(() => setSuccess(null), 3000);
       return () => clearTimeout(timer);
@@ -82,15 +84,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
   }, [success]);
 
   const handleAssignment = async (assignmentData) => {
-    // ... (unchanged)
     setLoading(true);
     setError(null);
     try {
       await createAssignment(assignmentData, token);
       setSuccess("Member assigned successfully!");
-      setView("list"); // Go back to the list view
-      setActiveMemberName(""); // Reset active member name
-      fetchData(); // Refresh all data
+      setView("list");
+      setActiveMemberName("");
+      fetchData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -99,20 +100,18 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const handleDeleteClick = (assignment) => {
-    // ... (unchanged)
     setItemToDelete(assignment);
     setIsModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    // ... (unchanged)
     if (!itemToDelete) return;
     setDeleteLoading(true);
     setError(null);
     try {
       await deleteAssignment(itemToDelete.id, token);
       setSuccess(`"${itemToDelete.member.full_name}" has been unassigned.`);
-      fetchData(); // Refresh data
+      fetchData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -123,36 +122,29 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const handleViewChange = (newView) => {
-    // ... (unchanged)
     setView(newView);
-    setActiveMemberName(""); // Reset name when view changes
+    setActiveMemberName("");
   };
 
-  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
   const handleBackNavigation = () => {
     if (formRef.current && typeof formRef.current.goBack === "function") {
-      // Ask the child form to handle navigation
       formRef.current.goBack();
     } else {
-      // Default action if ref is not set (failsafe)
       handleViewChange("list");
     }
   };
 
   const handleActiveMemberNameChange = (name) => {
-    // ... (unchanged)
     setActiveMemberName(name);
   };
 
   const formatDate = (dateString) =>
-    // ... (unchanged)
     new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
       month: "long",
     });
 
   const filteredAssignments = useMemo(() => {
-    // ... (unchanged)
     if (!searchQuery) return assignments;
     const lowercasedQuery = searchQuery.toLowerCase();
     return assignments.filter(
@@ -163,7 +155,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
   }, [assignments, searchQuery]);
 
   const columns = [
-    // ... (unchanged)
     {
       header: "S.No",
       cell: (row, index) => index + 1,
@@ -175,14 +166,29 @@ const GroupMembersManager = ({ mode, groupId }) => {
       className: "text-left",
     },
     {
-      header: "Phone Number",
-      accessor: "member.phone_number",
-      className: "text-center",
-    },
-    {
       header: "Assigned Month",
       cell: (row) => formatDate(row.chit_month),
       className: "text-center",
+    },
+    {
+      header: "Due",
+      accessor: "due_amount",
+      className: "text-center",
+      cell: (row) => (
+        <span
+          className={
+            row.due_amount > 0 ? "text-error-accent" : "text-text-secondary"
+          }
+        >
+          ₹{row.due_amount.toLocaleString("en-IN")}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: "payment_status",
+      className: "text-center",
+      cell: (row) => <StatusBadge status={row.payment_status} />,
     },
     ...(mode !== "view"
       ? [
@@ -190,13 +196,27 @@ const GroupMembersManager = ({ mode, groupId }) => {
             header: "Actions",
             className: "text-center",
             cell: (row) => (
-              <button
-                type="button"
-                onClick={() => handleDeleteClick(row)}
-                className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
-              >
-                <FiTrash2 />
-              </button>
+              <div className="flex items-center justify-center space-x-2">
+                {/* --- ADD THIS BUTTON --- */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/payments/create?assignmentId=${row.id}`)
+                  }
+                  className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
+                  title="Log Payment"
+                >
+                  <RupeeIcon className="w-5 h-5" />
+                </button>
+                {/* --- END OF ADD --- */}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteClick(row)}
+                  className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
+                >
+                  <FiTrash2 />
+                </button>
+              </div>
             ),
           },
         ]
@@ -204,25 +224,24 @@ const GroupMembersManager = ({ mode, groupId }) => {
   ];
 
   const renderContent = () => {
-    // ... (This logic is now "ref-aware")
     if (view === "new") {
       return (
         <AssignNewMemberForm
-          ref={formRef} // <-- Pass the ref
+          ref={formRef}
           token={token}
           groupId={groupId}
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
           formatDate={formatDate}
           onMemberNameChange={handleActiveMemberNameChange}
-          onBackToList={() => handleViewChange("list")} // <-- Pass the "back to list" handler
+          onBackToList={() => handleViewChange("list")}
         />
       );
     }
     if (view === "existing") {
       return (
         <AssignExistingMemberForm
-          ref={formRef} // <-- Pass the ref
+          ref={formRef}
           token={token}
           groupId={groupId}
           availableMonths={availableMonths}
@@ -230,12 +249,11 @@ const GroupMembersManager = ({ mode, groupId }) => {
           formatDate={formatDate}
           assignedMemberIds={assignedMemberIds}
           onMemberNameChange={handleActiveMemberNameChange}
-          onBackToList={() => handleViewChange("list")} // <-- Pass the "back to list" handler
+          onBackToList={() => handleViewChange("list")}
         />
       );
     }
 
-    // Default 'list' view
     return (
       <>
         {mode !== "view" && (
@@ -280,7 +298,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
                 />
               </div>
             )}
-            {/* --- RESPONSIVE VIEW LOGIC --- */}
             <div className="hidden md:block">
               <Table
                 columns={columns}
@@ -294,6 +311,7 @@ const GroupMembersManager = ({ mode, groupId }) => {
                   key={assignment.id}
                   assignment={assignment}
                   onDelete={() => handleDeleteClick(assignment)}
+                  installmentAmount={assignment.chit_group.monthly_installment}
                 />
               ))}
             </div>
@@ -308,7 +326,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
   };
 
   const getHeaderTitle = () => {
-    // ... (unchanged)
     if (activeMemberName) {
       return `${activeMemberName}`;
     }
@@ -317,7 +334,6 @@ const GroupMembersManager = ({ mode, groupId }) => {
     return "Members";
   };
 
-  // --- THIS IS THE FIX FOR THE CRASH ---
   const HeaderIcon = view === "list" ? FiUsers : FiUserPlus;
 
   return (
@@ -325,14 +341,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
       <div className="relative flex justify-center items-center mb-2">
         {view !== "list" && (
           <button
-            onClick={handleBackNavigation} // <-- Use the smart handler
+            onClick={handleBackNavigation}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
             <FiArrowLeft className="w-6 h-6" />
           </button>
         )}
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <HeaderIcon /> {getHeaderTitle()} {/* <-- Use the variable */}
+          <HeaderIcon /> {getHeaderTitle()}
         </h2>
       </div>
       <hr className="border-border mb-4" />

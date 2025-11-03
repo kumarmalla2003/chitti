@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom"; // <-- IMPORT
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Table from "../ui/Table";
@@ -18,6 +19,7 @@ import {
   FiArrowLeft,
   FiPlus,
 } from "react-icons/fi";
+import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
 import {
   getAssignmentsForMember,
   createAssignment,
@@ -26,8 +28,9 @@ import {
 
 const MemberChitsManager = ({ mode, memberId }) => {
   const { token } = useSelector((state) => state.auth);
+  const navigate = useNavigate(); // <-- ADD HOOK
 
-  const [view, setView] = useState("list"); // 'list', 'new', 'existing'
+  const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,8 +53,6 @@ const MemberChitsManager = ({ mode, memberId }) => {
     setError(null);
     try {
       const assignmentsData = await getAssignmentsForMember(memberId, token);
-      // --- THIS IS THE FIX ---
-      // The API returns a direct list, so we set it directly.
       setAssignments(assignmentsData);
     } catch (err) {
       setError(err.message);
@@ -167,10 +168,30 @@ const MemberChitsManager = ({ mode, memberId }) => {
       className: "text-center",
     },
     {
-      header: "Status",
+      header: "Group Status",
       accessor: "chit_group.status",
       cell: (row) => <StatusBadge status={row.chit_group.status} />,
       className: "text-center",
+    },
+    {
+      header: "Due",
+      accessor: "due_amount",
+      className: "text-center",
+      cell: (row) => (
+        <span
+          className={
+            row.due_amount > 0 ? "text-error-accent" : "text-text-secondary"
+          }
+        >
+          ₹{row.due_amount.toLocaleString("en-IN")}
+        </span>
+      ),
+    },
+    {
+      header: "Payment Status",
+      accessor: "payment_status",
+      className: "text-center",
+      cell: (row) => <StatusBadge status={row.payment_status} />,
     },
     ...(mode !== "view"
       ? [
@@ -178,13 +199,27 @@ const MemberChitsManager = ({ mode, memberId }) => {
             header: "Actions",
             className: "text-center",
             cell: (row) => (
-              <button
-                type="button"
-                onClick={() => handleDeleteClick(row)}
-                className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
-              >
-                <FiTrash2 />
-              </button>
+              <div className="flex items-center justify-center space-x-2">
+                {/* --- ADD THIS BUTTON --- */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/payments/create?assignmentId=${row.id}`)
+                  }
+                  className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
+                  title="Log Payment"
+                >
+                  <RupeeIcon className="w-5 h-5" />
+                </button>
+                {/* --- END OF ADD --- */}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteClick(row)}
+                  className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
+                >
+                  <FiTrash2 />
+                </button>
+              </div>
             ),
           },
         ]

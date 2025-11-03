@@ -1,8 +1,11 @@
 # backend/app/models/chits.py
 
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING # <-- Modified
 from datetime import date
 from sqlmodel import Field, SQLModel, Relationship
+
+if TYPE_CHECKING: # <-- ADDED
+    from app.models.payments import Payment # <-- ADDED
 
 class Payout(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -23,3 +26,6 @@ class ChitGroup(SQLModel, table=True):
     collection_day: int = Field(ge=1, le=28)
     payout_day: int = Field(ge=1, le=28)
     payouts: List["Payout"] = Relationship(back_populates="chit_group")
+    
+    # --- ADD THIS RELATIONSHIP ---
+    payments: List["Payment"] = Relationship(back_populates="chit_group")

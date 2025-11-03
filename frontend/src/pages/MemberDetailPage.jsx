@@ -12,6 +12,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
+import PaymentHistoryList from "../components/sections/PaymentHistoryList"; // <-- IMPORT NEW
 import Message from "../components/ui/Message";
 import StepperButtons from "../components/ui/StepperButtons";
 import {
@@ -43,22 +44,13 @@ const DetailsSection = (
       formData={formData}
       onFormChange={onFormChange}
       onEnterKeyOnLastInput={onEnterKeyOnLastInput}
-      isPostCreation={isPostCreation} // <-- PASS PROP
+      isPostCreation={isPostCreation}
     />
   </Card>
 );
 
-const PaymentsSection = () => (
-  <Card className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <RupeeIcon className="w-5 h-5" /> Payments
-    </h2>
-    <hr className="border-border mb-4" />
-    <div className="flex-grow flex items-center justify-center text-center text-text-secondary py-8">
-      This feature is coming soon!
-    </div>
-  </Card>
-);
+// --- DELETE THE PaymentsSection HELPER COMPONENT ---
+// (It's gone)
 
 // --- MODIFIED DesktopActionButton ---
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
@@ -140,8 +132,8 @@ const MobileContent = ({
   detailsLoading,
   handleNext,
   handleMiddle,
-  handleMobileFormSubmit, // New prop
-  isPostCreation, // New prop
+  handleMobileFormSubmit,
+  isPostCreation,
 }) => {
   const tabRefs = useRef({});
 
@@ -193,8 +185,8 @@ const MobileContent = ({
             mode={mode}
             formData={formData}
             onFormChange={onFormChange}
-            onEnterKeyOnLastInput={handleNext} // Pass stepper's next
-            isPostCreation={isPostCreation} // <-- ADD THIS LINE
+            onEnterKeyOnLastInput={handleNext}
+            isPostCreation={isPostCreation}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -204,9 +196,9 @@ const MobileContent = ({
               onNext={handleNext}
               onMiddle={handleMiddle}
               isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-              loading={detailsLoading} // Only details loading controls stepper
+              loading={detailsLoading}
               mode={mode}
-              isPostCreation={isPostCreation} // Pass prop
+              isPostCreation={isPostCreation}
             />
           )}
         </form>
@@ -222,10 +214,10 @@ const MobileContent = ({
               onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
               onNext={handleNext}
               onMiddle={handleMiddle}
-              isNextDisabled={false} // Chits step doesn't disable 'next'
+              isNextDisabled={false}
               loading={detailsLoading}
               mode={mode}
-              isPostCreation={isPostCreation} // Pass prop
+              isPostCreation={isPostCreation}
             />
           )}
         </>
@@ -233,7 +225,15 @@ const MobileContent = ({
 
       {activeTab === "payments" && (
         <>
-          <PaymentsSection />
+          {/* --- REPLACE PaymentsSection --- */}
+          <Card className="flex-1 flex flex-col">
+            <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+              <RupeeIcon className="w-5 h-5" /> Payments
+            </h2>
+            <hr className="border-border mb-4" />
+            <PaymentHistoryList memberId={createdMemberId} />
+          </Card>
+          {/* --- END OF REPLACEMENT --- */}
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -241,10 +241,10 @@ const MobileContent = ({
               onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
               onNext={handleNext}
               onMiddle={handleMiddle}
-              isNextDisabled={false} // Payments step doesn't disable 'next'
+              isNextDisabled={false}
               loading={detailsLoading}
               mode={mode}
-              isPostCreation={isPostCreation} // Pass prop
+              isPostCreation={isPostCreation}
             />
           )}
         </>
@@ -440,13 +440,10 @@ const MemberDetailPage = () => {
     );
   };
 
-  // --- THIS IS THE NEW "SMART BACK" HANDLER ---
   const handleBackNavigation = () => {
     if (activeTabIndex > 0) {
-      // If on "Chits" (1) or "Payments" (2), go back one tab
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
-      // If on "Details" (0), go back to the main members list
       navigate("/members");
     }
   };
@@ -529,7 +526,6 @@ const MemberDetailPage = () => {
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="relative flex justify-center items-center mb-4">
-                {/* --- THIS BUTTON IS NOW "SMART" --- */}
                 <button
                   onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
@@ -589,7 +585,6 @@ const MemberDetailPage = () => {
                   onSubmit={handleDetailsSubmit}
                 >
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-                    {/* --- We now conditionally render sections based on activeTab --- */}
                     {activeTab === "details" && (
                       <div className="md:col-span-1">
                         <DetailsSection
@@ -613,18 +608,37 @@ const MemberDetailPage = () => {
 
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
-                        <PaymentsSection />
+                        {/* --- REPLACE PaymentsSection --- */}
+                        <Card className="flex-1 flex flex-col">
+                          <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+                            <RupeeIcon className="w-5 h-5" /> Payments
+                          </h2>
+                          <hr className="border-border mb-4" />
+                          <PaymentHistoryList
+                            memberId={createdMemberId || id}
+                          />
+                        </Card>
+                        {/* --- END OF REPLACEMENT --- */}
                       </div>
                     )}
 
-                    {/* --- Render the other column ONLY if details is active --- */}
                     {activeTab === "details" && (
                       <div className="md:col-span-1 flex flex-col gap-8">
                         <MemberChitsManager
                           mode={mode}
                           memberId={createdMemberId || id}
                         />
-                        <PaymentsSection />
+                        {/* --- REPLACE PaymentsSection --- */}
+                        <Card className="flex-1 flex flex-col">
+                          <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+                            <RupeeIcon className="w-5 h-5" /> Payments
+                          </h2>
+                          <hr className="border-border mb-4" />
+                          <PaymentHistoryList
+                            memberId={createdMemberId || id}
+                          />
+                        </Card>
+                        {/* --- END OF REPLACEMENT --- */}
                       </div>
                     )}
 
@@ -655,7 +669,6 @@ const MemberDetailPage = () => {
                       />
                     </div>
 
-                    {/* --- Action button only shows on "Details" tab --- */}
                     {mode !== "view" && activeTab === "details" && (
                       <div className="md:col-span-2">
                         <DesktopActionButton

@@ -19,7 +19,8 @@ from app.schemas.members import MemberPublic
 from app.models.chits import ChitGroup
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-from app.crud import crud_chits, crud_assignments
+# --- ADD crud_payments ---
+from app.crud import crud_chits, crud_assignments, crud_payments
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 
@@ -130,11 +131,29 @@ async def get_group_assignments(
             phone_number=assignment.member.phone_number,
         )
 
+        # --- PAYMENT CALCULATION LOGIC ---
+        monthly_installment = assignment.chit_group.monthly_installment
+        payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
+        total_paid = sum(p.amount_paid for p in payments)
+        due_amount = monthly_installment - total_paid
+
+        if total_paid == 0:
+            payment_status = "Unpaid"
+        elif due_amount > 0:
+            payment_status = "Partial"
+        else:
+            payment_status = "Paid"
+        # --- END OF CALCULATION ---
+
         assignment_public = ChitAssignmentPublic(
             id=assignment.id,
             chit_month=assignment.chit_month,
             member=member_public,
-            chit_group=group_with_details
+            chit_group=group_with_details,
+            # --- ADD NEW FIELDS TO RESPONSE ---
+            total_paid=total_paid,
+            due_amount=due_amount,
+            payment_status=payment_status
         )
         response_assignments.append(assignment_public)
         

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
 from app.crud import crud_assignments, crud_chits, crud_members
+# No need to import crud_payments, as a new assignment has no payments
 from app.schemas import assignments as assignments_schemas
 from app.schemas.members import MemberPublic
 
@@ -35,12 +36,26 @@ async def create_assignment(
     # 3. Construct the Pydantic models for the response
     member_public = MemberPublic.model_validate(member)
 
+    # --- START OF FIX ---
+    # For a new assignment, payment status is always "Unpaid"
+    # and due_amount is the full monthly_installment.
+    
+    total_paid = 0.0
+    due_amount = group_with_details.monthly_installment
+    payment_status = "Unpaid"
+    # --- END OF FIX ---
+
     # 4. Assemble and return the final, valid response object
     return assignments_schemas.ChitAssignmentPublic(
         id=new_assignment.id,
         chit_month=new_assignment.chit_month,
         member=member_public,
         chit_group=group_with_details,
+        
+        # --- PASS THE NEW FIELDS ---
+        total_paid=total_paid,
+        due_amount=due_amount,
+        payment_status=payment_status
     )
 
 

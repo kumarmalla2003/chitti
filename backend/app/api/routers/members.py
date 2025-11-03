@@ -9,7 +9,8 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-from app.crud import crud_members, crud_assignments
+# --- ADD crud_payments ---
+from app.crud import crud_members, crud_assignments, crud_payments
 from app.schemas import members as members_schemas
 from app.schemas import assignments as assignments_schemas
 from app.schemas.chits import ChitGroupResponse # Import for constructing response
@@ -58,7 +59,6 @@ async def update_member_details(
     return await crud_members.update_member(session=session, db_member=db_member, member_in=member_in)
 
 
-# --- ADD THIS NEW ENDPOINT ---
 @router.patch("/{member_id}", response_model=members_schemas.MemberPublic)
 async def patch_member_details(
     member_id: int,
@@ -157,12 +157,30 @@ async def get_member_assignments(
             collection_day=group.collection_day, payout_day=group.payout_day
         )
         
+        # --- PAYMENT CALCULATION LOGIC ---
+        monthly_installment = assignment.chit_group.monthly_installment
+        payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
+        total_paid = sum(p.amount_paid for p in payments)
+        due_amount = monthly_installment - total_paid
+
+        if total_paid == 0:
+            payment_status = "Unpaid"
+        elif due_amount > 0:
+            payment_status = "Partial"
+        else:
+            payment_status = "Paid"
+        # --- END OF CALCULATION ---
+        
         # Construct the final ChitAssignmentPublic response
         assignment_public = assignments_schemas.ChitAssignmentPublic(
             id=assignment.id,
             chit_month=assignment.chit_month,
             member=assignment.member,
-            chit_group=chit_group_response
+            chit_group=chit_group_response,
+            # --- ADD NEW FIELDS TO RESPONSE ---
+            total_paid=total_paid,
+            due_amount=due_amount,
+            payment_status=payment_status
         )
         response_assignments.append(assignment_public)
         

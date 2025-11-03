@@ -20,6 +20,12 @@ class ChitAssignmentPublic(BaseModel):
     member: MemberPublic
     chit_group: ChitGroupResponse
 
+    # --- ADD THESE NEW FIELDS ---
+    total_paid: float
+    due_amount: float
+    payment_status: str # "Paid", "Partial", "Unpaid"
+    # --- END OF ADDITIONS ---
+
     model_config = ConfigDict(from_attributes=True)
 
 class ChitAssignmentListResponse(BaseModel):

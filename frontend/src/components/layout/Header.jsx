@@ -8,6 +8,7 @@ import ProfileDropdown from "../ui/ProfileDropdown";
 import useClickOutside from "../../hooks/useClickOutside";
 import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
 import { AnimatePresence } from "framer-motion";
+import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
 
 const Header = ({
   onLoginClick,
@@ -32,7 +33,8 @@ const Header = ({
     contact: useRef(null),
     dashboard: useRef(null),
     groups: useRef(null),
-    members: useRef(null), // <-- ADD THIS
+    members: useRef(null),
+    payments: useRef(null), // <-- ADD THIS
   };
 
   const loggedOutNavLinks = [
@@ -47,14 +49,16 @@ const Header = ({
     { href: "/", text: "Home", id: "home" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/groups", text: "Groups", id: "groups" },
-    { href: "/members", text: "Members", id: "members" }, // <-- ADD THIS
+    { href: "/members", text: "Members", id: "members" },
+    { href: "/payments", text: "Payments", id: "payments" }, // <-- ADD THIS
   ];
 
   const getActiveId = () => {
     if (!isLoggedIn) return activeSection;
     if (location.pathname.startsWith("/groups")) return "groups";
-    if (location.pathname.startsWith("/members")) return "members"; // <-- ADD THIS
-    if (location.pathname.startsWith("/assignments")) return "members"; // <-- ADD THIS
+    if (location.pathname.startsWith("/members")) return "members";
+    if (location.pathname.startsWith("/assignments")) return "members";
+    if (location.pathname.startsWith("/payments")) return "payments"; // <-- ADD THIS
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -88,6 +92,7 @@ const Header = ({
         location.pathname.startsWith("/members") ||
         location.pathname.startsWith("/assignments")
       );
+    if (path === "/payments") return location.pathname.startsWith("/payments"); // <-- ADD THIS
     return location.pathname.startsWith(path);
   };
 
