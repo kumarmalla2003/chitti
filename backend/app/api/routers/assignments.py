@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
 from app.crud import crud_assignments, crud_chits, crud_members
-# No need to import crud_payments, as a new assignment has no payments
+from app.crud import crud_payments
 from app.schemas import assignments as assignments_schemas
 from app.schemas.members import MemberPublic
 
@@ -36,14 +36,12 @@ async def create_assignment(
     # 3. Construct the Pydantic models for the response
     member_public = MemberPublic.model_validate(member)
 
-    # --- START OF FIX ---
     # For a new assignment, payment status is always "Unpaid"
     # and due_amount is the full monthly_installment.
     
     total_paid = 0.0
     due_amount = group_with_details.monthly_installment
     payment_status = "Unpaid"
-    # --- END OF FIX ---
 
     # 4. Assemble and return the final, valid response object
     return assignments_schemas.ChitAssignmentPublic(
@@ -52,7 +50,6 @@ async def create_assignment(
         member=member_public,
         chit_group=group_with_details,
         
-        # --- PASS THE NEW FIELDS ---
         total_paid=total_paid,
         due_amount=due_amount,
         payment_status=payment_status
@@ -81,7 +78,21 @@ async def unassign_member(
     """
     Deletes a specific chit assignment (unassigns a member).
     """
+    
+    # Check if any payments are associated with this assignment
+    payments = await crud_payments.get_payments_for_assignment(
+        session, 
+        assignment_id=assignment_id
+    )
+    if payments:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            # --- THIS IS THE UPDATED MESSAGE ---
+            detail="Cannot unassign member: Payments have already been logged for this assignment."
+        )
+
     success = await crud_assignments.delete_assignment(session, assignment_id=assignment_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+    
     return

@@ -4,16 +4,14 @@ import {
   useState,
   useEffect,
   useMemo,
-  forwardRef, // <-- Import forwardRef
-  useImperativeHandle, // <-- Import useImperativeHandle
+  forwardRef,
+  useImperativeHandle,
 } from "react";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
-import Table from "../ui/Table";
-import { FiSearch, FiCheck, FiLoader, FiCalendar } from "react-icons/fi";
+import { FiUser, FiCheck, FiLoader, FiCalendar } from "react-icons/fi";
 import { getAllMembers } from "../../services/membersService";
 
-// --- Wrap component in forwardRef ---
 const AssignExistingMemberForm = forwardRef(
   (
     {
@@ -24,34 +22,29 @@ const AssignExistingMemberForm = forwardRef(
       formatDate,
       assignedMemberIds,
       onMemberNameChange,
-      onBackToList, // <-- Receive prop from parent
+      onBackToList,
     },
     ref
   ) => {
     const [allMembers, setAllMembers] = useState([]);
-    const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [selectedMember, setSelectedMember] = useState(null); // <-- This is the internal step
+    // State for the new dropdowns
+    const [selectedMemberId, setSelectedMemberId] = useState("");
     const [selectedMonth, setSelectedMonth] = useState("");
 
-    // --- Expose goBack function to parent via ref ---
+    // Expose a simplified goBack function to the parent
     useImperativeHandle(ref, () => ({
       goBack: () => {
-        if (selectedMember) {
-          // On step 2 (month select), go back to step 1 (member list)
-          setSelectedMember(null);
-          onMemberNameChange(""); // Clear header
-        } else {
-          // On step 1 (member list), tell parent to go back to list
-          onBackToList();
-        }
+        onMemberNameChange(""); // Clear header
+        onBackToList();
       },
     }));
 
+    // Fetch all members on load
     useEffect(() => {
-      // ... (useEffects are unchanged)
       const fetchAllMembers = async () => {
         setLoading(true);
         setError(null);
@@ -65,133 +58,42 @@ const AssignExistingMemberForm = forwardRef(
         }
       };
       fetchAllMembers();
-    }, [token, assignedMemberIds]);
+    }, [token]);
 
-    const filteredMembers = useMemo(() => {
-      // ... (logic unchanged)
-      if (!searchQuery) return allMembers;
-      const lowercasedQuery = searchQuery.toLowerCase();
-      return allMembers.filter(
-        (member) =>
-          member.full_name.toLowerCase().includes(lowercasedQuery) ||
-          member.phone_number.includes(lowercasedQuery)
-      );
-    }, [allMembers, searchQuery]);
+    // Form submission handler
+    const handleConfirmAssignment = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const handleSelectClick = (member) => {
-      // ... (logic unchanged)
-      setSelectedMember(member);
-      onMemberNameChange(member.full_name);
-      setSelectedMonth("");
-    };
-
-    const handleConfirmAssignment = () => {
-      // ... (logic unchanged)
-      if (!selectedMonth) {
-        setError("Please select a month to assign.");
+      if (!selectedMemberId || !selectedMonth) {
+        setError("Please select a member and a month.");
         return;
       }
-      onAssignment({
-        member_id: selectedMember.id,
-        chit_group_id: groupId,
-        chit_month: selectedMonth,
-      });
+
+      setIsSubmitting(true);
+      setError(null);
+
+      try {
+        await onAssignment({
+          member_id: selectedMemberId,
+          chit_group_id: groupId,
+          chit_month: selectedMonth,
+        });
+      } catch (err) {
+        setError(err.message);
+        setIsSubmitting(false);
+      }
     };
 
-    const columns = [
-      // ... (columns unchanged)
-      {
-        header: "S.No",
-        accessor: "s_no",
-        className: "text-center",
-        cell: (row, index) => index + 1,
-      },
-      {
-        header: "Full Name",
-        accessor: "full_name",
-        className: "text-left",
-      },
-      {
-        header: "Phone Number",
-        accessor: "phone_number",
-        className: "text-center",
-      },
-      {
-        header: "Action",
-        accessor: "action",
-        className: "text-center",
-        cell: (row) => (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => handleSelectClick(row)}
-          >
-            Select
-          </Button>
-        ),
-      },
-    ];
-
-    if (selectedMember) {
-      return (
-        <div className="my-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
-            Assign Month for {selectedMember.full_name}
-          </h3>
-          <div className="relative flex items-center">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <FiCalendar className="w-5 h-5 text-text-secondary" />
-            </span>
-            <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">Select an available month...</option>
-              {availableMonths.map((month) => (
-                <option key={month} value={month}>
-                  {formatDate(month)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-end mt-6">
-            <Button
-              type="button"
-              variant="success"
-              onClick={handleConfirmAssignment}
-              disabled={!selectedMonth}
-              className="flex items-center justify-center"
-            >
-              <FiCheck className="mr-2" /> Confirm Assignment
-            </Button>
-          </div>
-        </div>
-      );
-    }
+    const isFormInvalid = !selectedMemberId || !selectedMonth;
 
     return (
-      <div className="my-4">
+      <form className="my-4" onSubmit={handleConfirmAssignment}>
         {error && (
           <Message type="error" onClose={() => setError(null)}>
             {error}
           </Message>
         )}
-
-        <div className="relative flex items-center mb-4">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <FiSearch className="w-5 h-5 text-text-secondary" />
-          </span>
-          <div className="absolute left-10 h-6 w-px bg-border"></div>
-          <input
-            type="text"
-            placeholder="Search by name or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-          />
-        </div>
 
         {loading && (
           <div className="flex justify-center p-4">
@@ -199,18 +101,98 @@ const AssignExistingMemberForm = forwardRef(
           </div>
         )}
 
-        {!loading && filteredMembers.length === 0 && (
-          <p className="text-center text-text-secondary py-4">
-            {searchQuery
-              ? `No members found for "${searchQuery}".`
-              : "There are no unassigned members available."}
-          </p>
-        )}
+        {!loading && (
+          <div className="space-y-6">
+            {/* Member Dropdown */}
+            <div>
+              <label
+                htmlFor="member_id"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Select Member
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <FiUser className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <select
+                  id="member_id"
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
+                >
+                  <option value="">
+                    {allMembers.length > 0
+                      ? "Select a member..."
+                      : "No members found"}
+                  </option>
+                  {allMembers.map((member) => (
+                    // --- MODIFICATION ---
+                    <option key={member.id} value={member.id}>
+                      {member.full_name}
+                    </option>
+                    // --- END MODIFICATION ---
+                  ))}
+                </select>
+              </div>
+            </div>
 
-        {!loading && filteredMembers.length > 0 && (
-          <Table columns={columns} data={filteredMembers} variant="secondary" />
+            {/* Month Dropdown */}
+            <div>
+              <label
+                htmlFor="chit_month"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Select Month
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <FiCalendar className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <select
+                  id="chit_month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
+                >
+                  <option value="">
+                    {availableMonths.length > 0
+                      ? "Select an available month..."
+                      : "No available months for this group"}
+                  </option>
+                  {availableMonths.map((month) => (
+                    <option key={month} value={month}>
+                      {formatDate(month)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end mt-6">
+              <Button
+                type="submit"
+                variant="success"
+                disabled={isFormInvalid || isSubmitting}
+                className="flex items-center justify-center"
+              >
+                {isSubmitting ? (
+                  <FiLoader className="animate-spin" />
+                ) : (
+                  <>
+                    <FiCheck className="mr-2" /> Confirm Assignment
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         )}
-      </div>
+      </form>
     );
   }
 );

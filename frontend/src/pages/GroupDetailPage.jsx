@@ -65,7 +65,7 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
   return totalMonths > 0 ? totalMonths.toString() : "";
 };
 
-// --- Helper Components (unchanged) ---
+// --- Helper Components ---
 const DetailsSectionComponent = ({
   mode,
   formData,
@@ -94,9 +94,13 @@ const PayoutsSectionComponent = ({ mode, groupId }) => (
   </Card>
 );
 
-const MembersSectionComponent = ({ mode, groupId }) => (
+const MembersSectionComponent = ({ mode, groupId, onLogPaymentClick }) => (
   <Card className="flex-1 flex flex-col">
-    <GroupMembersManager mode={mode} groupId={groupId} />
+    <GroupMembersManager
+      mode={mode}
+      groupId={groupId}
+      onLogPaymentClick={onLogPaymentClick}
+    />
   </Card>
 );
 
@@ -182,6 +186,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
+  onLogPaymentClick, // <-- ADD THIS
+  paymentDefaults, // <-- ADD THIS
+  setPaymentDefaults, // <-- ADD THIS
 }) => {
   const tabRefs = useRef({});
 
@@ -282,7 +289,11 @@ const MobileContent = ({
 
       {activeTab === "members" && (
         <>
-          <MembersSectionComponent mode={mode} groupId={groupId} />
+          <MembersSectionComponent
+            mode={mode}
+            groupId={groupId}
+            onLogPaymentClick={onLogPaymentClick} // <-- Pass prop
+          />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -301,8 +312,12 @@ const MobileContent = ({
 
       {activeTab === "payments" && (
         <>
-          {/* --- MODIFICATION: Removed Card wrapper and header --- */}
-          <PaymentHistoryList groupId={groupId} mode={mode} />
+          <PaymentHistoryList
+            groupId={groupId}
+            mode={mode}
+            paymentDefaults={paymentDefaults} // <-- Pass prop
+            setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+          />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -322,7 +337,7 @@ const MobileContent = ({
   );
 };
 
-// --- GroupDetailPage (Main component, no changes) ---
+// --- GroupDetailPage (Main component) ---
 const GroupDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
@@ -351,6 +366,10 @@ const GroupDetailPage = () => {
   const [success, setSuccess] = useState(null);
   const [createdGroupId, setCreatedGroupId] = useState(null);
   const [createdGroupName, setCreatedGroupName] = useState(null);
+
+  // --- ADD THIS STATE ---
+  const [paymentDefaults, setPaymentDefaults] = useState(null);
+
   useScrollToTop(success || error);
 
   const TABS = ["details", "payouts", "members", "payments"];
@@ -707,6 +726,16 @@ const GroupDetailPage = () => {
     }
   };
 
+  // --- ADD THIS HANDLER ---
+  const handleLogPaymentClick = (assignment) => {
+    setPaymentDefaults({
+      assignmentId: assignment.id,
+      groupId: assignment.chit_group.id,
+      memberId: assignment.member.id,
+    });
+    setActiveTab("payments");
+  };
+
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -772,6 +801,9 @@ const GroupDetailPage = () => {
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
                   isPostCreation={!!(mode === "create" && createdGroupId)}
+                  onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
+                  paymentDefaults={paymentDefaults} // <-- Pass prop
+                  setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
                 />
               </div>
 
@@ -807,16 +839,18 @@ const GroupDetailPage = () => {
                         <MembersSectionComponent
                           mode={mode}
                           groupId={id || createdGroupId}
+                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
                       </div>
                     )}
 
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
-                        {/* --- MODIFICATION: Removed Card wrapper and header --- */}
                         <PaymentHistoryList
                           groupId={id || createdGroupId}
                           mode={mode}
+                          paymentDefaults={paymentDefaults} // <-- Pass prop
+                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
                         />
                       </div>
                     )}
@@ -831,6 +865,7 @@ const GroupDetailPage = () => {
                         <MembersSectionComponent
                           mode={mode}
                           groupId={id || createdGroupId}
+                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
                       </div>
                     )}

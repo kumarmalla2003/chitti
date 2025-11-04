@@ -136,6 +136,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
+  onLogPaymentClick, // <-- ADD THIS
+  paymentDefaults, // <-- ADD THIS
+  setPaymentDefaults, // <-- ADD THIS
 }) => {
   const tabRefs = useRef({});
 
@@ -208,7 +211,11 @@ const MobileContent = ({
 
       {activeTab === "chits" && (
         <>
-          <MemberChitsManager mode={mode} memberId={createdMemberId} />
+          <MemberChitsManager
+            mode={mode}
+            memberId={createdMemberId}
+            onLogPaymentClick={onLogPaymentClick} // <-- Pass prop
+          />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -227,8 +234,12 @@ const MobileContent = ({
 
       {activeTab === "payments" && (
         <>
-          {/* --- MODIFICATION: Removed Card wrapper and header --- */}
-          <PaymentHistoryList memberId={createdMemberId} mode={mode} />
+          <PaymentHistoryList
+            memberId={createdMemberId}
+            mode={mode}
+            paymentDefaults={paymentDefaults} // <-- Pass prop
+            setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+          />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -248,7 +259,7 @@ const MobileContent = ({
   );
 };
 
-// --- Main Page Component (unchanged) ---
+// --- Main Page Component ---
 const MemberDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
@@ -268,6 +279,9 @@ const MemberDetailPage = () => {
   const [success, setSuccess] = useState(null);
   const [createdMemberId, setCreatedMemberId] = useState(null);
   const [createdMemberName, setCreatedMemberName] = useState(null);
+
+  // --- ADD THIS STATE ---
+  const [paymentDefaults, setPaymentDefaults] = useState(null);
 
   useScrollToTop(success || error);
 
@@ -498,6 +512,16 @@ const MemberDetailPage = () => {
     });
   };
 
+  // --- ADD THIS HANDLER ---
+  const handleLogPaymentClick = (assignment) => {
+    setPaymentDefaults({
+      assignmentId: assignment.id,
+      groupId: assignment.chit_group.id,
+      memberId: assignment.member.id,
+    });
+    setActiveTab("payments");
+  };
+
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -570,6 +594,9 @@ const MemberDetailPage = () => {
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
                   isPostCreation={isPostCreation}
+                  onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
+                  paymentDefaults={paymentDefaults} // <-- Pass prop
+                  setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
                 />
               </div>
 
@@ -597,16 +624,18 @@ const MemberDetailPage = () => {
                         <MemberChitsManager
                           mode={mode}
                           memberId={createdMemberId || id}
+                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
                       </div>
                     )}
 
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
-                        {/* --- MODIFICATION: Removed Card wrapper and header --- */}
                         <PaymentHistoryList
                           memberId={createdMemberId || id}
                           mode={mode}
+                          paymentDefaults={paymentDefaults} // <-- Pass prop
+                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
                         />
                       </div>
                     )}
@@ -616,11 +645,13 @@ const MemberDetailPage = () => {
                         <MemberChitsManager
                           mode={mode}
                           memberId={createdMemberId || id}
+                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
-                        {/* --- MODIFICATION: Removed Card wrapper and header --- */}
                         <PaymentHistoryList
                           memberId={createdMemberId || id}
                           mode={mode}
+                          paymentDefaults={paymentDefaults} // <-- Pass prop
+                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
                         />
                       </div>
                     )}

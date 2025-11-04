@@ -9,6 +9,18 @@ const getAuthHeaders = (token) => ({
   Authorization: `Bearer ${token}`,
 });
 
+// --- ADDED: Helper to extract specific error messages from the backend ---
+const handleError = async (response, defaultMessage) => {
+  try {
+    const errorData = await response.json();
+    // Use the 'detail' field from the FastAPI error response
+    throw new Error(errorData.detail || defaultMessage);
+  } catch (e) {
+    // Handle cases where .json() fails or errorData.detail doesn't exist
+    throw new Error(e.message || defaultMessage);
+  }
+};
+
 export const createAssignment = async (assignmentData, token) => {
   const response = await fetch(API_URL, {
     method: "POST",
@@ -17,7 +29,7 @@ export const createAssignment = async (assignmentData, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create chit assignment.");
+    await handleError(response, "Failed to create chit assignment.");
   }
   return response.json();
 };
@@ -29,7 +41,10 @@ export const getUnassignedMonths = async (groupId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch available months for the group.");
+    await handleError(
+      response,
+      "Failed to fetch available months for the group."
+    );
   }
   return response.json();
 };
@@ -41,7 +56,7 @@ export const getAssignmentsForMember = async (memberId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to member's assignments.");
+    await handleError(response, "Failed to member's assignments.");
   }
   return response.json();
 };
@@ -53,19 +68,10 @@ export const getAssignmentsForGroup = async (groupId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch assignments for the group.");
+    await handleError(response, "Failed to fetch assignments for the group.");
   }
   return response.json();
 };
-
-// --- NEW FUNCTION for connected dropdowns ---
-// This simple endpoint might not exist, so we'll use a combination
-// of existing ones. If it *did* exist, it would be:
-// export const getAllAssignments = async (token) => {
-//   const response = await fetch(API_URL, { ... });
-//   return response.json();
-// }
-// For now, `PaymentDetailsForm` will fetch member/group assignments as needed.
 
 export const deleteAssignment = async (assignmentId, token) => {
   const response = await fetch(`${API_URL}/${assignmentId}`, {
@@ -74,7 +80,8 @@ export const deleteAssignment = async (assignmentId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to unassign member.");
+    // This will now catch the 409 error and display the specific message
+    await handleError(response, "Failed to unassign member.");
   }
   return;
 };

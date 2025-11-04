@@ -7,7 +7,7 @@ import Table from "../ui/Table";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
 import PaymentDetailsForm from "../forms/PaymentDetailsForm";
-import Card from "../ui/Card"; // <-- IMPORT Card
+import Card from "../ui/Card";
 import {
   FiLoader,
   FiAlertCircle,
@@ -15,7 +15,7 @@ import {
   FiPlus,
   FiArrowLeft,
 } from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT RupeeIcon
+import { RupeeIcon } from "../ui/Icons";
 import {
   getPaymentsByGroupId,
   getPaymentsByMemberId,
@@ -24,7 +24,13 @@ import {
 import PaymentHistoryCard from "../ui/PaymentHistoryCard";
 import useScrollToTop from "../../hooks/useScrollToTop";
 
-const PaymentHistoryList = ({ groupId, memberId, mode }) => {
+const PaymentHistoryList = ({
+  groupId,
+  memberId,
+  mode,
+  paymentDefaults, // <-- ADDED
+  setPaymentDefaults, // <-- ADDED
+}) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,6 +84,25 @@ const PaymentHistoryList = ({ groupId, memberId, mode }) => {
       return () => clearTimeout(timer);
     }
   }, [formSuccess]);
+
+  // --- ADDED THIS EFFECT ---
+  useEffect(() => {
+    if (paymentDefaults) {
+      setView("create"); // Open the form
+      // Pre-fill the assignment ID in the form data
+      setFormData((prev) => ({
+        ...prev,
+        chit_assignment_id: paymentDefaults.assignmentId,
+        payment_date: new Date().toISOString().split("T")[0],
+        payment_method: "Cash",
+        amount_paid: "",
+        notes: "",
+      }));
+      setFormError(null);
+      setFormSuccess(null);
+    }
+  }, [paymentDefaults]);
+  // --- END ADD ---
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -190,6 +215,10 @@ const PaymentHistoryList = ({ groupId, memberId, mode }) => {
       });
       setView("list");
       fetchData();
+      if (setPaymentDefaults) {
+        // <-- MODIFIED
+        setPaymentDefaults(null); // Clear the defaults
+      }
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -201,17 +230,23 @@ const PaymentHistoryList = ({ groupId, memberId, mode }) => {
     setView("create");
     setFormError(null);
     setFormSuccess(null);
+    if (setPaymentDefaults) {
+      // <-- MODIFIED
+      setPaymentDefaults(null); // Clear any defaults
+    }
   };
 
   const handleShowList = () => {
     setView("list");
     setFormError(null);
+    if (setPaymentDefaults) {
+      // <-- MODIFIED
+      setPaymentDefaults(null); // Clear defaults when manually going back
+    }
   };
 
-  // --- NEW: Dynamic Header Content ---
   const headerTitle = view === "list" ? "Payments" : "Log New Payment";
 
-  // --- RENDER LOGIC ---
   if (loading) {
     return (
       <Card className="flex-1 flex flex-col">
@@ -227,9 +262,7 @@ const PaymentHistoryList = ({ groupId, memberId, mode }) => {
   }
 
   return (
-    // --- MODIFICATION: Card wrapper is now here ---
     <Card className="flex-1 flex flex-col">
-      {/* --- NEW: Dynamic Header --- */}
       <div className="relative flex justify-center items-center mb-2">
         {view === "create" && (
           <button
@@ -260,8 +293,11 @@ const PaymentHistoryList = ({ groupId, memberId, mode }) => {
             mode="create"
             formData={formData}
             onFormChange={handleFormChange}
-            defaultGroupId={groupId}
-            defaultMemberId={memberId}
+            // --- MODIFIED ---
+            defaultAssignmentId={paymentDefaults?.assignmentId}
+            defaultGroupId={paymentDefaults?.groupId || groupId}
+            defaultMemberId={paymentDefaults?.memberId || memberId}
+            // --- END MODIFICATION ---
           />
           <div className="flex justify-end mt-6">
             <Button

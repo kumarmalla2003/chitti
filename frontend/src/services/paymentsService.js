@@ -7,6 +7,17 @@ const getAuthHeaders = (token) => ({
   Authorization: `Bearer ${token}`,
 });
 
+// Helper to extract specific error messages from the backend
+const handleError = async (response, defaultMessage) => {
+  try {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || defaultMessage);
+  } catch (e) {
+    // Handle cases where .json() fails or errorData.detail doesn't exist
+    throw new Error(e.message || defaultMessage);
+  }
+};
+
 // --- NEW (Phase 2) ---
 export const createPayment = async (paymentData, token) => {
   const response = await fetch(API_URL, {
@@ -15,7 +26,7 @@ export const createPayment = async (paymentData, token) => {
     body: JSON.stringify(paymentData),
   });
   if (!response.ok) {
-    throw new Error("Failed to log payment.");
+    await handleError(response, "Failed to log payment.");
   }
   return response.json();
 };
@@ -31,7 +42,7 @@ export const getAllPayments = async (token, filters = {}) => {
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    throw new Error("Failed to fetch payments.");
+    await handleError(response, "Failed to fetch payments.");
   }
   return response.json();
 };
@@ -43,7 +54,7 @@ export const getPaymentById = async (paymentId, token) => {
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    throw new Error("Failed to fetch payment details.");
+    await handleError(response, "Failed to fetch payment details.");
   }
   return response.json();
 };
@@ -56,7 +67,7 @@ export const patchPayment = async (paymentId, paymentData, token) => {
     body: JSON.stringify(paymentData),
   });
   if (!response.ok) {
-    throw new Error("Failed to update payment.");
+    await handleError(response, "Failed to update payment.");
   }
   return response.json();
 };
@@ -68,7 +79,7 @@ export const deletePayment = async (paymentId, token) => {
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    throw new Error("Failed to delete payment.");
+    await handleError(response, "Failed to delete payment.");
   }
   return;
 };
@@ -81,7 +92,10 @@ export const getPaymentsByGroupId = async (groupId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch payment history for the group.");
+    await handleError(
+      response,
+      "Failed to fetch payment history for the group."
+    );
   }
   return response.json();
 };
@@ -93,7 +107,10 @@ export const getPaymentsByMemberId = async (memberId, token) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch payment history for the member.");
+    await handleError(
+      response,
+      "Failed to fetch payment history for the member."
+    );
   }
   return response.json();
 };

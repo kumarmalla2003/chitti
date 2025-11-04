@@ -2,10 +2,11 @@
 
 import { FiTrash2, FiCalendar } from "react-icons/fi";
 import { RupeeIcon } from "./Icons";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom"; // <-- REMOVED
 
-const AssignedGroupCard = ({ assignment, onDelete }) => {
-  const navigate = useNavigate();
+const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
+  // <-- Prop added
+  // const navigate = useNavigate(); // <-- REMOVED
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -15,10 +16,12 @@ const AssignedGroupCard = ({ assignment, onDelete }) => {
 
   const dueAmount = assignment.due_amount;
 
+  // --- MODIFIED ---
   const handleLogPayment = (e) => {
     e.stopPropagation();
-    navigate(`/payments/create?assignmentId=${assignment.id}`);
+    onLogPayment(assignment); // <-- Use prop
   };
+  // --- END MODIFICATION ---
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -36,7 +39,7 @@ const AssignedGroupCard = ({ assignment, onDelete }) => {
         </div>
         <div className="flex items-center flex-shrink-0">
           <button
-            onClick={handleLogPayment}
+            onClick={handleLogPayment} // <-- Use handler
             className="p-2 rounded-full text-success-accent hover:bg-success-bg transition-colors duration-200"
             title="Log Payment"
           >

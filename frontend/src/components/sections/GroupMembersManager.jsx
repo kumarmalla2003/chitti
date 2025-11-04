@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom"; // <-- IMPORT
 import Button from "../ui/Button";
 import Table from "../ui/Table";
 import ConfirmationModal from "../ui/ConfirmationModal";
@@ -19,7 +18,7 @@ import {
   FiArrowLeft,
   FiUserPlus,
 } from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
+import { RupeeIcon } from "../ui/Icons";
 import {
   getAssignmentsForGroup,
   getUnassignedMonths,
@@ -27,9 +26,8 @@ import {
   deleteAssignment,
 } from "../../services/assignmentsService";
 
-const GroupMembersManager = ({ mode, groupId }) => {
+const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
   const { token } = useSelector((state) => state.auth);
-  const navigate = useNavigate(); // <-- ADD HOOK
 
   const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
@@ -197,18 +195,14 @@ const GroupMembersManager = ({ mode, groupId }) => {
             className: "text-center",
             cell: (row) => (
               <div className="flex items-center justify-center space-x-2">
-                {/* --- ADD THIS BUTTON --- */}
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate(`/payments/create?assignmentId=${row.id}`)
-                  }
+                  onClick={() => onLogPaymentClick(row)}
                   className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
                   title="Log Payment"
                 >
                   <RupeeIcon className="w-5 h-5" />
                 </button>
-                {/* --- END OF ADD --- */}
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(row)}
@@ -311,7 +305,8 @@ const GroupMembersManager = ({ mode, groupId }) => {
                   key={assignment.id}
                   assignment={assignment}
                   onDelete={() => handleDeleteClick(assignment)}
-                  installmentAmount={assignment.chit_group.monthly_installment}
+                  // installmentAmount={assignment.chit_group.monthly_installment} // <-- REMOVED
+                  onLogPayment={onLogPaymentClick}
                 />
               ))}
             </div>
