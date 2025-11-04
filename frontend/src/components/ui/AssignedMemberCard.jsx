@@ -12,13 +12,13 @@ const AssignedMemberCard = ({
 }) => {
   const member = assignment.member;
 
-  // --- ADD THIS HELPER FUNCTION ---
+  // --- MODIFIED: month: "short" ---
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
-      month: "long",
+      month: "short", // <-- MODIFIED
     });
-  // --- END ADD ---
+  // --- END MODIFICATION ---
 
   const dueAmount = assignment.due_amount;
   // const totalAmount = installmentAmount || 0; // <-- REMOVED
@@ -63,7 +63,7 @@ const AssignedMemberCard = ({
       {/* Bottom Separator (Unchanged) */}
       <hr className="border-border mb-3" />
 
-      {/* --- MODIFIED Bottom Row --- */}
+      {/* --- MODIFIED Bottom Row (date format updated, but component structure kept) --- */}
       <div className="flex items-center justify-between text-text-secondary text-sm">
         {/* Left Side: Assigned Month */}
         <div className="flex items-center gap-2">

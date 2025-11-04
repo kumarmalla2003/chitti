@@ -11,7 +11,7 @@ const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
-      month: "long",
+      month: "short", // <-- MODIFIED
     });
 
   const dueAmount = assignment.due_amount;
@@ -40,7 +40,7 @@ const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
         <div className="flex items-center flex-shrink-0">
           <button
             onClick={handleLogPayment} // <-- Use handler
-            className="p-2 rounded-full text-success-accent hover:bg-success-bg transition-colors duration-200"
+            className="p-2 rounded-full text-success-accent hover://bg-success-bg transition-colors duration-200"
             title="Log Payment"
           >
             <RupeeIcon className="w-5 h-5" />

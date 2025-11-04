@@ -12,7 +12,7 @@ import Message from "../ui/Message";
 import Table from "../ui/Table"; // <-- IMPORT
 import {
   FiUser, // <-- CHANGED from FiUsers
-  FiCalendar,
+  // FiCalendar, // <-- REMOVED (Previous step)
   FiCheck,
   FiLoader,
   FiAlertCircle,
@@ -24,7 +24,8 @@ import {
 import { getAllMembers } from "../../services/membersService";
 
 const RapidAssignForm = forwardRef(
-  ({ token, groupId, formatDate, onAssignmentSuccess, onBackToList }, ref) => {
+  ({ token, groupId, onAssignmentSuccess, onBackToList }, ref) => {
+    // <-- formatDate removed from props
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -39,6 +40,14 @@ const RapidAssignForm = forwardRef(
         onBackToList();
       },
     }));
+
+    // --- ADDED: Local formatDate with short month ---
+    const formatDate = (dateString) =>
+      new Date(dateString).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "short", // <-- Short month format
+      });
+    // --- END ADDED ---
 
     useEffect(() => {
       const fetchData = async () => {
@@ -112,16 +121,16 @@ const RapidAssignForm = forwardRef(
       }
     };
 
-    // --- NEW: Define columns for the table ---
+    // --- MODIFIED: Define columns for the table (Width classes updated) ---
     const columns = useMemo(
       () => [
         {
           header: "Month",
           accessor: "month",
-          className: "text-left w-1/2",
+          // className: "text-left w-1/2", // <-- REMOVED
+          className: "text-left flex-1", // <-- ADDED to take up available width
           cell: (row) => (
             <div className="flex items-center gap-2">
-              <FiCalendar className="w-5 h-5 text-text-secondary" />
               <span className="font-medium text-text-primary">
                 {formatDate(row.month)}
               </span>
@@ -131,7 +140,8 @@ const RapidAssignForm = forwardRef(
         {
           header: "Member",
           accessor: "member_id",
-          className: "w-1/2",
+          // className: "w-1/2", // <-- REMOVED
+          className: "flex-1", // <-- ADDED to take up available width
           cell: (row) => (
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -156,8 +166,9 @@ const RapidAssignForm = forwardRef(
           ),
         },
       ],
-      [allMembers, assignments, formatDate] // Dependencies for memo
+      [allMembers, assignments]
     );
+    // --- END MODIFICATION ---
 
     // --- NEW: Map months to table data ---
     const tableData = useMemo(
