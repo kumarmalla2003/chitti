@@ -1,4 +1,4 @@
-// frontend/src/components/sections/GroupMembersManager.jsx
+// src/components/sections/GroupMembersManager.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
@@ -8,6 +8,7 @@ import ConfirmationModal from "../ui/ConfirmationModal";
 import Message from "../ui/Message";
 import AssignNewMemberForm from "../forms/AssignNewMemberForm";
 import AssignExistingMemberForm from "../forms/AssignExistingMemberForm";
+import RapidAssignForm from "../forms/RapidAssignForm"; // <-- IMPORT
 import AssignedMemberCard from "../ui/AssignedMemberCard";
 import StatusBadge from "../ui/StatusBadge";
 import {
@@ -17,6 +18,7 @@ import {
   FiTrash2,
   FiArrowLeft,
   FiUserPlus,
+  FiFastForward, // <-- IMPORT
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
@@ -29,7 +31,7 @@ import {
 const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
   const { token } = useSelector((state) => state.auth);
 
-  const [view, setView] = useState("list");
+  const [view, setView] = useState("list"); // 'list', 'new', 'existing', 'rapid'
   const [assignments, setAssignments] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +155,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
   }, [assignments, searchQuery]);
 
   const columns = [
+    // ... (columns definition remains unchanged)
     {
       header: "S.No",
       cell: (row, index) => index + 1,
@@ -247,12 +250,38 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
         />
       );
     }
+    // --- ADD NEW VIEW FOR RAPID ASSIGN ---
+    if (view === "rapid") {
+      return (
+        <RapidAssignForm
+          ref={formRef}
+          token={token}
+          groupId={groupId}
+          formatDate={formatDate}
+          onAssignmentSuccess={() => {
+            setSuccess("Members assigned successfully!");
+            setView("list");
+            setActiveMemberName("");
+            fetchData(); // Re-fetch all data
+          }}
+          onBackToList={() => handleViewChange("list")}
+        />
+      );
+    }
 
     return (
       <>
         {mode !== "view" && (
           <div className="mb-4">
+            {/* --- MODIFIED: Re-ordered and re-styled buttons --- */}
             <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => handleViewChange("rapid")}
+                className="w-full sm:w-auto flex items-center justify-center"
+              >
+                <FiFastForward className="w-5 h-5 mr-2" />
+                <span>Rapid Assign</span>
+              </Button>
               <Button
                 onClick={() => handleViewChange("new")}
                 className="w-full sm:w-auto flex items-center justify-center"
@@ -268,6 +297,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
                 <span>Add Existing Member</span>
               </Button>
             </div>
+            {/* --- END MODIFICATION --- */}
           </div>
         )}
 
@@ -305,7 +335,6 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
                   key={assignment.id}
                   assignment={assignment}
                   onDelete={() => handleDeleteClick(assignment)}
-                  // installmentAmount={assignment.chit_group.monthly_installment} // <-- REMOVED
                   onLogPayment={onLogPaymentClick}
                 />
               ))}
@@ -326,10 +355,13 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
     }
     if (view === "new") return "Add New Member";
     if (view === "existing") return "Add Existing Member";
+    if (view === "rapid") return "Rapid Assignment"; // <-- ADD THIS
     return "Members";
   };
 
-  const HeaderIcon = view === "list" ? FiUsers : FiUserPlus;
+  // --- MODIFIED: Dynamic Header Icon ---
+  const HeaderIcon =
+    view === "list" ? FiUsers : view === "rapid" ? FiFastForward : FiUserPlus;
 
   return (
     <div className="flex-1 flex flex-col">

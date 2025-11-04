@@ -1,4 +1,4 @@
-# backend/app/schemas/assignments.py
+# app/schemas/assignments.py
 
 from pydantic import BaseModel, ConfigDict
 from datetime import date
@@ -35,3 +35,14 @@ class ChitAssignmentListResponse(BaseModel):
 
 class UnassignedMonthResponse(BaseModel):
     available_months: List[date]
+
+# --- ADD NEW SCHEMAS FOR BULK ASSIGNMENT ---
+
+class ChitAssignmentBulkItem(BaseModel):
+    """Schema for a single item in a bulk assignment request."""
+    member_id: int
+    chit_month: date
+
+class ChitAssignmentBulkCreate(BaseModel):
+    """Schema for the bulk assignment request body."""
+    assignments: List[ChitAssignmentBulkItem]

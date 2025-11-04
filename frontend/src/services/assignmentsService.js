@@ -1,4 +1,4 @@
-// frontend/src/services/assignmentsService.js
+// src/services/assignmentsService.js
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/assignments`;
 const MEMBERS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
@@ -30,6 +30,20 @@ export const createAssignment = async (assignmentData, token) => {
 
   if (!response.ok) {
     await handleError(response, "Failed to create chit assignment.");
+  }
+  return response.json();
+};
+
+// --- ADD NEW BULK ASSIGNMENT FUNCTION ---
+export const createBulkAssignments = async (groupId, assignments, token) => {
+  const response = await fetch(`${API_URL}/group/${groupId}/bulk-assign`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ assignments: assignments }), // Wrap in 'assignments' key
+  });
+
+  if (!response.ok) {
+    await handleError(response, "Failed to save assignments.");
   }
   return response.json();
 };

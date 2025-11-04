@@ -1,4 +1,4 @@
-# backend/app/api/routers/assignments.py
+# app/api/routers/assignments.py
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
@@ -54,6 +54,43 @@ async def create_assignment(
         due_amount=due_amount,
         payment_status=payment_status
     )
+
+
+# --- ADD NEW BULK ASSIGNMENT ENDPOINT ---
+@router.post("/group/{group_id}/bulk-assign", status_code=status.HTTP_201_CREATED)
+async def create_bulk_assignments(
+    group_id: int,
+    bulk_data: assignments_schemas.ChitAssignmentBulkCreate,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """
+    Assigns multiple members to multiple months for a single group in one transaction.
+    """
+    # 1. Check if the group exists
+    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
+    if not db_group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    
+    # 2. (Optional) Add more validation here, e.g., check if months are already assigned
+    # For now, we trust the frontend will only send valid, unassigned months.
+
+    # 3. Create assignments in bulk
+    try:
+        await crud_assignments.create_bulk_assignments(
+            session=session,
+            group_id=group_id,
+            assignments_in=bulk_data.assignments
+        )
+    except Exception as e:
+        # Catch potential IntegrityErrors or other DB issues
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create assignments. Error: {str(e)}"
+        )
+    
+    return {"message": "Assignments created successfully."}
 
 
 @router.get("/unassigned-months/{group_id}", response_model=assignments_schemas.UnassignedMonthResponse)

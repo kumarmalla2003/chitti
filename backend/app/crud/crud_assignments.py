@@ -1,14 +1,16 @@
-# backend/app/crud/crud_assignments.py
+# app/crud/crud_assignments.py
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from typing import List # <-- IMPORT List
 
 from app.models.assignments import ChitAssignment
 from app.models.chits import ChitGroup
-from app.schemas.assignments import ChitAssignmentCreate
+# --- IMPORT NEW BULK SCHEMA ---
+from app.schemas.assignments import ChitAssignmentCreate, ChitAssignmentBulkItem
 
 async def create_assignment(session: AsyncSession, assignment_in: ChitAssignmentCreate) -> ChitAssignment:
     db_assignment = ChitAssignment.model_validate(assignment_in)
@@ -16,6 +18,31 @@ async def create_assignment(session: AsyncSession, assignment_in: ChitAssignment
     await session.commit()
     await session.refresh(db_assignment)
     return db_assignment
+
+# --- ADD NEW BULK CREATE FUNCTION ---
+async def create_bulk_assignments(
+    session: AsyncSession, 
+    group_id: int, 
+    assignments_in: List[ChitAssignmentBulkItem]
+) -> bool:
+    """
+    Creates multiple chit assignments for a group in a single transaction.
+    """
+    db_assignments = [
+        ChitAssignment(
+            member_id=item.member_id,
+            chit_month=item.chit_month,
+            chit_group_id=group_id
+        )
+        for item in assignments_in
+    ]
+    
+    if not db_assignments:
+        return True # Nothing to add, but operation is "successful"
+
+    session.add_all(db_assignments)
+    await session.commit()
+    return True
 
 async def get_unassigned_months_for_group(session: AsyncSession, group_id: int) -> list[date]:
     # 1. Get the chit group details
