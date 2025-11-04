@@ -13,7 +13,7 @@ import Button from "../components/ui/Button";
 import GroupDetailsForm from "../components/forms/GroupDetailsForm";
 import GroupMembersManager from "../components/sections/GroupMembersManager";
 import PayoutsSection from "../components/sections/PayoutsSection";
-import PaymentHistoryList from "../components/sections/PaymentHistoryList"; // <-- IMPORT NEW
+import PaymentHistoryList from "../components/sections/PaymentHistoryList";
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -100,9 +100,7 @@ const MembersSectionComponent = ({ mode, groupId }) => (
   </Card>
 );
 
-// --- DELETE THE PaymentsSection HELPER COMPONENT ---
-// (It's gone)
-
+// --- DesktopActionButton (unchanged) ---
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "view") return null;
   let buttonText, Icon, buttonVariant;
@@ -145,6 +143,7 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   );
 };
 
+// --- TabButton (unchanged) ---
 const TabButton = React.forwardRef(
   ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
     const isActive = activeTab === name;
@@ -167,6 +166,7 @@ const TabButton = React.forwardRef(
   }
 );
 
+// --- MobileContent (MODIFIED) ---
 const MobileContent = ({
   TABS,
   activeTab,
@@ -301,15 +301,8 @@ const MobileContent = ({
 
       {activeTab === "payments" && (
         <>
-          {/* --- REPLACE PaymentsSection --- */}
-          <Card className="flex-1 flex flex-col">
-            <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-              <RupeeIcon className="w-5 h-5" /> Payments
-            </h2>
-            <hr className="border-border mb-4" />
-            <PaymentHistoryList groupId={groupId} />
-          </Card>
-          {/* --- END OF REPLACEMENT --- */}
+          {/* --- MODIFICATION: Removed Card wrapper and header --- */}
+          <PaymentHistoryList groupId={groupId} mode={mode} />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -329,6 +322,7 @@ const MobileContent = ({
   );
 };
 
+// --- GroupDetailPage (Main component, no changes) ---
 const GroupDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
@@ -819,15 +813,11 @@ const GroupDetailPage = () => {
 
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
-                        {/* --- REPLACE PaymentsSection --- */}
-                        <Card className="flex-1 flex flex-col">
-                          <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-                            <RupeeIcon className="w-5 h-5" /> Payments
-                          </h2>
-                          <hr className="border-border mb-4" />
-                          <PaymentHistoryList groupId={id || createdGroupId} />
-                        </Card>
-                        {/* --- END OF REPLACEMENT --- */}
+                        {/* --- MODIFICATION: Removed Card wrapper and header --- */}
+                        <PaymentHistoryList
+                          groupId={id || createdGroupId}
+                          mode={mode}
+                        />
                       </div>
                     )}
 

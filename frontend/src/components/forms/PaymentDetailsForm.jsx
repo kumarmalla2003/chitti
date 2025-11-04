@@ -25,6 +25,9 @@ const PaymentDetailsForm = ({
   onFormChange,
   defaultAssignmentId,
   paymentData, // Full payment object for view/edit
+  // --- NEW PROPS ---
+  defaultGroupId = null,
+  defaultMemberId = null,
 }) => {
   const { token } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
@@ -39,8 +42,11 @@ const PaymentDetailsForm = ({
   const [filteredAssignments, setFilteredAssignments] = useState([]);
 
   // --- State for selected IDs ---
-  const [selectedGroupId, setSelectedGroupId] = useState("");
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  // --- MODIFICATION: Initialize from new props ---
+  const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId || "");
+  const [selectedMemberId, setSelectedMemberId] = useState(
+    defaultMemberId || ""
+  );
 
   // --- State for loading indicators ---
   const [isLoading, setIsLoading] = useState(true);
@@ -74,9 +80,46 @@ const PaymentDetailsForm = ({
             getAllMembers(token),
           ]);
           setAllGroups(groupsData.groups);
-          setFilteredGroups(groupsData.groups);
           setAllMembers(membersData.members);
-          setFilteredMembers(membersData.members);
+
+          // --- MODIFICATION: Pre-filter based on default props ---
+          if (defaultMemberId) {
+            // If member is pre-selected, filter groups
+            const memberAssignments = await getAssignmentsForMember(
+              defaultMemberId,
+              token
+            );
+            const validGroupIds = new Set(
+              memberAssignments.map((a) => a.chit_group.id)
+            );
+            setFilteredGroups(
+              groupsData.groups.filter((g) => validGroupIds.has(g.id))
+            );
+            setFilteredMembers(
+              membersData.members.filter(
+                (m) => m.id === parseInt(defaultMemberId)
+              )
+            );
+          } else if (defaultGroupId) {
+            // If group is pre-selected, filter members
+            const groupAssignments = await getAssignmentsForGroup(
+              defaultGroupId,
+              token
+            );
+            const validMemberIds = new Set(
+              groupAssignments.assignments.map((a) => a.member.id)
+            );
+            setFilteredMembers(
+              membersData.members.filter((m) => validMemberIds.has(m.id))
+            );
+            setFilteredGroups(
+              groupsData.groups.filter((g) => g.id === parseInt(defaultGroupId))
+            );
+          } else {
+            // No defaults, show all
+            setFilteredGroups(groupsData.groups);
+            setFilteredMembers(membersData.members);
+          }
         } catch (err) {
           console.error("Failed to load dropdown data", err);
         } finally {
@@ -85,7 +128,7 @@ const PaymentDetailsForm = ({
       }
     };
     fetchInitialData();
-  }, [mode, token]);
+  }, [mode, token, defaultGroupId, defaultMemberId]);
 
   // --- Pre-fill logic for edit/view modes ---
   useEffect(() => {
@@ -120,7 +163,10 @@ const PaymentDetailsForm = ({
         const validGroupIds = new Set(
           memberAssignments.map((a) => a.chit_group.id)
         );
-        setFilteredGroups(allGroups.filter((g) => validGroupIds.has(g.id)));
+        // --- MODIFICATION: Don't reset if defaultGroup is set ---
+        if (!defaultGroupId) {
+          setFilteredGroups(allGroups.filter((g) => validGroupIds.has(g.id)));
+        }
       } catch (err) {
         console.error("Failed to fetch member assignments", err);
       } finally {
@@ -152,7 +198,12 @@ const PaymentDetailsForm = ({
         const validMemberIds = new Set(
           groupAssignments.assignments.map((a) => a.member.id)
         );
-        setFilteredMembers(allMembers.filter((m) => validMemberIds.has(m.id)));
+        // --- MODIFICATION: Don't reset if defaultMember is set ---
+        if (!defaultMemberId) {
+          setFilteredMembers(
+            allMembers.filter((m) => validMemberIds.has(m.id))
+          );
+        }
       } catch (err) {
         console.error("Failed to fetch group assignments", err);
       } finally {
@@ -170,6 +221,7 @@ const PaymentDetailsForm = ({
       const fetchAssignments = async () => {
         setIsAssignmentsLoading(true);
         try {
+          // --- MODIFICATION: Use allMembers to find assignments ---
           const assignments = await getAssignmentsForMember(
             selectedMemberId,
             token
@@ -199,7 +251,7 @@ const PaymentDetailsForm = ({
       };
       fetchAssignments();
     }
-  }, [selectedGroupId, selectedMemberId, mode, token, defaultAssignmentId]); // Add defaultAssignmentId dependency
+  }, [selectedGroupId, selectedMemberId, mode, token, defaultAssignmentId]);
 
   // 4. Pre-fill from defaultAssignmentId (e.g., from 'Log Payment' button)
   useEffect(() => {
@@ -242,24 +294,32 @@ const PaymentDetailsForm = ({
       }
     };
     // Only run if the form isn't already populated from edit/view mode
-    if (!paymentData) {
+    // --- MODIFICATION: Also check default props ---
+    if (!paymentData && !defaultGroupId && !defaultMemberId) {
       prefillFromAssignmentId();
     }
-  }, [defaultAssignmentId, mode, allGroups, allMembers, token, paymentData]);
+  }, [
+    defaultAssignmentId,
+    mode,
+    allGroups,
+    allMembers,
+    token,
+    paymentData,
+    defaultGroupId,
+    defaultMemberId,
+  ]);
   // --- END CASCADING DROPDOWN LOGIC ---
 
   // Memoize assignment options
   const assignmentOptions = useMemo(() => {
     return filteredAssignments.map((a) => ({
       ...a,
-      // --- CHANGE 1: Removed due amount ---
       label: `${formatMonthYear(a.chit_month)}`,
     }));
   }, [filteredAssignments]);
 
   // --- VIEW MODE ---
   if (mode === "view" && paymentData) {
-    // --- CHANGE 2: Removed paid amount ---
     const assignmentLabel = `${formatMonthYear(paymentData.chit_month)}`;
 
     return (
@@ -337,12 +397,11 @@ const PaymentDetailsForm = ({
             onChange={handleMemberChange}
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
             required
-            disabled={isLoading}
+            disabled={isLoading || !!defaultMemberId} // --- MODIFICATION: Disable if defaultId
           >
             <option value="">
               {isLoading ? "Loading..." : "Select a member..."}
             </option>
-            {/* --- CHANGE 3: Removed phone number --- */}
             {filteredMembers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.full_name}
@@ -372,7 +431,7 @@ const PaymentDetailsForm = ({
             onChange={handleGroupChange}
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
             required
-            disabled={isLoading}
+            disabled={isLoading || !!defaultGroupId} // --- MODIFICATION: Disable if defaultId
           >
             <option value="">
               {isLoading ? "Loading..." : "Select a group..."}
