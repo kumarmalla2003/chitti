@@ -12,16 +12,14 @@ const PaymentHistoryCard = ({ payment, viewType, onClick }) => {
     });
 
   // Determine the title based on the context
-  // If we are on a Group's page (viewType 'group'), show the Member's name.
-  // If we are on a Member's page (viewType 'member'), show the Group's name.
+  // If we are on a Chit's page (viewType 'chit'), show the Member's name.
+  // If we are on a Member's page (viewType 'member'), show the Chit's name.
   const title =
-    viewType === "group" ? payment.member.full_name : payment.chit_group.name;
+    viewType === "chit" ? payment.member.full_name : payment.chit.name; // <-- MODIFIED
 
   return (
     <div
-      // --- MODIFICATION: Changed background to primary ---
       className="rounded-lg p-4 shadow-md transition-all duration-300 cursor-pointer hover:scale-[1.02] bg-background-primary"
-      // --- END MODIFICATION ---
       onClick={onClick}
     >
       {/* Top Row: Title (Context-aware) */}

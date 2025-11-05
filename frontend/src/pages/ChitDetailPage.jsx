@@ -1,4 +1,4 @@
-// frontend/src/pages/GroupDetailPage.jsx
+// frontend/src/pages/ChitDetailPage.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
@@ -13,6 +13,7 @@ import Button from "../components/ui/Button";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import PaymentHistoryList from "../components/sections/PaymentHistoryList";
+import ChitMembersManager from "../components/sections/ChitMembersManager";
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -25,11 +26,7 @@ import {
   FiEdit,
   FiTrendingUp,
 } from "react-icons/fi";
-import {
-  createChit,
-  getChitById,
-  patchChit,
-} from "../services/chitsService";
+import { createChit, getChitById, patchChit } from "../services/chitsService";
 
 // --- Helper Functions (unchanged) ---
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
@@ -87,15 +84,15 @@ const DetailsSectionComponent = ({
   </Card>
 );
 
-const PayoutsSectionComponent = ({ mode, groupId }) => (
+const PayoutsSectionComponent = ({ mode, chitId }) => (
   <Card className="flex-1 flex flex-col">
-    <PayoutsSection mode={mode} groupId={groupId} />
+    <PayoutsSection mode={mode} chitId={chitId} />
   </Card>
 );
 
 const MembersSectionComponent = ({ mode, chitId, onLogPaymentClick }) => (
   <Card className="flex-1 flex flex-col">
-    <MembersManager
+    <ChitMembersManager
       mode={mode}
       chitId={chitId}
       onLogPaymentClick={onLogPaymentClick}
@@ -185,9 +182,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
-  onLogPaymentClick, // <-- ADD THIS
-  paymentDefaults, // <-- ADD THIS
-  setPaymentDefaults, // <-- ADD THIS
+  onLogPaymentClick,
+  paymentDefaults,
+  setPaymentDefaults,
 }) => {
   const tabRefs = useRef({});
 
@@ -269,7 +266,7 @@ const MobileContent = ({
 
       {activeTab === "payouts" && (
         <>
-          <PayoutsSectionComponent mode={mode} groupId={chitId} />
+          <PayoutsSectionComponent mode={mode} chitId={chitId} />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -291,7 +288,7 @@ const MobileContent = ({
           <MembersSectionComponent
             mode={mode}
             chitId={chitId}
-            onLogPaymentClick={onLogPaymentClick} // <-- Pass prop
+            onLogPaymentClick={onLogPaymentClick}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -312,10 +309,10 @@ const MobileContent = ({
       {activeTab === "payments" && (
         <>
           <PaymentHistoryList
-            groupId={chitId}
+            chitId={chitId}
             mode={mode}
-            paymentDefaults={paymentDefaults} // <-- Pass prop
-            setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+            paymentDefaults={paymentDefaults}
+            setPaymentDefaults={setPaymentDefaults}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -351,7 +348,7 @@ const ChitDetailPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     chit_value: "",
-    group_size: "",
+    size: "",
     monthly_installment: "",
     duration_months: "",
     start_date: "",
@@ -366,7 +363,6 @@ const ChitDetailPage = () => {
   const [createdChitId, setCreatedChitId] = useState(null);
   const [createdChitName, setCreatedChitName] = useState(null);
 
-  // --- ADD THIS STATE ---
   const [paymentDefaults, setPaymentDefaults] = useState(null);
 
   useScrollToTop(success || error);
@@ -378,7 +374,7 @@ const ChitDetailPage = () => {
     () =>
       formData.name.trim() !== "" &&
       formData.chit_value.trim() !== "" &&
-      formData.group_size.trim() !== "" &&
+      formData.size.trim() !== "" &&
       formData.monthly_installment.trim() !== "" &&
       formData.duration_months.trim() !== "" &&
       formData.start_date.trim() !== "" &&
@@ -399,7 +395,7 @@ const ChitDetailPage = () => {
         const fetchedData = {
           name: chit.name,
           chit_value: chit.chit_value.toString(),
-          group_size: chit.group_size.toString(),
+          size: chit.size.toString(),
           monthly_installment: chit.monthly_installment.toString(),
           duration_months: chit.duration_months.toString(),
           start_date: toYearMonth(chit.start_date),
@@ -463,7 +459,7 @@ const ChitDetailPage = () => {
         name === "payout_day"
       ) {
         newFormData[name] = value.replace(/[^0-9]/g, "");
-      } else if (name === "group_size") {
+      } else if (name === "size") {
         newFormData.duration_months = value;
         if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
           newFormData.end_date = calculateEndDate(
@@ -472,7 +468,7 @@ const ChitDetailPage = () => {
           );
         }
       } else if (name === "duration_months") {
-        newFormData.group_size = value;
+        newFormData.size = value;
         if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
           newFormData.end_date = calculateEndDate(
             newFormData.start_date,
@@ -493,7 +489,7 @@ const ChitDetailPage = () => {
         } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
           const newDuration = calculateDuration(value, newFormData.end_date);
           newFormData.duration_months = newDuration;
-          newFormData.group_size = newDuration;
+          newFormData.size = newDuration;
         }
       } else if (name === "end_date" && value.match(/^\d{4}-\d{2}$/)) {
         if (newFormData.duration_months) {
@@ -504,7 +500,7 @@ const ChitDetailPage = () => {
         } else if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
           const newDuration = calculateDuration(newFormData.start_date, value);
           newFormData.duration_months = newDuration;
-          newFormData.group_size = newDuration;
+          newFormData.size = newDuration;
         }
       }
       return newFormData;
@@ -544,7 +540,7 @@ const ChitDetailPage = () => {
           ...formData,
           start_date: getFirstDayOfMonth(formData.start_date),
           chit_value: Number(formData.chit_value),
-          group_size: Number(formData.group_size),
+          size: Number(formData.size),
           monthly_installment: Number(formData.monthly_installment),
           duration_months: Number(formData.duration_months),
           collection_day: Number(formData.collection_day),
@@ -557,7 +553,7 @@ const ChitDetailPage = () => {
         setOriginalData({
           name: newChit.name,
           chit_value: newChit.chit_value.toString(),
-          group_size: newChit.group_size.toString(),
+          size: newChit.size.toString(),
           monthly_installment: newChit.monthly_installment.toString(),
           duration_months: newChit.duration_months.toString(),
           start_date: toYearMonth(newChit.start_date),
@@ -581,8 +577,7 @@ const ChitDetailPage = () => {
             patchData.start_date = getFirstDayOfMonth(patchData.start_date);
           if (patchData.chit_value)
             patchData.chit_value = Number(patchData.chit_value);
-          if (patchData.group_size)
-            patchData.group_size = Number(patchData.group_size);
+          if (patchData.size) patchData.size = Number(patchData.size);
           if (patchData.monthly_installment)
             patchData.monthly_installment = Number(
               patchData.monthly_installment
@@ -594,16 +589,12 @@ const ChitDetailPage = () => {
           if (patchData.payout_day)
             patchData.payout_day = Number(patchData.payout_day);
 
-          const updatedChit = await patchChit(
-            createdChitId,
-            patchData,
-            token
-          );
+          const updatedChit = await patchChit(createdChitId, patchData, token);
           setCreatedChitName(updatedChit.name);
           setOriginalData({
             name: updatedChit.name,
             chit_value: updatedChit.chit_value.toString(),
-            group_size: updatedChit.group_size.toString(),
+            size: updatedChit.size.toString(),
             monthly_installment: updatedChit.monthly_installment.toString(),
             duration_months: updatedChit.duration_months.toString(),
             start_date: toYearMonth(updatedChit.start_date),
@@ -628,8 +619,7 @@ const ChitDetailPage = () => {
             patchData.start_date = getFirstDayOfMonth(patchData.start_date);
           if (patchData.chit_value)
             patchData.chit_value = Number(patchData.chit_value);
-          if (patchData.group_size)
-            patchData.group_size = Number(patchData.group_size);
+          if (patchData.size) patchData.size = Number(patchData.size);
           if (patchData.monthly_installment)
             patchData.monthly_installment = Number(
               patchData.monthly_installment
@@ -725,7 +715,6 @@ const ChitDetailPage = () => {
     }
   };
 
-  // --- ADD THIS HANDLER ---
   const handleLogPaymentClick = (assignment) => {
     setPaymentDefaults({
       assignmentId: assignment.id,
@@ -800,9 +789,9 @@ const ChitDetailPage = () => {
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
                   isPostCreation={!!(mode === "create" && createdChitId)}
-                  onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
-                  paymentDefaults={paymentDefaults} // <-- Pass prop
-                  setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+                  onLogPaymentClick={handleLogPaymentClick}
+                  paymentDefaults={paymentDefaults}
+                  setPaymentDefaults={setPaymentDefaults}
                 />
               </div>
 
@@ -828,7 +817,7 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          groupId={id || createdChitId}
+                          chitId={id || createdChitId}
                         />
                       </div>
                     )}
@@ -838,7 +827,7 @@ const ChitDetailPage = () => {
                         <MembersSectionComponent
                           mode={mode}
                           chitId={id || createdChitId}
-                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
+                          onLogPaymentClick={handleLogPaymentClick}
                         />
                       </div>
                     )}
@@ -846,10 +835,10 @@ const ChitDetailPage = () => {
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PaymentHistoryList
-                          groupId={id || createdChitId}
+                          chitId={id || createdChitId}
                           mode={mode}
-                          paymentDefaults={paymentDefaults} // <-- Pass prop
-                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+                          paymentDefaults={paymentDefaults}
+                          setPaymentDefaults={setPaymentDefaults}
                         />
                       </div>
                     )}
@@ -859,12 +848,12 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-1 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          groupId={id || createdChitId}
+                          chitId={id || createdChitId}
                         />
                         <MembersSectionComponent
                           mode={mode}
                           chitId={id || createdChitId}
-                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
+                          onLogPaymentClick={handleLogPaymentClick}
                         />
                       </div>
                     )}

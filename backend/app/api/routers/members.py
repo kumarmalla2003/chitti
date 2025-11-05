@@ -151,7 +151,7 @@ async def get_member_assignments(
         # Construct the detailed ChitResponse
         chit_response = ChitResponse(
             id=chit.id, name=chit.name, chit_value=chit.chit_value,
-            group_size=chit.group_size, monthly_installment=chit.monthly_installment,
+            size=chit.size, monthly_installment=chit.monthly_installment, # <-- RENAMED
             duration_months=chit.duration_months, start_date=chit.start_date,
             end_date=chit.end_date, status=status_str, chit_cycle=chit_cycle_str,
             collection_day=chit.collection_day, payout_day=chit.payout_day

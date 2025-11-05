@@ -17,7 +17,7 @@ import {
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
-  getPaymentsByGroupId,
+  getPaymentsByChitId,
   getPaymentsByMemberId,
   createPayment,
 } from "../../services/paymentsService";
@@ -25,7 +25,7 @@ import PaymentHistoryCard from "../ui/PaymentHistoryCard";
 import useScrollToTop from "../../hooks/useScrollToTop";
 
 const PaymentHistoryList = ({
-  groupId,
+  chitId,
   memberId,
   mode,
   paymentDefaults, // <-- ADDED
@@ -52,15 +52,15 @@ const PaymentHistoryList = ({
 
   useScrollToTop(formSuccess || formError);
 
-  const viewType = groupId ? "group" : "member";
+  const viewType = chitId ? "chit" : "member";
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       let data;
-      if (groupId) {
-        data = await getPaymentsByGroupId(groupId, token);
+      if (chitId) {
+        data = await getPaymentsByChitId(chitId, token);
       } else if (memberId) {
         data = await getPaymentsByMemberId(memberId, token);
       }
@@ -73,10 +73,10 @@ const PaymentHistoryList = ({
   };
 
   useEffect(() => {
-    if (token && (groupId || memberId)) {
+    if (token && (chitId || memberId)) {
       fetchData();
     }
-  }, [groupId, memberId, token]);
+  }, [chitId, memberId, token]);
 
   useEffect(() => {
     if (formSuccess) {
@@ -120,24 +120,22 @@ const PaymentHistoryList = ({
         .toLowerCase()
         .includes(lowercasedQuery);
 
-      if (viewType === "group") {
+      if (viewType === "chit") {
         const memberMatch = p.member.full_name
           .toLowerCase()
           .includes(lowercasedQuery);
         return memberMatch || amountMatch || methodMatch;
       } else {
-        const groupMatch = p.chit_group.name
-          .toLowerCase()
-          .includes(lowercasedQuery);
-        return groupMatch || amountMatch || methodMatch;
+        const chitMatch = p.chit.name.toLowerCase().includes(lowercasedQuery);
+        return chitMatch || amountMatch || methodMatch;
       }
     });
   }, [payments, searchQuery, viewType]);
 
   const searchPlaceholder =
-    viewType === "group"
+    viewType === "chit"
       ? "Search by member, amount, or method..."
-      : "Search by group, amount, or method...";
+      : "Search by chit, amount, or method...";
 
   const columns = [
     {
@@ -149,13 +147,13 @@ const PaymentHistoryList = ({
     ...(memberId
       ? [
           {
-            header: "Group",
-            accessor: "chit_group.name",
+            header: "Chit",
+            accessor: "chit.name",
             className: "text-left",
           },
         ]
       : []),
-    ...(groupId
+    ...(chitId
       ? [
           {
             header: "Member",
@@ -295,7 +293,7 @@ const PaymentHistoryList = ({
             onFormChange={handleFormChange}
             // --- MODIFIED ---
             defaultAssignmentId={paymentDefaults?.assignmentId}
-            defaultGroupId={paymentDefaults?.groupId || groupId}
+            defaultChitId={paymentDefaults?.chitId || chitId}
             defaultMemberId={paymentDefaults?.memberId || memberId}
             // --- END MODIFICATION ---
           />

@@ -1,4 +1,4 @@
-// frontend/src/components/ui/GroupCard.jsx
+// frontend/src/components/ui/ChitCard.jsx
 
 import {
   FiEdit,

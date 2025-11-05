@@ -82,7 +82,7 @@ async def create_payment(
     if payment_in.amount_paid > (due_amount + 0.001):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Payment (₹{payment_in.amount_paid:.2f}) exceeds the due amount of ₹{due_amount:.2f}."
+            detail=f"Payment (₹{payment_in.amount_paid:.2f}) exceeds the due amount of ₹{due_amount:.2f}." # <-- FIXED
         )
     
     # --- END: OVERPAYMENT VALIDATION ---
@@ -202,7 +202,7 @@ async def update_payment(
         if payment_in.amount_paid > (due_amount + 0.001):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Updated payment (₹{payment_in.amount_paid:.2f}) exceeds the total allowable amount of ₹{due_amount:.2f} for this assignment."
+                detail=f"Updated payment (₹{payment_in.amount_paid:.2f}) exceeds the total allowable amount of ₹{due_amount:.2f} for this assignment." # <-- FIXED
             )
     # --- END: OVERPAYMENT VALIDATION ---
         

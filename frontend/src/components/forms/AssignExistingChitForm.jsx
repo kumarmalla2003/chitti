@@ -1,4 +1,4 @@
-// frontend/src/components/forms/AssignExistingGroupForm.jsx
+// frontend/src/components/forms/AssignExistingChitForm.jsx
 
 import {
   useState,

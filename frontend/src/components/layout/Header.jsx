@@ -8,7 +8,7 @@ import ProfileDropdown from "../ui/ProfileDropdown";
 import useClickOutside from "../../hooks/useClickOutside";
 import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
 import { AnimatePresence } from "framer-motion";
-import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
+import { RupeeIcon } from "../ui/Icons";
 
 const Header = ({
   onLoginClick,
@@ -32,9 +32,9 @@ const Header = ({
     "why-us": useRef(null),
     contact: useRef(null),
     dashboard: useRef(null),
-    groups: useRef(null),
+    chits: useRef(null), // <-- RENAMED
     members: useRef(null),
-    payments: useRef(null), // <-- ADD THIS
+    payments: useRef(null),
   };
 
   const loggedOutNavLinks = [
@@ -48,17 +48,17 @@ const Header = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home", id: "home" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
-    { href: "/groups", text: "Groups", id: "groups" },
+    { href: "/chits", text: "Chits", id: "chits" }, // <-- RENAMED
     { href: "/members", text: "Members", id: "members" },
-    { href: "/payments", text: "Payments", id: "payments" }, // <-- ADD THIS
+    { href: "/payments", text: "Payments", id: "payments" },
   ];
 
   const getActiveId = () => {
     if (!isLoggedIn) return activeSection;
-    if (location.pathname.startsWith("/groups")) return "groups";
+    if (location.pathname.startsWith("/chits")) return "chits"; // <-- RENAMED
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
-    if (location.pathname.startsWith("/payments")) return "payments"; // <-- ADD THIS
+    if (location.pathname.startsWith("/payments")) return "payments";
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -87,12 +87,13 @@ const Header = ({
 
   const isLinkActive = (path) => {
     if (path === "/") return location.pathname === "/";
+    if (path === "/chits") return location.pathname.startsWith("/chits"); // <-- ADDED
     if (path === "/members")
       return (
         location.pathname.startsWith("/members") ||
         location.pathname.startsWith("/assignments")
       );
-    if (path === "/payments") return location.pathname.startsWith("/payments"); // <-- ADD THIS
+    if (path === "/payments") return location.pathname.startsWith("/payments");
     return location.pathname.startsWith(path);
   };
 

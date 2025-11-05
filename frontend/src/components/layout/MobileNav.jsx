@@ -6,7 +6,7 @@ import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
 import { FiArrowLeft, FiLogIn, FiLogOut } from "react-icons/fi";
 import { Link, useLocation } from "react-router-dom";
-import { RupeeIcon } from "../ui/Icons"; // <-- IMPORT
+import { RupeeIcon } from "../ui/Icons";
 
 const MobileNav = ({
   isOpen,
@@ -40,6 +40,10 @@ const MobileNav = ({
     if (path === "/") {
       return location.pathname === "/";
     }
+    if (path === "/chits") {
+      // <-- ADDED
+      return location.pathname.startsWith("/chits");
+    }
     if (path === "/members") {
       return (
         location.pathname.startsWith("/members") ||
@@ -47,7 +51,6 @@ const MobileNav = ({
       );
     }
     if (path === "/payments") {
-      // <-- ADD THIS
       return location.pathname.startsWith("/payments");
     }
     return location.pathname.startsWith(path);
@@ -64,9 +67,9 @@ const MobileNav = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home" },
     { href: "/dashboard", text: "Dashboard" },
-    { href: "/groups", text: "Groups" },
+    { href: "/chits", text: "Chits" }, // <-- RENAMED
     { href: "/members", text: "Members" },
-    { href: "/payments", text: "Payments" }, // <-- ADD THIS
+    { href: "/payments", text: "Payments" },
   ];
 
   const BrandLogo = () => {

@@ -160,9 +160,7 @@ const PaymentDetailsForm = ({
           newMemberId,
           token
         );
-        const validChitIds = new Set(
-          memberAssignments.map((a) => a.chit.id)
-        );
+        const validChitIds = new Set(memberAssignments.map((a) => a.chit.id));
         // --- MODIFICATION: Don't reset if defaultChit is set ---
         if (!defaultChitId) {
           setFilteredChits(allChits.filter((c) => validChitIds.has(c.id)));
@@ -191,10 +189,7 @@ const PaymentDetailsForm = ({
     if (newChitId) {
       setIsLoading(true);
       try {
-        const chitAssignments = await getAssignmentsForChit(
-          newChitId,
-          token
-        );
+        const chitAssignments = await getAssignmentsForChit(newChitId, token);
         const validMemberIds = new Set(
           chitAssignments.assignments.map((a) => a.member.id)
         );
@@ -251,7 +246,7 @@ const PaymentDetailsForm = ({
       };
       fetchAssignments();
     }
-  }, [selectedGroupId, selectedMemberId, mode, token, defaultAssignmentId]);
+  }, [selectedChitId, selectedMemberId, mode, token, defaultAssignmentId]);
 
   // 4. Pre-fill from defaultAssignmentId (e.g., from 'Log Payment' button)
   useEffect(() => {

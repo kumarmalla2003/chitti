@@ -39,7 +39,8 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
-const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
+const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
+  // <-- PROP RENAMED
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,14 +54,15 @@ const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
   useScrollToTop(success);
 
   const fetchPayouts = async (showLoading = true) => {
-    if (!groupId) {
+    if (!chitId) {
+      // <-- Use chitId
       setLoading(false);
       return;
     }
     try {
       if (showLoading) setLoading(true);
       setError(null);
-      const data = await getPayouts(groupId, token);
+      const data = await getPayouts(chitId, token); // <-- Use chitId
       data.payouts.sort((a, b) => a.month - b.month);
       setPayouts(data.payouts);
     } catch (err) {
@@ -72,7 +74,7 @@ const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
 
   useEffect(() => {
     fetchPayouts();
-  }, [groupId, token]);
+  }, [chitId, token]); // <-- Use chitId
 
   // Timer to clear success message
   useEffect(() => {
@@ -150,12 +152,16 @@ const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
     {
       header: "Month",
       accessor: "month",
-      className: "text-center font-medium w-1/4",
+      className: "text-center font-medium",
+      headerClassName: "w-1/4",
+      cellClassName: "w-1/4",
     },
     {
       header: "Payout",
       accessor: "payout_amount",
-      className: `text-center ${isEditing ? "w-3/4" : "w-auto"}`,
+      className: "text-center",
+      headerClassName: "w-3/4",
+      cellClassName: "w-3/4",
       cell: (row, index) => {
         const isEvenRow = index % 2 === 0;
         const isLastInput = index === payouts.length - 1;
@@ -211,10 +217,11 @@ const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
     );
   }
 
-  if (!groupId) {
+  if (!chitId) {
+    // <-- Use chitId
     return (
       <p className="text-center text-text-secondary py-4">
-        Create the group first to manage payouts.
+        Create the chit first to manage payouts.
       </p>
     );
   }
@@ -273,7 +280,7 @@ const PayoutsSection = ({ groupId, mode, showTitle = true }) => {
         <div className="text-center py-8">
           <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
           <p className="mt-2 text-sm text-text-secondary">
-            No payout data is available for this group.
+            No payout data is available for this chit.
           </p>
         </div>
       )}

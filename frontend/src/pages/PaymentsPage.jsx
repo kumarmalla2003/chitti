@@ -105,7 +105,7 @@ const PaymentsPage = () => {
     return payments.filter(
       (p) =>
         p.member.full_name.toLowerCase().includes(lowercasedQuery) ||
-        p.chit_group.name.toLowerCase().includes(lowercasedQuery) ||
+        p.chit.name.toLowerCase().includes(lowercasedQuery) ||
         p.amount_paid.toString().includes(lowercasedQuery)
     );
   }, [payments, searchQuery]);
@@ -130,8 +130,8 @@ const PaymentsPage = () => {
       className: "text-left",
     },
     {
-      header: "Group",
-      accessor: "chit_group.name",
+      header: "Chit",
+      accessor: "chit.name",
       className: "text-left",
     },
     {
@@ -220,7 +220,7 @@ const PaymentsPage = () => {
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
                     type="text"
-                    placeholder="Search by member, group, or amount..."
+                    placeholder="Search by member, chit, or amount..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"

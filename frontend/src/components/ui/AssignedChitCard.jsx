@@ -1,4 +1,4 @@
-// frontend/src/components/ui/AssignedGroupCard.jsx
+// frontend/src/components/ui/AssignedChitCard.jsx
 
 import { FiTrash2, FiCalendar } from "react-icons/fi";
 import { RupeeIcon } from "./Icons";

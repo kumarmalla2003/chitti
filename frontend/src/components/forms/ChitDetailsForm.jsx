@@ -1,4 +1,4 @@
-// frontend/src/components/forms/GroupDetailsForm.jsx
+// frontend/src/components/forms/ChitDetailsForm.jsx
 
 import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
@@ -158,7 +158,7 @@ const ChitDetailsForm = ({
           </div>
           <div>
             <label
-              htmlFor="group_size"
+              htmlFor="size"
               className="block text-lg font-medium text-text-secondary mb-1"
             >
               Size
@@ -170,9 +170,9 @@ const ChitDetailsForm = ({
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
                 type="number"
-                id="group_size"
-                name="group_size"
-                value={formData.group_size}
+                id="size"
+                name="size"
+                value={formData.size}
                 onChange={onFormChange}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 min="1"

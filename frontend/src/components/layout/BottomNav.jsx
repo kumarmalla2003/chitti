@@ -10,16 +10,16 @@ const BottomNav = ({ onLoginClick }) => {
   const location = useLocation();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  const isGroupsActive = location.pathname.startsWith("/groups");
+  const isChitsActive = location.pathname.startsWith("/chits"); // <-- RENAMED
   const isMembersActive =
     location.pathname.startsWith("/members") ||
     location.pathname.startsWith("/assignments");
-  const isPaymentsActive = location.pathname.startsWith("/payments"); // <-- ADD THIS
+  const isPaymentsActive = location.pathname.startsWith("/payments");
   const isDashboardActive =
     location.pathname === "/dashboard" &&
-    !isGroupsActive &&
+    !isChitsActive && // <-- RENAMED
     !isMembersActive &&
-    !isPaymentsActive; // <-- UPDATE THIS
+    !isPaymentsActive;
 
   return (
     <footer className="fixed bottom-0 left-0 w-full h-16 bg-background-secondary shadow-[0_-2px_6px_rgba(0,0,0,0.1)] px-4 border-t border-border md:hidden flex items-center">
@@ -27,7 +27,7 @@ const BottomNav = ({ onLoginClick }) => {
         {isLoggedIn ? (
           <nav className="grid h-full w-full grid-cols-4 items-center gap-2">
             {" "}
-            {/* <-- CHANGE to grid-cols-4 */}
+            {/* <-- REMAINS grid-cols-4 */}
             <Link
               to="/dashboard"
               className={`flex flex-col items-center justify-center transition-colors duration-300 ${
@@ -42,15 +42,15 @@ const BottomNav = ({ onLoginClick }) => {
               />
             </Link>
             <Link
-              to="/groups"
+              to="/chits" // <-- RENAMED
               className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isGroupsActive ? "text-accent" : "text-text-primary"
+                isChitsActive ? "text-accent" : "text-text-primary" // <-- RENAMED
               }`}
-              aria-label="Groups"
+              aria-label="Chits" // <-- RENAMED
             >
               <FiBox
                 className={`w-7 h-7 transition-transform duration-300 ${
-                  isGroupsActive ? "scale-110" : ""
+                  isChitsActive ? "scale-110" : "" // <-- RENAMED
                 }`}
               />
             </Link>
@@ -67,7 +67,7 @@ const BottomNav = ({ onLoginClick }) => {
                 }`}
               />
             </Link>
-            {/* --- ADD NEW LINK FOR PAYMENTS --- */}
+            {/* --- Payments link remains correct --- */}
             <Link
               to="/payments"
               className={`flex flex-col items-center justify-center transition-colors duration-300 ${

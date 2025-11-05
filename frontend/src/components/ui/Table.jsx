@@ -30,7 +30,7 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
                 key={col.accessor || col.header}
                 scope="col"
                 className={`px-6 py-4 font-semibold border-b-2 border-border ${
-                  col.className || ""
+                  col.headerClassName || col.className || ""
                 }`}
               >
                 {col.header}
@@ -49,7 +49,7 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
                 <td
                   key={col.accessor || col.header}
                   className={`px-6 py-4 font-medium whitespace-nowrap ${
-                    col.className || ""
+                    col.cellClassName || col.className || ""
                   }`}
                 >
                   {col.cell

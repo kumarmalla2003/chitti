@@ -1,11 +1,11 @@
 # backend/app/models/chits.py
 
-from typing import Optional, List, TYPE_CHECKING # <-- Modified
+from typing import Optional, List, TYPE_CHECKING
 from datetime import date
 from sqlmodel import Field, SQLModel, Relationship
 
-if TYPE_CHECKING: # <-- ADDED
-    from app.models.payments import Payment # <-- ADDED
+if TYPE_CHECKING:
+    from app.models.payments import Payment
 
 class Payout(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -18,7 +18,7 @@ class Chit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True, max_length=50)
     chit_value: int
-    group_size: int
+    size: int # <-- RENAMED from group_size
     monthly_installment: int
     duration_months: int
     start_date: date

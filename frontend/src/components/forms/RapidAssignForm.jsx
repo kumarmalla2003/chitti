@@ -5,18 +5,12 @@ import {
   useEffect,
   forwardRef,
   useImperativeHandle,
-  useMemo, // <-- IMPORT
+  useMemo,
 } from "react";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
-import Table from "../ui/Table"; // <-- IMPORT
-import {
-  FiUser, // <-- CHANGED from FiUsers
-  // FiCalendar, // <-- REMOVED (Previous step)
-  FiCheck,
-  FiLoader,
-  FiAlertCircle,
-} from "react-icons/fi";
+import Table from "../ui/Table";
+import { FiUser, FiCheck, FiLoader, FiAlertCircle } from "react-icons/fi";
 import {
   getUnassignedMonths,
   createBulkAssignments,
@@ -24,8 +18,8 @@ import {
 import { getAllMembers } from "../../services/membersService";
 
 const RapidAssignForm = forwardRef(
-  ({ token, groupId, onAssignmentSuccess, onBackToList }, ref) => {
-    // <-- formatDate removed from props
+  ({ token, chitId, onAssignmentSuccess, onBackToList }, ref) => {
+    // <-- PROP RENAMED
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -41,13 +35,11 @@ const RapidAssignForm = forwardRef(
       },
     }));
 
-    // --- ADDED: Local formatDate with short month ---
     const formatDate = (dateString) =>
       new Date(dateString).toLocaleDateString("en-IN", {
         year: "numeric",
-        month: "short", // <-- Short month format
+        month: "short",
       });
-    // --- END ADDED ---
 
     useEffect(() => {
       const fetchData = async () => {
@@ -55,7 +47,7 @@ const RapidAssignForm = forwardRef(
         setError(null);
         try {
           const [monthsData, membersData] = await Promise.all([
-            getUnassignedMonths(groupId, token),
+            getUnassignedMonths(chitId, token), // <-- Use chitId
             getAllMembers(token),
           ]);
           setAvailableMonths(monthsData.available_months);
@@ -67,7 +59,7 @@ const RapidAssignForm = forwardRef(
         }
       };
       fetchData();
-    }, [token, groupId]);
+    }, [token, chitId]); // <-- Use chitId
 
     const handleMemberChange = (month, memberId) => {
       setError(null);
@@ -112,7 +104,7 @@ const RapidAssignForm = forwardRef(
       }
 
       try {
-        await createBulkAssignments(groupId, bulkData, token);
+        await createBulkAssignments(chitId, bulkData, token); // <-- Use chitId
         onAssignmentSuccess();
       } catch (err) {
         setError(err.message);
@@ -121,14 +113,14 @@ const RapidAssignForm = forwardRef(
       }
     };
 
-    // --- MODIFIED: Define columns for the table (Width classes updated) ---
     const columns = useMemo(
       () => [
         {
           header: "Month",
           accessor: "month",
-          // className: "text-left w-1/2", // <-- REMOVED
-          className: "text-left flex-1", // <-- ADDED to take up available width
+          className: "text-left",
+          headerClassName: "w-1/4",
+          cellClassName: "w-1/4",
           cell: (row) => (
             <div className="flex items-center gap-2">
               <span className="font-medium text-text-primary">
@@ -140,8 +132,9 @@ const RapidAssignForm = forwardRef(
         {
           header: "Member",
           accessor: "member_id",
-          // className: "w-1/2", // <-- REMOVED
-          className: "flex-1", // <-- ADDED to take up available width
+          className: "",
+          headerClassName: "w-3/4",
+          cellClassName: "w-3/4",
           cell: (row) => (
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -168,9 +161,7 @@ const RapidAssignForm = forwardRef(
       ],
       [allMembers, assignments]
     );
-    // --- END MODIFICATION ---
 
-    // --- NEW: Map months to table data ---
     const tableData = useMemo(
       () => availableMonths.map((month) => ({ month })),
       [availableMonths]
@@ -197,7 +188,7 @@ const RapidAssignForm = forwardRef(
         <div className="text-center py-8">
           <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
           <p className="mt-2 text-sm text-text-secondary">
-            No available months to assign in this group.
+            No available months to assign in this chit.
           </p>
         </div>
       );
@@ -214,7 +205,6 @@ const RapidAssignForm = forwardRef(
       );
     }
 
-    // --- MODIFIED: Return the Table-based form ---
     return (
       <form className="my-4" onSubmit={handleConfirmAssignments}>
         <Table columns={columns} data={tableData} variant="secondary" />
@@ -237,7 +227,6 @@ const RapidAssignForm = forwardRef(
         </div>
       </form>
     );
-    // --- END MODIFICATION ---
   }
 );
 

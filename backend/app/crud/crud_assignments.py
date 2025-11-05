@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from typing import List # <-- IMPORT List
+from typing import List
 
 from app.models.assignments import ChitAssignment
-from app.models.chits import ChitGroup
+from app.models.chits import Chit # <-- RENAMED
 # --- IMPORT NEW BULK SCHEMA ---
 from app.schemas.assignments import ChitAssignmentCreate, ChitAssignmentBulkItem
 
@@ -46,7 +46,7 @@ async def create_bulk_assignments(
 
 async def get_unassigned_months_for_chit(session: AsyncSession, chit_id: int) -> list[date]:
     # 1. Get the chit details
-    chit = await session.get(Chit, chit_id)
+    chit = await session.get(Chit, chit_id) # <-- RENAMED
     if not chit:
         return []
 
@@ -88,7 +88,7 @@ async def get_assignments_by_chit_id(session: AsyncSession, chit_id: int) -> lis
         .where(ChitAssignment.chit_id == chit_id)
         .options(
             selectinload(ChitAssignment.member),
-            selectinload(ChitAssignment.chit) # <-- ADD THIS LINE
+            selectinload(ChitAssignment.chit)
         ) 
         .order_by(ChitAssignment.chit_month)
     )

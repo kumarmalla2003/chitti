@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel, Relationship
 if TYPE_CHECKING:
     from app.models.assignments import ChitAssignment
     from app.models.members import Member
-    from app.models.chits import Chit
+    from app.models.chits import Chit # <-- IMPORT RENAMED
 
 class Payment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -20,9 +20,9 @@ class Payment(SQLModel, table=True):
     # Foreign keys
     chit_assignment_id: int = Field(foreign_key="chitassignment.id")
     member_id: int = Field(foreign_key="member.id")
-    chit_id: int = Field(foreign_key="chit.id")
+    chit_id: int = Field(foreign_key="chit.id") # <-- RENAMED
 
     # Relationships
     assignment: "ChitAssignment" = Relationship(back_populates="payments")
     member: "Member" = Relationship(back_populates="payments")
-    chit: "Chit" = Relationship(back_populates="payments")
+    chit: "Chit" = Relationship(back_populates="payments") # <-- RENAMED

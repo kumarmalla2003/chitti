@@ -2,12 +2,12 @@
 
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
-from app.schemas.chits import ChitNested # <-- This import is correct
+from app.schemas.chits import ChitNested # <-- IMPORT RENAMED
 
 # --- DEFINE NESTED ASSIGNMENT SCHEMA HERE ---
 class AssignmentNestedInMember(BaseModel):
     """Minimal assignment info for nesting inside MemberPublic."""
-    chit: ChitNested
+    chit: ChitNested # <-- RENAMED from chit_group
 
     model_config = ConfigDict(from_attributes=True)
 # --- END OF DEFINITION ---

@@ -14,10 +14,10 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
     }
     const today = new Date().toISOString().split("T")[0];
     return member.assignments.filter((a) => {
-      if (!a.chit_group || !a.chit_group.start_date || !a.chit_group.end_date) {
+      if (!a.chit || !a.chit.start_date || !a.chit.end_date) {
         return false;
       }
-      const { start_date, end_date } = a.chit_group;
+      const { start_date, end_date } = a.chit;
       return today >= start_date && today <= end_date;
     }).length;
   }, [member.assignments]);

@@ -19,7 +19,7 @@ const StepperButtons = ({
   isNextDisabled,
   loading,
   mode,
-  isPostCreation = false, // ADD THIS LINE
+  isPostCreation = false,
 }) => {
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
@@ -27,7 +27,7 @@ const StepperButtons = ({
   // --- FIRST STEP (Details Section) ---
   if (isFirstStep) {
     if (mode === "create") {
-      // Determine button variant and text based on whether group is already created
+      // Determine button variant and text based on whether chit is already created
       const buttonVariant = isPostCreation ? "warning" : "success";
       const buttonText = isPostCreation ? "Update & Next" : "Save & Next";
       const ButtonIcon = isPostCreation ? FiEdit : FiSave;

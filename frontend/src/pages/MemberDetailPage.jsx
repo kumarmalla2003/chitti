@@ -512,11 +512,11 @@ const MemberDetailPage = () => {
     });
   };
 
-  // --- ADD THIS HANDLER ---
+  // --- MODIFIED THIS HANDLER ---
   const handleLogPaymentClick = (assignment) => {
     setPaymentDefaults({
       assignmentId: assignment.id,
-      groupId: assignment.chit_group.id,
+      chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
     setActiveTab("payments");

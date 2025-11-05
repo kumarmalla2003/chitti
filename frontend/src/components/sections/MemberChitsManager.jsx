@@ -38,7 +38,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeGroupName, setActiveGroupName] = useState("");
+  const [activeChitName, setActiveChitName] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -85,7 +85,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
       await createAssignment(assignmentData, token);
       setSuccess("Member assigned successfully!");
       setView("list");
-      setActiveGroupName("");
+      setActiveChitName("");
       fetchData();
     } catch (err) {
       setError(err.message);
@@ -122,7 +122,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
 
   const handleViewChange = (newView) => {
     setView(newView);
-    setActiveGroupName("");
+    setActiveChitName("");
     setError(null);
     setSuccess(null);
   };
@@ -135,8 +135,8 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
     }
   };
 
-  const handleActiveGroupNameChange = (name) => {
-    setActiveGroupName(name);
+  const handleActiveChitNameChange = (name) => {
+    setActiveChitName(name);
   };
 
   const formatDate = (dateString) =>
@@ -243,7 +243,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
           memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
-          onChitNameChange={handleActiveGroupNameChange}
+          onChitNameChange={handleActiveChitNameChange}
           onBackToList={() => handleViewChange("list")}
         />
       );
@@ -257,7 +257,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
           onAssignment={handleAssignment}
           formatDate={formatDate}
           existingAssignments={assignments}
-          onChitNameChange={handleActiveGroupNameChange}
+          onChitNameChange={handleActiveChitNameChange}
           onBackToList={() => handleViewChange("list")}
         />
       );
@@ -336,8 +336,8 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
   };
 
   const getHeaderTitle = () => {
-    if (activeGroupName) {
-      return `${activeGroupName}`;
+    if (activeChitName) {
+      return `${activeChitName}`;
     }
     if (view === "new") return "Assign to New Chit";
     if (view === "existing") return "Assign to Existing Chit";

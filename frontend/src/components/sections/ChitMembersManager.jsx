@@ -1,4 +1,4 @@
-// src/components/sections/GroupMembersManager.jsx
+// src/components/sections/ChitMembersManager.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
@@ -8,7 +8,7 @@ import ConfirmationModal from "../ui/ConfirmationModal";
 import Message from "../ui/Message";
 import AssignNewMemberForm from "../forms/AssignNewMemberForm";
 import AssignExistingMemberForm from "../forms/AssignExistingMemberForm";
-import RapidAssignForm from "../forms/RapidAssignForm"; // <-- IMPORT
+import RapidAssignForm from "../forms/RapidAssignForm";
 import AssignedMemberCard from "../ui/AssignedMemberCard";
 import StatusBadge from "../ui/StatusBadge";
 import {
@@ -18,17 +18,17 @@ import {
   FiTrash2,
   FiArrowLeft,
   FiUserPlus,
-  FiFastForward, // <-- IMPORT
+  FiFastForward,
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
-  getAssignmentsForGroup,
+  getAssignmentsForChit,
   getUnassignedMonths,
   createAssignment,
   deleteAssignment,
 } from "../../services/assignmentsService";
 
-const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
+const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
   const { token } = useSelector((state) => state.auth);
 
   const [view, setView] = useState("list"); // 'list', 'new', 'existing', 'rapid'
@@ -52,7 +52,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
   );
 
   const fetchData = async () => {
-    if (!groupId) {
+    if (!chitId) {
       setLoading(false);
       return;
     }
@@ -60,8 +60,8 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
     setError(null);
     try {
       const [assignmentsData, monthsData] = await Promise.all([
-        getAssignmentsForGroup(groupId, token),
-        getUnassignedMonths(groupId, token),
+        getAssignmentsForChit(chitId, token),
+        getUnassignedMonths(chitId, token),
       ]);
       setAssignments(assignmentsData.assignments);
       setAvailableMonths(monthsData.available_months);
@@ -74,7 +74,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
 
   useEffect(() => {
     fetchData();
-  }, [groupId, token]);
+  }, [chitId, token]);
 
   useEffect(() => {
     if (success) {
@@ -226,7 +226,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
         <AssignNewMemberForm
           ref={formRef}
           token={token}
-          groupId={groupId}
+          chitId={chitId}
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
           formatDate={formatDate}
@@ -240,7 +240,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
         <AssignExistingMemberForm
           ref={formRef}
           token={token}
-          groupId={groupId}
+          chitId={chitId}
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
           formatDate={formatDate}
@@ -250,13 +250,12 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
         />
       );
     }
-    // --- ADD NEW VIEW FOR RAPID ASSIGN ---
     if (view === "rapid") {
       return (
         <RapidAssignForm
           ref={formRef}
           token={token}
-          groupId={groupId}
+          chitId={chitId} // <-- RENAMED
           formatDate={formatDate}
           onAssignmentSuccess={() => {
             setSuccess("Members assigned successfully!");
@@ -273,7 +272,6 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
       <>
         {mode !== "view" && (
           <div className="mb-4">
-            {/* --- MODIFIED: Re-ordered and re-styled buttons --- */}
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 onClick={() => handleViewChange("rapid")}
@@ -297,7 +295,6 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
                 <span>Add Existing Member</span>
               </Button>
             </div>
-            {/* --- END MODIFICATION --- */}
           </div>
         )}
 
@@ -342,7 +339,7 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">
-            No members have been assigned to this group yet.
+            No members have been assigned to this chit yet.
           </p>
         )}
       </>
@@ -355,11 +352,10 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
     }
     if (view === "new") return "Add New Member";
     if (view === "existing") return "Add Existing Member";
-    if (view === "rapid") return "Rapid Assignment"; // <-- ADD THIS
+    if (view === "rapid") return "Rapid Assignment";
     return "Members";
   };
 
-  // --- MODIFIED: Dynamic Header Icon ---
   const HeaderIcon =
     view === "list" ? FiUsers : view === "rapid" ? FiFastForward : FiUserPlus;
 
@@ -402,4 +398,4 @@ const GroupMembersManager = ({ mode, groupId, onLogPaymentClick }) => {
   );
 };
 
-export default GroupMembersManager;
+export default ChitMembersManager;

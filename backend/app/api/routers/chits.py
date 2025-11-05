@@ -11,8 +11,8 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.schemas.chits import (
-    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
-    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
+    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse, # <-- RENAMED
+    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate # <-- RENAMED
 )
 from app.schemas.assignments import ChitAssignmentPublic, ChitAssignmentListResponse
 from app.schemas.members import MemberPublic
@@ -51,7 +51,7 @@ async def create_chit(
     db_chit = Chit(
         name=trimmed_name,
         chit_value=chit.chit_value,
-        group_size=chit.group_size,
+        size=chit.size, # <-- RENAMED
         monthly_installment=chit.monthly_installment,
         duration_months=chit.duration_months,
         start_date=chit.start_date,
@@ -101,7 +101,7 @@ async def read_chits(
         response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=chit.id)
         response_chits.append(response_details)
 
-    response_chits.sort(key=lambda g: (g.status != 'Active', g.start_date), reverse=False)
+    response_chits.sort(key=lambda c: (c.status != 'Active', c.start_date), reverse=False)
 
     return {"chits": response_chits}
 

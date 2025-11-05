@@ -3,7 +3,7 @@
 const StatusBadge = ({ status }) => {
   const baseClasses = "px-2.5 py-1 text-xs font-semibold rounded-full";
   const statusClasses = {
-    // Group Statuses
+    // Chit Statuses
     Active: "bg-success-bg text-success-accent",
     Inactive: "bg-error-bg text-error-accent",
 

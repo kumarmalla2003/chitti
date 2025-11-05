@@ -4,23 +4,21 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List
 from app.schemas.members import MemberPublic
-from app.schemas.chits import ChitResponse # <-- ChitNested is no longer needed here
+from app.schemas.chits import ChitResponse # <-- IMPORT RENAMED
 
 class ChitAssignmentBase(BaseModel):
     member_id: int
-    chit_id: int
+    chit_id: int # <-- RENAMED from chit_group_id
     chit_month: date
 
 class ChitAssignmentCreate(ChitAssignmentBase):
     pass
 
-# --- AssignmentNestedInMember schema has been REMOVED from this file ---
-
 class ChitAssignmentPublic(BaseModel):
     id: int
     chit_month: date
     member: MemberPublic
-    chit: ChitResponse
+    chit: ChitResponse # <-- RENAMED from chit_group
 
     # --- ADD THESE NEW FIELDS ---
     total_paid: float

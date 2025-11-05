@@ -32,7 +32,7 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
         id=db_chit.id,
         name=db_chit.name,
         chit_value=db_chit.chit_value,
-        group_size=db_chit.group_size,
+        size=db_chit.size, # <-- RENAMED
         monthly_installment=db_chit.monthly_installment,
         duration_months=db_chit.duration_months,
         start_date=db_chit.start_date,

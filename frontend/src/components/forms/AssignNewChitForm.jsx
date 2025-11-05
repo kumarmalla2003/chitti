@@ -1,4 +1,4 @@
-// frontend/src/components/forms/AssignNewGroupForm.jsx
+// frontend/src/components/forms/AssignNewChitForm.jsx
 
 import {
   useState,
@@ -77,7 +77,7 @@ const AssignNewChitForm = forwardRef(
     const [formData, setFormData] = useState({
       name: "",
       chit_value: "",
-      group_size: "",
+      size: "", // <-- RENAMED
       monthly_installment: "",
       duration_months: "",
       start_date: "",
@@ -115,12 +115,12 @@ const AssignNewChitForm = forwardRef(
       }
     }, [success]);
 
-    // --- Form Validation (unchanged) ---
+    // --- Form Validation (MODIFIED) ---
     const isFormValid = useMemo(
       () =>
         formData.name.trim() !== "" &&
         formData.chit_value.trim() !== "" &&
-        formData.group_size.trim() !== "" &&
+        formData.size.trim() !== "" && // <-- RENAMED
         formData.monthly_installment.trim() !== "" &&
         formData.duration_months.trim() !== "" &&
         formData.start_date.trim() !== "" &&
@@ -129,7 +129,7 @@ const AssignNewChitForm = forwardRef(
       [formData]
     );
 
-    // --- Form Change Handler (unchanged) ---
+    // --- Form Change Handler (MODIFIED) ---
     const handleFormChange = (e) => {
       const { name, value } = e.target;
       setError(null);
@@ -151,8 +151,9 @@ const AssignNewChitForm = forwardRef(
         else if (name === "name") {
           onChitNameChange(value);
         }
-        // Sync group_size with duration_months
-        else if (name === "group_size") {
+        // Sync size with duration_months
+        else if (name === "size") {
+          // <-- RENAMED
           newFormData.duration_months = value;
           if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
             newFormData.end_date = calculateEndDate(
@@ -161,9 +162,9 @@ const AssignNewChitForm = forwardRef(
             );
           }
         }
-        // Sync duration_months with group_size and recalculate dates
+        // Sync duration_months with size and recalculate dates
         else if (name === "duration_months") {
-          newFormData.group_size = value;
+          newFormData.size = value; // <-- RENAMED
           if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
             newFormData.end_date = calculateEndDate(
               newFormData.start_date,
@@ -186,7 +187,7 @@ const AssignNewChitForm = forwardRef(
           } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
             const newDuration = calculateDuration(value, newFormData.end_date);
             newFormData.duration_months = newDuration;
-            newFormData.group_size = newDuration;
+            newFormData.size = newDuration; // <-- RENAMED
           }
         }
         // Handle end_date changes
@@ -196,13 +197,13 @@ const AssignNewChitForm = forwardRef(
               value,
               newFormData.duration_months
             );
-          } else if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
+          } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
             const newDuration = calculateDuration(
               newFormData.start_date,
               value
             );
             newFormData.duration_months = newDuration;
-            newFormData.group_size = newDuration;
+            newFormData.size = newDuration; // <-- RENAMED
           }
         }
 
@@ -210,7 +211,7 @@ const AssignNewChitForm = forwardRef(
       });
     };
 
-    // --- Step 1: Save New Chit (unchanged) ---
+    // --- Step 1: Save New Chit (MODIFIED) ---
     const handleSaveChit = async () => {
       if (!isFormValid) return;
 
@@ -223,7 +224,7 @@ const AssignNewChitForm = forwardRef(
           ...formData,
           start_date: getFirstDayOfMonth(formData.start_date),
           chit_value: Number(formData.chit_value),
-          group_size: Number(formData.group_size),
+          size: Number(formData.size), // <-- RENAMED
           monthly_installment: Number(formData.monthly_installment),
           duration_months: Number(formData.duration_months),
           collection_day: Number(formData.collection_day),
@@ -247,7 +248,7 @@ const AssignNewChitForm = forwardRef(
       }
     };
 
-    // --- Step 1 (Post-Creation): Update (unchanged) ---
+    // --- Step 1 (Post-Creation): Update (MODIFIED) ---
     const handleUpdateChit = async () => {
       if (!createdChit) return;
 
@@ -274,8 +275,9 @@ const AssignNewChitForm = forwardRef(
           patchData.start_date = getFirstDayOfMonth(patchData.start_date);
         if (patchData.chit_value)
           patchData.chit_value = Number(patchData.chit_value);
-        if (patchData.group_size)
-          patchData.group_size = Number(patchData.group_size);
+        if (patchData.size)
+          // <-- RENAMED
+          patchData.size = Number(patchData.size); // <-- RENAMED
         if (patchData.monthly_installment)
           patchData.monthly_installment = Number(patchData.monthly_installment);
         if (patchData.duration_months)
@@ -285,11 +287,7 @@ const AssignNewChitForm = forwardRef(
         if (patchData.payout_day)
           patchData.payout_day = Number(patchData.payout_day);
 
-        const updatedChit = await patchChit(
-          createdChit.id,
-          patchData,
-          token
-        );
+        const updatedChit = await patchChit(createdChit.id, patchData, token);
         setCreatedChit(updatedChit);
         setOriginalData({
           ...formData,
@@ -424,21 +422,17 @@ const AssignNewChitForm = forwardRef(
           )}
           {success && <Message type="success">{success}</Message>}
 
-          {/* --- MODIFICATION START --- */}
-
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
             Set Payouts for {createdChit.name}
           </h3>
 
           <div className="mt-0">
-            {/* Pass showTitle={false} */}
             <PayoutsSection
               mode="edit"
-              groupId={createdChit.id}
+              chitId={createdChit.id}
               showTitle={false}
             />
           </div>
-          {/* --- MODIFICATION END --- */}
 
           <div className="flex justify-end gap-2 mt-6">
             <Button
@@ -471,7 +465,6 @@ const AssignNewChitForm = forwardRef(
             </Message>
           )}
 
-          {/* --- MODIFIED: Replaced Message with h3 --- */}
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
             Assign Month in {createdChit.name}
           </h3>

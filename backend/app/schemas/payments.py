@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import date
 # Import schemas for nesting
 from app.schemas.members import MemberPublic
-from app.schemas.chits import ChitGroupResponse
+from app.schemas.chits import ChitResponse # <-- IMPORT RENAMED
 
 # --- Base Schema ---
 class PaymentBase(BaseModel):
@@ -29,11 +29,11 @@ class PaymentUpdate(BaseModel):
 # --- MODIFIED Public Response Schema ---
 class PaymentPublic(PaymentBase):
     id: int
-    chit_month: date  # <-- ADDED THIS LINE
+    chit_month: date
     
     # Nest the full objects for the UI
     member: Optional[MemberPublic] = None 
-    chit: Optional[ChitResponse] = None
+    chit: Optional[ChitResponse] = None # <-- RENAMED from chit_group
 
     model_config = ConfigDict(from_attributes=True)
 
