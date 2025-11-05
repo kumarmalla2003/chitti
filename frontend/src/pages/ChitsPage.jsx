@@ -1,10 +1,10 @@
-// frontend/src/pages/GroupsPage.jsx
+// frontend/src/pages/ChitsPage.jsx
 
 import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import GroupCard from "../components/ui/GroupCard";
-import { getAllChitGroups, deleteChitGroup } from "../services/chitsService";
+import ChitCard from "../components/ui/ChitCard";
+import { getAllChits, deleteChit } from "../services/chitsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -25,11 +25,11 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 
-const GroupsPage = () => {
+const ChitsPage = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const [groups, setGroups] = useState([]);
+  const [chits, setChits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -44,10 +44,10 @@ const GroupsPage = () => {
   useScrollToTop(success || error);
 
   useEffect(() => {
-    const fetchGroups = async () => {
+    const fetchChits = async () => {
       try {
-        const data = await getAllChitGroups(token);
-        setGroups(data.groups);
+        const data = await getAllChits(token);
+        setChits(data.chits);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -55,7 +55,7 @@ const GroupsPage = () => {
       }
     };
     if (token) {
-      fetchGroups();
+      fetchChits();
     }
   }, [token]);
 
@@ -75,8 +75,8 @@ const GroupsPage = () => {
     }
   }, [success]);
 
-  const handleDeleteClick = (group) => {
-    setItemToDelete(group);
+  const handleDeleteClick = (chit) => {
+    setItemToDelete(chit);
     setIsModalOpen(true);
   };
 
@@ -85,11 +85,11 @@ const GroupsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteChitGroup(itemToDelete.id, token);
-      setGroups((prevGroups) =>
-        prevGroups.filter((g) => g.id !== itemToDelete.id)
+      await deleteChit(itemToDelete.id, token);
+      setChits((prevChits) =>
+        prevChits.filter((c) => c.id !== itemToDelete.id)
       );
-      setSuccess(`Group "${itemToDelete.name}" has been deleted.`);
+      setSuccess(`Chit "${itemToDelete.name}" has been deleted.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -99,17 +99,17 @@ const GroupsPage = () => {
     }
   };
 
-  const filteredGroups = useMemo(() => {
+  const filteredChits = useMemo(() => {
     if (!searchQuery) {
-      return groups;
+      return chits;
     }
     const lowercasedQuery = searchQuery.toLowerCase();
-    return groups.filter((group) => {
-      const nameMatch = group.name.toLowerCase().includes(lowercasedQuery);
-      const valueMatch = group.chit_value.toString().includes(lowercasedQuery);
+    return chits.filter((chit) => {
+      const nameMatch = chit.name.toLowerCase().includes(lowercasedQuery);
+      const valueMatch = chit.chit_value.toString().includes(lowercasedQuery);
       return nameMatch || valueMatch;
     });
-  }, [groups, searchQuery]);
+  }, [chits, searchQuery]);
 
   const columns = [
     {
@@ -119,7 +119,7 @@ const GroupsPage = () => {
       cell: (row, index) => index + 1,
     },
     {
-      header: "Group Name",
+      header: "Chit Name",
       accessor: "name",
       className: "text-center",
     },
@@ -149,7 +149,7 @@ const GroupsPage = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/groups/view/${row.id}`);
+              navigate(`/chits/view/${row.id}`);
             }}
             className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="View Details"
@@ -159,10 +159,10 @@ const GroupsPage = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/groups/edit/${row.id}`);
+              navigate(`/chits/edit/${row.id}`);
             }}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Edit Group"
+            title="Edit Chit"
           >
             <FiEdit />
           </button>
@@ -172,7 +172,7 @@ const GroupsPage = () => {
               handleDeleteClick(row);
             }}
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Delete Group"
+            title="Delete Chit"
           >
             <FiTrash2 />
           </button>
@@ -186,13 +186,13 @@ const GroupsPage = () => {
       <div
         className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
       >
-        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="groups" />
+        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="chits" />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="text-center mb-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-                  My Chit Groups
+                  My Chits
                 </h1>
               </div>
               <hr className="my-4 border-border" />
@@ -227,41 +227,41 @@ const GroupsPage = () => {
                 </div>
               )}
 
-              {!loading && filteredGroups.length === 0 && (
+              {!loading && filteredChits.length === 0 && (
                 <Card className="text-center p-8">
                   <h2 className="text-2xl font-bold text-text-primary mb-2">
                     {searchQuery
-                      ? "No Matching Groups"
-                      : "No Chit Groups Found"}
+                      ? "No Matching Chits"
+                      : "No Chits Found"}
                   </h2>
                   <p className="text-text-secondary">
                     {searchQuery
                       ? "Try a different search term."
-                      : "You don't have any chit groups yet. Click the button below to create one!"}
+                      : "You don't have any chits yet. Click the button below to create one!"}
                   </p>
                 </Card>
               )}
 
-              {!loading && filteredGroups.length > 0 && (
+              {!loading && filteredChits.length > 0 && (
                 <>
                   {/* Table View for Medium screens and up */}
                   <div className="hidden md:block">
                     <Table
                       columns={columns}
-                      data={filteredGroups}
-                      onRowClick={(row) => navigate(`/groups/view/${row.id}`)}
+                      data={filteredChits}
+                      onRowClick={(row) => navigate(`/chits/view/${row.id}`)}
                     />
                   </div>
 
                   {/* Card View for screens smaller than Medium */}
                   <div className="block md:hidden space-y-4">
-                    {filteredGroups.map((group) => (
-                      <GroupCard
-                        key={group.id}
-                        group={group}
-                        onView={() => navigate(`/groups/view/${group.id}`)}
-                        onEdit={() => navigate(`/groups/edit/${group.id}`)}
-                        onDelete={() => handleDeleteClick(group)}
+                    {filteredChits.map((chit) => (
+                      <ChitCard
+                        key={chit.id}
+                        chit={chit}
+                        onView={() => navigate(`/chits/view/${chit.id}`)}
+                        onEdit={() => navigate(`/chits/edit/${chit.id}`)}
+                        onDelete={() => handleDeleteClick(chit)}
                       />
                     ))}
                   </div>
@@ -275,11 +275,11 @@ const GroupsPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection="groups"
+        activeSection="chits"
       />
       <BottomNav />
-      <Link to="/groups/create" className="group">
-        <Button variant="fab" className="group-hover:scale-110">
+      <Link to="/chits/create" className="chit">
+        <Button variant="fab" className="chit-hover:scale-110">
           <FiPlus className="w-6 h-6" />
         </Button>
       </Link>
@@ -287,7 +287,7 @@ const GroupsPage = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Delete Chit Group?"
+        title="Delete Chit?"
         message={`Are you sure you want to permanently delete "${itemToDelete?.name}"? This action cannot be undone.`}
         loading={deleteLoading}
       />
@@ -295,4 +295,4 @@ const GroupsPage = () => {
   );
 };
 
-export default GroupsPage;
+export default ChitsPage;

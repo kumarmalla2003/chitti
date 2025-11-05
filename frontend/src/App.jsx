@@ -6,8 +6,8 @@ import { useSelector } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
-import GroupsPage from "./pages/GroupsPage";
-import GroupDetailPage from "./pages/GroupDetailPage";
+import ChitsPage from "./pages/ChitsPage";
+import ChitDetailPage from "./pages/ChitDetailPage";
 import MembersPage from "./pages/MembersPage";
 import MemberDetailPage from "./pages/MemberDetailPage";
 import LoginModal from "./components/auth/LoginModal";
@@ -58,13 +58,13 @@ const App = () => {
                 )
               }
             />
-            {/* --- GROUPS ROUTES --- */}
+            {/* --- CHITS ROUTES --- */}
             <Route
-              path="/groups"
+              path="/chits"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <GroupsPage />
+                    <ChitsPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -72,11 +72,11 @@ const App = () => {
               }
             />
             <Route
-              path="/groups/create"
+              path="/chits/create"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <GroupDetailPage />
+                    <ChitDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -84,11 +84,11 @@ const App = () => {
               }
             />
             <Route
-              path="/groups/view/:id"
+              path="/chits/view/:id"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <GroupDetailPage />
+                    <ChitDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -96,11 +96,11 @@ const App = () => {
               }
             />
             <Route
-              path="/groups/edit/:id"
+              path="/chits/edit/:id"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <GroupDetailPage />
+                    <ChitDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />

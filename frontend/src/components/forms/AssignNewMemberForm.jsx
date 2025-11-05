@@ -17,7 +17,7 @@ const AssignNewMemberForm = forwardRef(
   (
     {
       token,
-      groupId,
+      chitId,
       availableMonths,
       onAssignment,
       formatDate,
@@ -123,7 +123,7 @@ const AssignNewMemberForm = forwardRef(
 
       await onAssignment({
         member_id: createdMember.id,
-        chit_group_id: groupId,
+        chit_id: chitId,
         chit_month: selectedMonth,
       });
     };

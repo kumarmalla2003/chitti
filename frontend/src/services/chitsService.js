@@ -7,7 +7,7 @@ const getAuthHeaders = (token) => ({
   Authorization: `Bearer ${token}`,
 });
 
-export const getAllChitGroups = async (token) => {
+export const getAllChits = async (token) => {
   const response = await fetch(API_URL, {
     method: "GET",
     headers: getAuthHeaders(token),
@@ -17,22 +17,22 @@ export const getAllChitGroups = async (token) => {
     if (response.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
     }
-    throw new Error("Failed to fetch chit groups. Please try again.");
+    throw new Error("Failed to fetch chits. Please try again.");
   }
 
   const data = await response.json();
-  if (!data.groups) {
+  if (!data.chits) {
     throw new Error("Invalid data format received from the server.");
   }
 
   return data;
 };
 
-export const createChitGroup = async (groupData, token) => {
+export const createChit = async (chitData, token) => {
   const response = await fetch(API_URL, {
     method: "POST",
     headers: getAuthHeaders(token),
-    body: JSON.stringify(groupData),
+    body: JSON.stringify(chitData),
   });
 
   if (!response.ok) {
@@ -45,14 +45,14 @@ export const createChitGroup = async (groupData, token) => {
         errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
       throw new Error(detail);
     }
-    throw new Error("Failed to create chit group. Please try again.");
+    throw new Error("Failed to create chit. Please try again.");
   }
 
   return response.json();
 };
 
-export const getChitGroupById = async (groupId, token) => {
-  const response = await fetch(`${API_URL}/${groupId}`, {
+export const getChitById = async (chitId, token) => {
+  const response = await fetch(`${API_URL}/${chitId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
@@ -62,19 +62,19 @@ export const getChitGroupById = async (groupId, token) => {
       throw new Error("Authentication failed. Please log in again.");
     }
     if (response.status === 404) {
-      throw new Error("Chit group not found.");
+      throw new Error("Chit not found.");
     }
-    throw new Error("Failed to fetch chit group details. Please try again.");
+    throw new Error("Failed to fetch chit details. Please try again.");
   }
 
   return response.json();
 };
 
-export const updateChitGroup = async (groupId, groupData, token) => {
-  const response = await fetch(`${API_URL}/${groupId}`, {
+export const updateChit = async (chitId, chitData, token) => {
+  const response = await fetch(`${API_URL}/${chitId}`, {
     method: "PUT",
     headers: getAuthHeaders(token),
-    body: JSON.stringify(groupData),
+    body: JSON.stringify(chitData),
   });
 
   if (!response.ok) {
@@ -82,19 +82,19 @@ export const updateChitGroup = async (groupId, groupData, token) => {
       throw new Error("Authentication failed. Please log in again.");
     }
     if (response.status === 404) {
-      throw new Error("Chit group not found.");
+      throw new Error("Chit not found.");
     }
-    throw new Error("Failed to update chit group. Please try again.");
+    throw new Error("Failed to update chit. Please try again.");
   }
 
   return response.json();
 };
 
-export const patchChitGroup = async (groupId, groupData, token) => {
-  const response = await fetch(`${API_URL}/${groupId}`, {
+export const patchChit = async (chitId, chitData, token) => {
+  const response = await fetch(`${API_URL}/${chitId}`, {
     method: "PATCH",
     headers: getAuthHeaders(token),
-    body: JSON.stringify(groupData),
+    body: JSON.stringify(chitData),
   });
 
   if (!response.ok) {
@@ -102,7 +102,7 @@ export const patchChitGroup = async (groupId, groupData, token) => {
       throw new Error("Authentication failed. Please log in again.");
     }
     if (response.status === 404) {
-      throw new Error("Chit group not found.");
+      throw new Error("Chit not found.");
     }
     if (response.status === 422 || response.status === 409) {
       const errorData = await response.json();
@@ -110,14 +110,14 @@ export const patchChitGroup = async (groupId, groupData, token) => {
         errorData.detail?.[0]?.msg || errorData.detail || "An error occurred.";
       throw new Error(detail);
     }
-    throw new Error("Failed to update chit group. Please try again.");
+    throw new Error("Failed to update chit. Please try again.");
   }
 
   return response.json();
 };
 
-export const deleteChitGroup = async (groupId, token) => {
-  const response = await fetch(`${API_URL}/${groupId}`, {
+export const deleteChit = async (chitId, token) => {
+  const response = await fetch(`${API_URL}/${chitId}`, {
     method: "DELETE",
     headers: getAuthHeaders(token),
   });
@@ -125,17 +125,17 @@ export const deleteChitGroup = async (groupId, token) => {
   if (!response.ok) {
     if (response.status === 409) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || "This group cannot be deleted.");
+      throw new Error(errorData.detail || "This chit cannot be deleted.");
     }
-    throw new Error("Failed to delete chit group.");
+    throw new Error("Failed to delete chit.");
   }
   return;
 };
 
 // --- Payouts Service Functions ---
 
-export const getPayouts = async (groupId, token) => {
-  const response = await fetch(`${API_URL}/${groupId}/payouts`, {
+export const getPayouts = async (chitId, token) => {
+  const response = await fetch(`${API_URL}/${chitId}/payouts`, {
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {

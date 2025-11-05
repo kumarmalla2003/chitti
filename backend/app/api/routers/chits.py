@@ -11,12 +11,12 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.schemas.chits import (
-    ChitGroupCreate, ChitGroupUpdate, ChitGroupResponse, ChitGroupListResponse, 
-    ChitGroupPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
+    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
+    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
 )
 from app.schemas.assignments import ChitAssignmentPublic, ChitAssignmentListResponse
 from app.schemas.members import MemberPublic
-from app.models.chits import ChitGroup
+from app.models.chits import Chit
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
 # --- ADD crud_payments ---
@@ -26,104 +26,104 @@ from sqlalchemy import func
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
-@router.post("/", response_model=ChitGroupResponse, status_code=status.HTTP_201_CREATED)
-async def create_chit_group(
-    chit_group: ChitGroupCreate,
+@router.post("/", response_model=ChitResponse, status_code=status.HTTP_201_CREATED)
+async def create_chit(
+    chit: ChitCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Creates a new chit group for the authenticated user.
+    Creates a new chit for the authenticated user.
     """
     
-    trimmed_name = chit_group.name.strip()
-    existing_group = await session.execute(
-        select(ChitGroup).where(func.lower(ChitGroup.name) == func.lower(trimmed_name))
+    trimmed_name = chit.name.strip()
+    existing_chit = await session.execute(
+        select(Chit).where(func.lower(Chit.name) == func.lower(trimmed_name))
     )
-    if existing_group.scalar_one_or_none():
+    if existing_chit.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A chit group with this name already exists. Please choose a different name."
+            detail="A chit with this name already exists. Please choose a different name."
         )
 
-    end_date = chit_group.start_date + relativedelta(months=chit_group.duration_months -1)
+    end_date = chit.start_date + relativedelta(months=chit.duration_months -1)
 
-    db_chit_group = ChitGroup(
+    db_chit = Chit(
         name=trimmed_name,
-        chit_value=chit_group.chit_value,
-        group_size=chit_group.group_size,
-        monthly_installment=chit_group.monthly_installment,
-        duration_months=chit_group.duration_months,
-        start_date=chit_group.start_date,
+        chit_value=chit.chit_value,
+        group_size=chit.group_size,
+        monthly_installment=chit.monthly_installment,
+        duration_months=chit.duration_months,
+        start_date=chit.start_date,
         end_date=end_date,
-        collection_day=chit_group.collection_day,
-        payout_day=chit_group.payout_day,
+        collection_day=chit.collection_day,
+        payout_day=chit.payout_day,
     )
-    session.add(db_chit_group)
+    session.add(db_chit)
     
     try:
         await session.commit()
-        await session.refresh(db_chit_group)
+        await session.refresh(db_chit)
         # --- Create initial payouts ---
-        await crud_chits.create_payouts_for_group(
+        await crud_chits.create_payouts_for_chit(
             session, 
-            group_id=db_chit_group.id, 
-            duration_months=db_chit_group.duration_months
+            chit_id=db_chit.id,
+            duration_months=db_chit.duration_months
         )
     except IntegrityError:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A chit group with this name already exists. Please choose a different name."
+            detail="A chit with this name already exists. Please choose a different name."
         )
     
-    response_details = await crud_chits.get_group_by_id_with_details(session, group_id=db_chit_group.id)
+    response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
 
-@router.get("/", response_model=ChitGroupListResponse)
-async def read_chit_groups(
+@router.get("/", response_model=ChitListResponse)
+async def read_chits(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Retrieves a list of all chit groups, calculates their status and cycle,
+    Retrieves a list of all chits, calculates their status and cycle,
     and sorts them.
     """
-    statement = select(ChitGroup)
+    statement = select(Chit)
     result = await session.execute(statement)
-    groups = result.scalars().all()
+    chits = result.scalars().all()
     
     today = date.today()
     
-    response_groups = []
-    for group in groups:
-        response_details = await crud_chits.get_group_by_id_with_details(session, group_id=group.id)
-        response_groups.append(response_details)
+    response_chits = []
+    for chit in chits:
+        response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=chit.id)
+        response_chits.append(response_details)
 
-    response_groups.sort(key=lambda g: (g.status != 'Active', g.start_date), reverse=False)
+    response_chits.sort(key=lambda g: (g.status != 'Active', g.start_date), reverse=False)
 
-    return {"groups": response_groups}
+    return {"chits": response_chits}
 
 
-@router.get("/{group_id}/assignments", response_model=ChitAssignmentListResponse)
-async def get_group_assignments(
-    group_id: int,
+@router.get("/{chit_id}/assignments", response_model=ChitAssignmentListResponse)
+async def get_chit_assignments(
+    chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Retrieves all member assignments for a specific chit group.
+    Retrieves all member assignments for a specific chit.
     """
-    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
-    if not db_group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
+    if not db_chit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
         
-    assignments = await crud_assignments.get_assignments_by_group_id(session, group_id=group_id)
+    assignments = await crud_assignments.get_assignments_by_chit_id(session, chit_id=chit_id)
     
     response_assignments = []
     for assignment in assignments:
-        group_with_details = await crud_chits.get_group_by_id_with_details(session, group_id=assignment.chit_group_id)
+        chit_with_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=assignment.chit_id)
         
         member_public = MemberPublic(
             id=assignment.member.id,
@@ -132,7 +132,7 @@ async def get_group_assignments(
         )
 
         # --- PAYMENT CALCULATION LOGIC ---
-        monthly_installment = assignment.chit_group.monthly_installment
+        monthly_installment = assignment.chit.monthly_installment
         payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
         total_paid = sum(p.amount_paid for p in payments)
         due_amount = monthly_installment - total_paid
@@ -149,7 +149,7 @@ async def get_group_assignments(
             id=assignment.id,
             chit_month=assignment.chit_month,
             member=member_public,
-            chit_group=group_with_details,
+            chit=chit_with_details,
             # --- ADD NEW FIELDS TO RESPONSE ---
             total_paid=total_paid,
             due_amount=due_amount,
@@ -159,140 +159,140 @@ async def get_group_assignments(
         
     return {"assignments": response_assignments}
 
-@router.get("/{group_id}", response_model=ChitGroupResponse)
-async def read_chit_group(
-    group_id: int,
+@router.get("/{chit_id}", response_model=ChitResponse)
+async def read_chit(
+    chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Retrieves a single chit group by its ID.
+    Retrieves a single chit by its ID.
     """
-    response_details = await crud_chits.get_group_by_id_with_details(session, group_id=group_id)
+    response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=chit_id)
     if not response_details:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     return response_details
 
 
-@router.put("/{group_id}", response_model=ChitGroupResponse)
-async def update_chit_group(
-    group_id: int,
-    chit_group: ChitGroupUpdate,
+@router.put("/{chit_id}", response_model=ChitResponse)
+async def update_chit(
+    chit_id: int,
+    chit: ChitUpdate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Updates an existing chit group.
+    Updates an existing chit.
     """
-    db_chit_group = await session.get(ChitGroup, group_id)
-    if not db_chit_group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    db_chit = await session.get(Chit, chit_id)
+    if not db_chit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
 
-    group_data = chit_group.model_dump(exclude_unset=True)
-    for key, value in group_data.items():
-        setattr(db_chit_group, key, value)
+    chit_data = chit.model_dump(exclude_unset=True)
+    for key, value in chit_data.items():
+        setattr(db_chit, key, value)
     
-    db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
+    db_chit.end_date = db_chit.start_date + relativedelta(months=db_chit.duration_months - 1)
 
-    session.add(db_chit_group)
+    session.add(db_chit)
     await session.commit()
-    await session.refresh(db_chit_group)
+    await session.refresh(db_chit)
 
-    response_details = await crud_chits.get_group_by_id_with_details(session, group_id=db_chit_group.id)
+    response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
-@router.patch("/{group_id}", response_model=ChitGroupResponse)
-async def patch_chit_group(
-    group_id: int,
-    chit_group: ChitGroupPatch,
+@router.patch("/{chit_id}", response_model=ChitResponse)
+async def patch_chit(
+    chit_id: int,
+    chit: ChitPatch,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Partially updates an existing chit group. Only updates the fields provided.
+    Partially updates an existing chit. Only updates the fields provided.
     """
-    db_chit_group = await session.get(ChitGroup, group_id)
-    if not db_chit_group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    db_chit = await session.get(Chit, chit_id)
+    if not db_chit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
 
-    group_data = chit_group.model_dump(exclude_unset=True)
-    date_or_duration_changed = "start_date" in group_data or "duration_months" in group_data
+    chit_data = chit.model_dump(exclude_unset=True)
+    date_or_duration_changed = "start_date" in chit_data or "duration_months" in chit_data
 
-    if "name" in group_data:
-        trimmed_name = group_data["name"].strip()
-        existing_group = await session.execute(
-            select(ChitGroup).where(
-                func.lower(ChitGroup.name) == func.lower(trimmed_name),
-                ChitGroup.id != group_id
+    if "name" in chit_data:
+        trimmed_name = chit_data["name"].strip()
+        existing_chit = await session.execute(
+            select(Chit).where(
+                func.lower(Chit.name) == func.lower(trimmed_name),
+                Chit.id != chit_id
             )
         )
-        if existing_group.scalar_one_or_none():
+        if existing_chit.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="A chit group with this name already exists. Please choose a different name."
+                detail="A chit with this name already exists. Please choose a different name."
             )
-        group_data["name"] = trimmed_name
+        chit_data["name"] = trimmed_name
 
-    for key, value in group_data.items():
-        setattr(db_chit_group, key, value)
+    for key, value in chit_data.items():
+        setattr(db_chit, key, value)
     
     if date_or_duration_changed:
-        db_chit_group.end_date = db_chit_group.start_date + relativedelta(months=db_chit_group.duration_months - 1)
+        db_chit.end_date = db_chit.start_date + relativedelta(months=db_chit.duration_months - 1)
 
-    session.add(db_chit_group)
+    session.add(db_chit)
     
     try:
         await session.commit()
-        await session.refresh(db_chit_group)
+        await session.refresh(db_chit)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A chit group with this name already exists. Please choose a different name."
+            detail="A chit with this name already exists. Please choose a different name."
         )
 
-    response_details = await crud_chits.get_group_by_id_with_details(session, group_id=db_chit_group.id)
+    response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
-@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_chit_group(
-    group_id: int,
+@router.delete("/{chit_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chit(
+    chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Deletes a chit group, only if it has no members assigned to it.
+    Deletes a chit, only if it has no members assigned to it.
     """
-    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
-    if not db_group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
+    if not db_chit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
 
-    assignments = await crud_assignments.get_assignments_by_group_id(session, group_id=group_id)
+    assignments = await crud_assignments.get_assignments_by_chit_id(session, chit_id=chit_id)
     if assignments:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete group: Members are still assigned to it."
+            detail="Cannot delete chit: Members are still assigned to it."
         )
 
-    await crud_chits.delete_group_by_id(session=session, db_group=db_group)
+    await crud_chits.delete_chit_by_id(session=session, db_chit=db_chit)
     return
 
 # --- Payout Endpoints ---
 
-@router.get("/{group_id}/payouts", response_model=PayoutListResponse)
-async def get_payouts_for_group(
-    group_id: int,
+@router.get("/{chit_id}/payouts", response_model=PayoutListResponse)
+async def get_payouts_for_chit(
+    chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Retrieves all payouts for a specific chit group.
+    Retrieves all payouts for a specific chit.
     """
-    db_group = await crud_chits.get_group_by_id(session, group_id=group_id)
-    if not db_group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit group not found")
+    db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
+    if not db_chit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     
-    payouts = await crud_chits.get_payouts_by_group_id(session, group_id=group_id)
+    payouts = await crud_chits.get_payouts_by_chit_id(session, chit_id=chit_id)
     return {"payouts": payouts}
 
 @router.put("/payouts/{payout_id}", response_model=PayoutResponse)

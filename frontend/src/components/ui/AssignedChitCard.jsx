@@ -4,7 +4,7 @@ import { FiTrash2, FiCalendar } from "react-icons/fi";
 import { RupeeIcon } from "./Icons";
 // import { useNavigate } from "react-router-dom"; // <-- REMOVED
 
-const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
+const AssignedChitCard = ({ assignment, onDelete, onLogPayment }) => {
   // <-- Prop added
   // const navigate = useNavigate(); // <-- REMOVED
 
@@ -34,7 +34,7 @@ const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="font-bold text-lg text-text-primary truncate">
-            {assignment.chit_group.name}
+            {assignment.chit.name}
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
@@ -82,4 +82,4 @@ const AssignedGroupCard = ({ assignment, onDelete, onLogPayment }) => {
   );
 };
 
-export default AssignedGroupCard;
+export default AssignedChitCard;

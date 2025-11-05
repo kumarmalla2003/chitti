@@ -19,13 +19,13 @@ async def create_payment(session: AsyncSession, payment_in: PaymentCreate) -> Pa
 
 # --- MODIFIED FUNCTION ---
 async def get_payment_by_id(session: AsyncSession, payment_id: int) -> Optional[Payment]:
-    """Gets a single payment by its ID, with related member, group, and assignment."""
+    """Gets a single payment by its ID, with related member, chit, and assignment."""
     result = await session.execute(
         select(Payment)
         .where(Payment.id == payment_id)
         .options(
             selectinload(Payment.member),
-            selectinload(Payment.chit_group),
+            selectinload(Payment.chit),
             selectinload(Payment.assignment)  # <-- ADDED THIS LINE
         )
     )
@@ -34,17 +34,17 @@ async def get_payment_by_id(session: AsyncSession, payment_id: int) -> Optional[
 # --- NEW FUNCTION ---
 async def get_all_payments(
     session: AsyncSession, 
-    group_id: Optional[int] = None, 
+    chit_id: Optional[int] = None,
     member_id: Optional[int] = None
 ) -> List[Payment]:
-    """Gets all payments, with optional filters for group or member."""
+    """Gets all payments, with optional filters for chit or member."""
     statement = select(Payment).options(
         selectinload(Payment.member),
-        selectinload(Payment.chit_group)
+        selectinload(Payment.chit)
     ).order_by(Payment.payment_date.desc())
     
-    if group_id:
-        statement = statement.where(Payment.chit_group_id == group_id)
+    if chit_id:
+        statement = statement.where(Payment.chit_id == chit_id)
     if member_id:
         statement = statement.where(Payment.member_id == member_id)
         
@@ -84,11 +84,11 @@ async def get_payments_for_assignment(session: AsyncSession, assignment_id: int)
     )
     return result.scalars().all()
 
-async def get_payments_for_group(session: AsyncSession, group_id: int) -> List[Payment]:
-    """Gets all payments for an entire group."""
+async def get_payments_for_chit(session: AsyncSession, chit_id: int) -> List[Payment]:
+    """Gets all payments for an entire chit."""
     result = await session.execute(
         select(Payment)
-        .where(Payment.chit_group_id == group_id)
+        .where(Payment.chit_id == chit_id)
         .options(
             selectinload(Payment.member) # Eager load member details
         ) 
@@ -102,7 +102,7 @@ async def get_payments_for_member(session: AsyncSession, member_id: int) -> List
         select(Payment)
         .where(Payment.member_id == member_id)
         .options(
-            selectinload(Payment.chit_group) # Eager load group details
+            selectinload(Payment.chit) # Eager load chit details
         )
         .order_by(Payment.payment_date.desc())
     )

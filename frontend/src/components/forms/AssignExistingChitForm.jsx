@@ -10,10 +10,10 @@ import {
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import { FiBox, FiCheck, FiLoader, FiCalendar } from "react-icons/fi";
-import { getAllChitGroups } from "../../services/chitsService";
+import { getAllChits } from "../../services/chitsService";
 import { getUnassignedMonths } from "../../services/assignmentsService";
 
-const AssignExistingGroupForm = forwardRef(
+const AssignExistingChitForm = forwardRef(
   (
     {
       token,
@@ -21,18 +21,18 @@ const AssignExistingGroupForm = forwardRef(
       onAssignment,
       formatDate,
       existingAssignments, // This prop is now only used for the info message
-      onGroupNameChange, // Kept to clear header on back
+      onChitNameChange, // Kept to clear header on back
       onBackToList,
     },
     ref
   ) => {
-    const [allGroups, setAllGroups] = useState([]);
+    const [allChits, setAllChits] = useState([]);
     const [loading, setLoading] = useState(true); // Initial page load
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // State for cascading dropdowns
-    const [selectedGroupId, setSelectedGroupId] = useState("");
+    const [selectedChitId, setSelectedChitId] = useState("");
     const [availableMonths, setAvailableMonths] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState("");
     const [isMonthLoading, setIsMonthLoading] = useState(false);
@@ -40,47 +40,47 @@ const AssignExistingGroupForm = forwardRef(
     // Expose a simplified goBack function
     useImperativeHandle(ref, () => ({
       goBack: () => {
-        onGroupNameChange(""); // Clear header
+        onChitNameChange(""); // Clear header
         onBackToList();
       },
     }));
 
-    // Fetch all groups on load
+    // Fetch all chits on load
     useEffect(() => {
-      const fetchAllGroups = async () => {
+      const fetchAllChits = async () => {
         setLoading(true);
         setError(null);
         try {
-          const data = await getAllChitGroups(token);
+          const data = await getAllChits(token);
           // Filter only for "Active" (which includes upcoming)
-          const availableGroups = data.groups.filter(
-            (g) => g.status === "Active"
+          const availableChits = data.chits.filter(
+            (c) => c.status === "Active"
           );
-          setAllGroups(availableGroups);
+          setAllChits(availableChits);
         } catch (err) {
           setError(err.message);
         } finally {
           setLoading(false);
         }
       };
-      fetchAllGroups();
+      fetchAllChits();
     }, [token]);
 
-    // Cascading logic: Fetch months when a group is selected
-    const handleGroupChange = async (e) => {
-      const newGroupId = e.target.value;
-      setSelectedGroupId(newGroupId);
+    // Cascading logic: Fetch months when a chit is selected
+    const handleChitChange = async (e) => {
+      const newChitId = e.target.value;
+      setSelectedChitId(newChitId);
       setSelectedMonth(""); // Reset month selection
       setAvailableMonths([]); // Clear old months
 
-      if (!newGroupId) {
+      if (!newChitId) {
         return;
       }
 
       setIsMonthLoading(true);
       setError(null);
       try {
-        const data = await getUnassignedMonths(newGroupId, token);
+        const data = await getUnassignedMonths(newChitId, token);
         setAvailableMonths(data.available_months);
       } catch (err) {
         setError(err.message);
@@ -94,8 +94,8 @@ const AssignExistingGroupForm = forwardRef(
       e.preventDefault();
       e.stopPropagation();
 
-      if (!selectedGroupId || !selectedMonth) {
-        setError("Please select a group and a month.");
+      if (!selectedChitId || !selectedMonth) {
+        setError("Please select a chit and a month.");
         return;
       }
 
@@ -105,7 +105,7 @@ const AssignExistingGroupForm = forwardRef(
       try {
         await onAssignment({
           member_id: memberId,
-          chit_group_id: selectedGroupId,
+          chit_id: selectedChitId,
           chit_month: selectedMonth,
         });
       } catch (err) {
@@ -114,13 +114,13 @@ const AssignExistingGroupForm = forwardRef(
       }
     };
 
-    // Helper to show an info message if the member is already in the selected group
-    const assignmentsInSelectedGroup = useMemo(() => {
-      if (!selectedGroupId || !existingAssignments) return [];
+    // Helper to show an info message if the member is already in the selected chit
+    const assignmentsInSelectedChit = useMemo(() => {
+      if (!selectedChitId || !existingAssignments) return [];
       return existingAssignments.filter(
-        (a) => a.chit_group.id === parseInt(selectedGroupId)
+        (a) => a.chit.id === parseInt(selectedChitId)
       );
-    }, [selectedGroupId, existingAssignments]);
+    }, [selectedChitId, existingAssignments]);
 
     const isFormInvalid = !selectedMonth;
 
@@ -140,13 +140,13 @@ const AssignExistingGroupForm = forwardRef(
 
         {!loading && (
           <div className="space-y-6">
-            {/* Group Dropdown */}
+            {/* Chit Dropdown */}
             <div>
               <label
-                htmlFor="group_id"
+                htmlFor="chit_id"
                 className="block text-lg font-medium text-text-secondary mb-1"
               >
-                Select Group
+                Select Chit
               </label>
               <div className="relative flex items-center">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -154,21 +154,21 @@ const AssignExistingGroupForm = forwardRef(
                 </span>
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <select
-                  id="group_id"
-                  value={selectedGroupId}
-                  onChange={handleGroupChange}
+                  id="chit_id"
+                  value={selectedChitId}
+                  onChange={handleChitChange}
                   className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
                   required
                 >
                   <option value="">
-                    {allGroups.length > 0
-                      ? "Select an active group..."
-                      : "No active groups available"}
+                    {allChits.length > 0
+                      ? "Select an active chit..."
+                      : "No active chits available"}
                   </option>
-                  {allGroups.map((group) => (
+                  {allChits.map((chit) => (
                     // --- MODIFICATION ---
-                    <option key={group.id} value={group.id}>
-                      {group.name}
+                    <option key={chit.id} value={chit.id}>
+                      {chit.name}
                     </option>
                     // --- END MODIFICATION ---
                   ))}
@@ -177,12 +177,12 @@ const AssignExistingGroupForm = forwardRef(
             </div>
 
             {/* Info Message */}
-            {assignmentsInSelectedGroup.length > 0 && (
+            {assignmentsInSelectedChit.length > 0 && (
               <div className="p-3 bg-info-bg border-l-4 border-info-accent rounded">
                 <p className="text-sm text-info-accent">
                   <strong>Note:</strong> This member is already assigned to this
-                  group for:{" "}
-                  {assignmentsInSelectedGroup
+                  chit for:{" "}
+                  {assignmentsInSelectedChit
                     .map((a) => formatDate(a.chit_month))
                     .join(", ")}
                 </p>
@@ -207,7 +207,7 @@ const AssignExistingGroupForm = forwardRef(
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                  disabled={isMonthLoading || !selectedGroupId}
+                  disabled={isMonthLoading || !selectedChitId}
                   required
                 >
                   <option value="">
@@ -215,8 +215,8 @@ const AssignExistingGroupForm = forwardRef(
                       ? "Loading available months..."
                       : availableMonths.length > 0
                       ? "Select an available month..."
-                      : !selectedGroupId
-                      ? "Select a group first"
+                      : !selectedChitId
+                      ? "Select a chit first"
                       : "No available months"}
                   </option>
                   {availableMonths.map((month) => (
@@ -252,4 +252,4 @@ const AssignExistingGroupForm = forwardRef(
   }
 );
 
-export default AssignExistingGroupForm;
+export default AssignExistingChitForm;

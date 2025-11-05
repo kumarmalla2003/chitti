@@ -16,7 +16,7 @@ const AssignExistingMemberForm = forwardRef(
   (
     {
       token,
-      groupId,
+      chitId,
       availableMonths,
       onAssignment,
       formatDate,
@@ -76,7 +76,7 @@ const AssignExistingMemberForm = forwardRef(
       try {
         await onAssignment({
           member_id: selectedMemberId,
-          chit_group_id: groupId,
+          chit_id: chitId,
           chit_month: selectedMonth,
         });
       } catch (err) {
@@ -162,7 +162,7 @@ const AssignExistingMemberForm = forwardRef(
                   <option value="">
                     {availableMonths.length > 0
                       ? "Select an available month..."
-                      : "No available months for this group"}
+                      : "No available months for this chit"}
                   </option>
                   {availableMonths.map((month) => (
                     <option key={month} value={month}>

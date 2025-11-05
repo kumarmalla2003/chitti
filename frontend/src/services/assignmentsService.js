@@ -35,8 +35,8 @@ export const createAssignment = async (assignmentData, token) => {
 };
 
 // --- ADD NEW BULK ASSIGNMENT FUNCTION ---
-export const createBulkAssignments = async (groupId, assignments, token) => {
-  const response = await fetch(`${API_URL}/group/${groupId}/bulk-assign`, {
+export const createBulkAssignments = async (chitId, assignments, token) => {
+  const response = await fetch(`${API_URL}/chit/${chitId}/bulk-assign`, {
     method: "POST",
     headers: getAuthHeaders(token),
     body: JSON.stringify({ assignments: assignments }), // Wrap in 'assignments' key
@@ -48,8 +48,8 @@ export const createBulkAssignments = async (groupId, assignments, token) => {
   return response.json();
 };
 
-export const getUnassignedMonths = async (groupId, token) => {
-  const response = await fetch(`${API_URL}/unassigned-months/${groupId}`, {
+export const getUnassignedMonths = async (chitId, token) => {
+  const response = await fetch(`${API_URL}/unassigned-months/${chitId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
@@ -57,7 +57,7 @@ export const getUnassignedMonths = async (groupId, token) => {
   if (!response.ok) {
     await handleError(
       response,
-      "Failed to fetch available months for the group."
+      "Failed to fetch available months for the chit."
     );
   }
   return response.json();
@@ -75,14 +75,14 @@ export const getAssignmentsForMember = async (memberId, token) => {
   return response.json();
 };
 
-export const getAssignmentsForGroup = async (groupId, token) => {
-  const response = await fetch(`${CHITS_API_URL}/${groupId}/assignments`, {
+export const getAssignmentsForChit = async (chitId, token) => {
+  const response = await fetch(`${CHITS_API_URL}/${chitId}/assignments`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
 
   if (!response.ok) {
-    await handleError(response, "Failed to fetch assignments for the group.");
+    await handleError(response, "Failed to fetch assignments for the chit.");
   }
   return response.json();
 };

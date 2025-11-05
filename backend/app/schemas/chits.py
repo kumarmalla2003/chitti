@@ -17,18 +17,18 @@ class PayoutUpdate(BaseModel):
 
 class PayoutResponse(PayoutBase):
     id: int
-    chit_group_id: int
+    chit_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 class PayoutListResponse(BaseModel):
     payouts: List[PayoutResponse]
 
-# --- ChitGroup Schemas ---
+# --- Chit Schemas ---
 
 # --- ADD THIS NEW SCHEMA ---
-class ChitGroupNested(BaseModel):
-    """Minimal chit group info needed for nested responses."""
+class ChitNested(BaseModel):
+    """Minimal chit info needed for nested responses."""
     start_date: date
     end_date: date
 
@@ -36,7 +36,7 @@ class ChitGroupNested(BaseModel):
 # --- END OF NEW SCHEMA ---
 
 
-class ChitGroupBase(BaseModel):
+class ChitBase(BaseModel):
     name: str
     chit_value: int
     group_size: int
@@ -47,7 +47,7 @@ class ChitGroupBase(BaseModel):
     payout_day: int = Field(..., ge=1, le=28)
 
     @model_validator(mode='after')
-    def check_collection_before_payout(self) -> 'ChitGroupBase':
+    def check_collection_before_payout(self) -> 'ChitBase':
         """Ensure collection_day is strictly less than payout_day."""
         collection_day = self.collection_day
         payout_day = self.payout_day
@@ -55,13 +55,13 @@ class ChitGroupBase(BaseModel):
             raise ValueError('Collection day must be before the payout day.')
         return self
 
-class ChitGroupCreate(ChitGroupBase):
+class ChitCreate(ChitBase):
     pass
 
-class ChitGroupUpdate(ChitGroupBase):
+class ChitUpdate(ChitBase):
     pass
 
-class ChitGroupPatch(BaseModel):
+class ChitPatch(BaseModel):
     name: Optional[str] = None
     chit_value: Optional[int] = None
     group_size: Optional[int] = None
@@ -72,7 +72,7 @@ class ChitGroupPatch(BaseModel):
     payout_day: Optional[int] = Field(default=None, ge=1, le=28)
 
     @model_validator(mode='after')
-    def check_collection_before_payout_patch(self) -> 'ChitGroupPatch':
+    def check_collection_before_payout_patch(self) -> 'ChitPatch':
         """Ensure collection_day is strictly less than payout_day if both are provided."""
         collection_day = self.collection_day
         payout_day = self.payout_day
@@ -82,7 +82,7 @@ class ChitGroupPatch(BaseModel):
         return self
 
 
-class ChitGroupResponse(ChitGroupBase):
+class ChitResponse(ChitBase):
     id: int
     end_date: date
     status: str
@@ -90,5 +90,5 @@ class ChitGroupResponse(ChitGroupBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-class ChitGroupListResponse(BaseModel):
-    groups: List[ChitGroupResponse]
+class ChitListResponse(BaseModel):
+    chits: List[ChitResponse]

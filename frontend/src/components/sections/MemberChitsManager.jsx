@@ -8,10 +8,10 @@ import Card from "../ui/Card";
 import Table from "../ui/Table";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import Message from "../ui/Message";
-import AssignNewGroupForm from "../forms/AssignNewGroupForm";
-import AssignExistingGroupForm from "../forms/AssignExistingGroupForm";
+import AssignNewChitForm from "../forms/AssignNewChitForm";
+import AssignExistingChitForm from "../forms/AssignExistingChitForm";
 import StatusBadge from "../ui/StatusBadge";
-import AssignedGroupCard from "../ui/AssignedGroupCard";
+import AssignedChitCard from "../ui/AssignedChitCard";
 import {
   FiSearch,
   FiBox,
@@ -106,7 +106,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
     try {
       await deleteAssignment(itemToDelete.id, token);
       setSuccess(
-        `Assignment in "${itemToDelete.chit_group.name}" for ${formatDate(
+        `Assignment in "${itemToDelete.chit.name}" for ${formatDate(
           itemToDelete.chit_month
         )} has been removed.`
       );
@@ -149,7 +149,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
     if (!searchQuery) return assignments;
     const lowercasedQuery = searchQuery.toLowerCase();
     return assignments.filter((a) =>
-      a.chit_group.name.toLowerCase().includes(lowercasedQuery)
+      a.chit.name.toLowerCase().includes(lowercasedQuery)
     );
   }, [assignments, searchQuery]);
 
@@ -160,8 +160,8 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
       className: "text-center",
     },
     {
-      header: "Group Name",
-      accessor: "chit_group.name",
+      header: "Chit Name",
+      accessor: "chit.name",
       className: "text-left",
     },
     {
@@ -170,9 +170,9 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
       className: "text-center",
     },
     {
-      header: "Group Status",
-      accessor: "chit_group.status",
-      cell: (row) => <StatusBadge status={row.chit_group.status} />,
+      header: "Chit Status",
+      accessor: "chit.status",
+      cell: (row) => <StatusBadge status={row.chit.status} />,
       className: "text-center",
     },
     {
@@ -237,27 +237,27 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
 
     if (view === "new") {
       return (
-        <AssignNewGroupForm
+        <AssignNewChitForm
           ref={formRef}
           token={token}
           memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
-          onGroupNameChange={handleActiveGroupNameChange}
+          onChitNameChange={handleActiveGroupNameChange}
           onBackToList={() => handleViewChange("list")}
         />
       );
     }
     if (view === "existing") {
       return (
-        <AssignExistingGroupForm
+        <AssignExistingChitForm
           ref={formRef}
           token={token}
           memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
           existingAssignments={assignments}
-          onGroupNameChange={handleActiveGroupNameChange}
+          onChitNameChange={handleActiveGroupNameChange}
           onBackToList={() => handleViewChange("list")}
         />
       );
@@ -274,14 +274,14 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
                 className="w-full sm:w-auto flex items-center justify-center"
               >
                 <FiPlus className="w-5 h-5 mr-2" />
-                <span>Assign to New Group</span>
+                <span>Assign to New Chit</span>
               </Button>
               <Button
                 onClick={() => handleViewChange("existing")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
                 <FiSearch className="mr-2" />
-                <span>Assign to Existing Group</span>
+                <span>Assign to Existing Chit</span>
               </Button>
             </div>
           </div>
@@ -301,7 +301,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <input
                   type="text"
-                  placeholder="Search assigned groups..."
+                  placeholder="Search assigned chits..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
@@ -317,7 +317,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
             </div>
             <div className="block md:hidden space-y-4">
               {filteredAssignments.map((assignment) => (
-                <AssignedGroupCard
+                <AssignedChitCard
                   key={assignment.id}
                   assignment={assignment}
                   onDelete={() => handleDeleteClick(assignment)}
@@ -339,8 +339,8 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
     if (activeGroupName) {
       return `${activeGroupName}`;
     }
-    if (view === "new") return "Assign to New Group";
-    if (view === "existing") return "Assign to Existing Group";
+    if (view === "new") return "Assign to New Chit";
+    if (view === "existing") return "Assign to Existing Chit";
     return "Chits";
   };
 
@@ -376,7 +376,7 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
         onConfirm={handleConfirmDelete}
         title="Remove Assignment?"
         message={`Are you sure you want to remove this member from "${
-          itemToDelete?.chit_group.name
+          itemToDelete?.chit.name
         }" for ${
           itemToDelete ? formatDate(itemToDelete.chit_month) : ""
         }? This month will become available again.`}

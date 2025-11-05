@@ -12,7 +12,7 @@ import {
   FiArrowUpRight,
 } from "react-icons/fi";
 
-const GroupDetailsForm = ({
+const ChitDetailsForm = ({
   mode,
   formData,
   onFormChange,
@@ -99,7 +99,7 @@ const GroupDetailsForm = ({
             htmlFor="name"
             className="block text-lg font-medium text-text-secondary mb-1"
           >
-            Group Name{" "}
+            Chit Name{" "}
             {mode === "edit" && (
               <span className="text-xs text-text-secondary">
                 (Cannot be changed)
@@ -161,7 +161,7 @@ const GroupDetailsForm = ({
               htmlFor="group_size"
               className="block text-lg font-medium text-text-secondary mb-1"
             >
-              Group Size
+              Size
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -333,4 +333,4 @@ const GroupDetailsForm = ({
   );
 };
 
-export default GroupDetailsForm;
+export default ChitDetailsForm;

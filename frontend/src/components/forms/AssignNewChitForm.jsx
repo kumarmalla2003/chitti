@@ -8,7 +8,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import GroupDetailsForm from "./GroupDetailsForm";
+import ChitDetailsForm from "./ChitDetailsForm";
 import PayoutsSection from "../sections/PayoutsSection";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
@@ -21,7 +21,7 @@ import {
   FiEdit,
   FiInfo,
 } from "react-icons/fi";
-import { createChitGroup, patchChitGroup } from "../../services/chitsService";
+import { createChit, patchChit } from "../../services/chitsService";
 import { getUnassignedMonths } from "../../services/assignmentsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
 
@@ -58,21 +58,21 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
   return totalMonths > 0 ? totalMonths.toString() : "";
 };
 
-const AssignNewGroupForm = forwardRef(
+const AssignNewChitForm = forwardRef(
   (
     {
       token,
       memberId,
       onAssignment,
       formatDate,
-      onGroupNameChange,
+      onChitNameChange,
       onBackToList,
     },
     ref
   ) => {
     // --- State Management ---
     const [step, setStep] = useState("details"); // 'details', 'payouts', 'month'
-    const [createdGroup, setCreatedGroup] = useState(null);
+    const [createdChit, setCreatedChit] = useState(null);
     const [originalData, setOriginalData] = useState(null);
     const [formData, setFormData] = useState({
       name: "",
@@ -147,9 +147,9 @@ const AssignNewGroupForm = forwardRef(
         ) {
           newFormData[name] = value.replace(/[^0-9]/g, "");
         }
-        // Update parent's group name display
+        // Update parent's chit name display
         else if (name === "name") {
-          onGroupNameChange(value);
+          onChitNameChange(value);
         }
         // Sync group_size with duration_months
         else if (name === "group_size") {
@@ -210,8 +210,8 @@ const AssignNewGroupForm = forwardRef(
       });
     };
 
-    // --- Step 1: Save New Group (unchanged) ---
-    const handleSaveGroup = async () => {
+    // --- Step 1: Save New Chit (unchanged) ---
+    const handleSaveChit = async () => {
       if (!isFormValid) return;
 
       setLoading(true);
@@ -231,14 +231,14 @@ const AssignNewGroupForm = forwardRef(
         };
         delete dataToSend.end_date;
 
-        const newGroup = await createChitGroup(dataToSend, token);
-        setCreatedGroup(newGroup);
+        const newChit = await createChit(dataToSend, token);
+        setCreatedChit(newChit);
         setOriginalData({
           ...formData,
-          end_date: toYearMonth(newGroup.end_date),
+          end_date: toYearMonth(newChit.end_date),
         });
-        setSuccess(`Group "${newGroup.name}" created successfully!`);
-        onGroupNameChange(newGroup.name);
+        setSuccess(`Chit "${newChit.name}" created successfully!`);
+        onChitNameChange(newChit.name);
         setStep("payouts");
       } catch (err) {
         setError(err.message);
@@ -248,8 +248,8 @@ const AssignNewGroupForm = forwardRef(
     };
 
     // --- Step 1 (Post-Creation): Update (unchanged) ---
-    const handleUpdateGroup = async () => {
-      if (!createdGroup) return;
+    const handleUpdateChit = async () => {
+      if (!createdChit) return;
 
       const changes = {};
       for (const key in formData) {
@@ -285,18 +285,18 @@ const AssignNewGroupForm = forwardRef(
         if (patchData.payout_day)
           patchData.payout_day = Number(patchData.payout_day);
 
-        const updatedGroup = await patchChitGroup(
-          createdGroup.id,
+        const updatedChit = await patchChit(
+          createdChit.id,
           patchData,
           token
         );
-        setCreatedGroup(updatedGroup);
+        setCreatedChit(updatedChit);
         setOriginalData({
           ...formData,
-          end_date: toYearMonth(updatedGroup.end_date),
+          end_date: toYearMonth(updatedChit.end_date),
         });
-        onGroupNameChange(updatedGroup.name);
-        setSuccess("Group details updated successfully!");
+        onChitNameChange(updatedChit.name);
+        setSuccess("Chit details updated successfully!");
         setStep("payouts");
       } catch (err) {
         setError(err.message);
@@ -307,13 +307,13 @@ const AssignNewGroupForm = forwardRef(
 
     // --- Step 2: Proceed to Month (unchanged) ---
     const handleProceedToMonth = async () => {
-      if (!createdGroup) return;
+      if (!createdChit) return;
 
       setLoading(true);
       setError(null);
 
       try {
-        const data = await getUnassignedMonths(createdGroup.id, token);
+        const data = await getUnassignedMonths(createdChit.id, token);
         setAvailableMonths(data.available_months);
         setStep("month");
       } catch (err) {
@@ -333,14 +333,14 @@ const AssignNewGroupForm = forwardRef(
       setLoading(true);
       await onAssignment({
         member_id: memberId,
-        chit_group_id: createdGroup.id,
+        chit_id: createdChit.id,
         chit_month: selectedMonth,
       });
       setLoading(false);
     };
 
-    // --- STEP 1: Group Details (Initial Create) ---
-    if (!createdGroup) {
+    // --- STEP 1: Chit Details (Initial Create) ---
+    if (!createdChit) {
       return (
         <div className="my-4" ref={scrollRef}>
           {error && (
@@ -349,16 +349,16 @@ const AssignNewGroupForm = forwardRef(
             </Message>
           )}
           {success && <Message type="success">{success}</Message>}
-          <GroupDetailsForm
+          <ChitDetailsForm
             mode="create"
             formData={formData}
             onFormChange={handleFormChange}
-            onEnterKeyOnLastInput={handleSaveGroup}
+            onEnterKeyOnLastInput={handleSaveChit}
           />
           <div className="flex justify-end gap-2 mt-6">
             <Button
               type="button"
-              onClick={handleSaveGroup}
+              onClick={handleSaveChit}
               disabled={!isFormValid || loading}
               className="flex items-center justify-center"
             >
@@ -366,7 +366,7 @@ const AssignNewGroupForm = forwardRef(
                 <FiLoader className="animate-spin" />
               ) : (
                 <>
-                  <FiSave className="mr-2" /> Save Group
+                  <FiSave className="mr-2" /> Save Chit
                 </>
               )}
             </Button>
@@ -375,8 +375,8 @@ const AssignNewGroupForm = forwardRef(
       );
     }
 
-    // --- STEP 1: Group Details (Post-Creation Edit) ---
-    if (createdGroup && step === "details") {
+    // --- STEP 1: Chit Details (Post-Creation Edit) ---
+    if (createdChit && step === "details") {
       return (
         <div className="my-4" ref={scrollRef}>
           {error && (
@@ -385,18 +385,18 @@ const AssignNewGroupForm = forwardRef(
             </Message>
           )}
           {success && <Message type="success">{success}</Message>}
-          <GroupDetailsForm
+          <ChitDetailsForm
             mode="create"
             formData={formData}
             onFormChange={handleFormChange}
             isPostCreation={true}
-            onEnterKeyOnLastInput={handleUpdateGroup}
+            onEnterKeyOnLastInput={handleUpdateChit}
           />
           <div className="flex justify-end gap-2 mt-6">
             <Button
               type="button"
               variant="warning"
-              onClick={handleUpdateGroup}
+              onClick={handleUpdateChit}
               disabled={loading}
               className="flex items-center justify-center"
             >
@@ -414,7 +414,7 @@ const AssignNewGroupForm = forwardRef(
     }
 
     // --- STEP 2: Payouts Management ---
-    if (createdGroup && step === "payouts") {
+    if (createdChit && step === "payouts") {
       return (
         <div className="my-4" ref={scrollRef}>
           {error && (
@@ -427,14 +427,14 @@ const AssignNewGroupForm = forwardRef(
           {/* --- MODIFICATION START --- */}
 
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
-            Set Payouts for {createdGroup.name}
+            Set Payouts for {createdChit.name}
           </h3>
 
           <div className="mt-0">
             {/* Pass showTitle={false} */}
             <PayoutsSection
               mode="edit"
-              groupId={createdGroup.id}
+              groupId={createdChit.id}
               showTitle={false}
             />
           </div>
@@ -462,7 +462,7 @@ const AssignNewGroupForm = forwardRef(
     }
 
     // --- STEP 3: Month Selection ---
-    if (createdGroup && step === "month") {
+    if (createdChit && step === "month") {
       return (
         <div className="my-4" ref={scrollRef}>
           {error && (
@@ -473,7 +473,7 @@ const AssignNewGroupForm = forwardRef(
 
           {/* --- MODIFIED: Replaced Message with h3 --- */}
           <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
-            Assign Month in {createdGroup.name}
+            Assign Month in {createdChit.name}
           </h3>
 
           <div className="relative flex items-center">
@@ -526,4 +526,4 @@ const AssignNewGroupForm = forwardRef(
   }
 );
 
-export default AssignNewGroupForm;
+export default AssignNewChitForm;

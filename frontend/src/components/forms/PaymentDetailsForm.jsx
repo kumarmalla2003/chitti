@@ -10,11 +10,11 @@ import {
   FiCreditCard,
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
-import { getAllChitGroups } from "../../services/chitsService";
+import { getAllChits } from "../../services/chitsService";
 import { getAllMembers } from "../../services/membersService";
 import {
   getAssignmentsForMember,
-  getAssignmentsForGroup,
+  getAssignmentsForChit,
 } from "../../services/assignmentsService";
 import CustomDateInput from "../ui/CustomDateInput";
 import ViewOnlyField from "../ui/ViewOnlyField";
@@ -26,24 +26,24 @@ const PaymentDetailsForm = ({
   defaultAssignmentId,
   paymentData, // Full payment object for view/edit
   // --- NEW PROPS ---
-  defaultGroupId = null,
+  defaultChitId = null,
   defaultMemberId = null,
 }) => {
   const { token } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
 
   // --- State for fetched data ---
-  const [allGroups, setAllGroups] = useState([]);
+  const [allChits, setAllChits] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
 
   // --- State for dropdown options ---
-  const [filteredGroups, setFilteredGroups] = useState([]);
+  const [filteredChits, setFilteredChits] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
 
   // --- State for selected IDs ---
   // --- MODIFICATION: Initialize from new props ---
-  const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId || "");
+  const [selectedChitId, setSelectedChitId] = useState(defaultChitId || "");
   const [selectedMemberId, setSelectedMemberId] = useState(
     defaultMemberId || ""
   );
@@ -75,49 +75,49 @@ const PaymentDetailsForm = ({
       if (mode !== "view") {
         setIsLoading(true);
         try {
-          const [groupsData, membersData] = await Promise.all([
-            getAllChitGroups(token),
+          const [chitsData, membersData] = await Promise.all([
+            getAllChits(token),
             getAllMembers(token),
           ]);
-          setAllGroups(groupsData.groups);
+          setAllChits(chitsData.chits);
           setAllMembers(membersData.members);
 
           // --- MODIFICATION: Pre-filter based on default props ---
           if (defaultMemberId) {
-            // If member is pre-selected, filter groups
+            // If member is pre-selected, filter chits
             const memberAssignments = await getAssignmentsForMember(
               defaultMemberId,
               token
             );
-            const validGroupIds = new Set(
-              memberAssignments.map((a) => a.chit_group.id)
+            const validChitIds = new Set(
+              memberAssignments.map((a) => a.chit.id)
             );
-            setFilteredGroups(
-              groupsData.groups.filter((g) => validGroupIds.has(g.id))
+            setFilteredChits(
+              chitsData.chits.filter((c) => validChitIds.has(c.id))
             );
             setFilteredMembers(
               membersData.members.filter(
                 (m) => m.id === parseInt(defaultMemberId)
               )
             );
-          } else if (defaultGroupId) {
-            // If group is pre-selected, filter members
-            const groupAssignments = await getAssignmentsForGroup(
-              defaultGroupId,
+          } else if (defaultChitId) {
+            // If chit is pre-selected, filter members
+            const chitAssignments = await getAssignmentsForChit(
+              defaultChitId,
               token
             );
             const validMemberIds = new Set(
-              groupAssignments.assignments.map((a) => a.member.id)
+              chitAssignments.assignments.map((a) => a.member.id)
             );
             setFilteredMembers(
               membersData.members.filter((m) => validMemberIds.has(m.id))
             );
-            setFilteredGroups(
-              groupsData.groups.filter((g) => g.id === parseInt(defaultGroupId))
+            setFilteredChits(
+              chitsData.chits.filter((c) => c.id === parseInt(defaultChitId))
             );
           } else {
             // No defaults, show all
-            setFilteredGroups(groupsData.groups);
+            setFilteredChits(chitsData.chits);
             setFilteredMembers(membersData.members);
           }
         } catch (err) {
@@ -128,14 +128,14 @@ const PaymentDetailsForm = ({
       }
     };
     fetchInitialData();
-  }, [mode, token, defaultGroupId, defaultMemberId]);
+  }, [mode, token, defaultChitId, defaultMemberId]);
 
   // --- Pre-fill logic for edit/view modes ---
   useEffect(() => {
     if (paymentData && (mode === "edit" || mode === "view")) {
-      const groupId = String(paymentData.chit_group.id);
+      const chitId = String(paymentData.chit.id);
       const memberId = String(paymentData.member.id);
-      setSelectedGroupId(groupId);
+      setSelectedChitId(chitId);
       setSelectedMemberId(memberId);
       // Assignments will be fetched by the effect below
     }
@@ -160,12 +160,12 @@ const PaymentDetailsForm = ({
           newMemberId,
           token
         );
-        const validGroupIds = new Set(
-          memberAssignments.map((a) => a.chit_group.id)
+        const validChitIds = new Set(
+          memberAssignments.map((a) => a.chit.id)
         );
-        // --- MODIFICATION: Don't reset if defaultGroup is set ---
-        if (!defaultGroupId) {
-          setFilteredGroups(allGroups.filter((g) => validGroupIds.has(g.id)));
+        // --- MODIFICATION: Don't reset if defaultChit is set ---
+        if (!defaultChitId) {
+          setFilteredChits(allChits.filter((c) => validChitIds.has(c.id)));
         }
       } catch (err) {
         console.error("Failed to fetch member assignments", err);
@@ -173,30 +173,30 @@ const PaymentDetailsForm = ({
         setIsLoading(false);
       }
     } else {
-      // Reset groups to all
-      setFilteredGroups(allGroups);
+      // Reset chits to all
+      setFilteredChits(allChits);
     }
   };
 
-  // 2. Handle GROUP selection
-  const handleGroupChange = async (e) => {
-    const newGroupId = e.target.value;
-    setSelectedGroupId(newGroupId);
-    onFormChange(e); // Update form data's chit_group_id
+  // 2. Handle CHIT selection
+  const handleChitChange = async (e) => {
+    const newChitId = e.target.value;
+    setSelectedChitId(newChitId);
+    onFormChange(e); // Update form data's chit_id
 
     // Reset dependent fields
     onFormChange({ target: { name: "chit_assignment_id", value: "" } });
     setFilteredAssignments([]);
 
-    if (newGroupId) {
+    if (newChitId) {
       setIsLoading(true);
       try {
-        const groupAssignments = await getAssignmentsForGroup(
-          newGroupId,
+        const chitAssignments = await getAssignmentsForChit(
+          newChitId,
           token
         );
         const validMemberIds = new Set(
-          groupAssignments.assignments.map((a) => a.member.id)
+          chitAssignments.assignments.map((a) => a.member.id)
         );
         // --- MODIFICATION: Don't reset if defaultMember is set ---
         if (!defaultMemberId) {
@@ -205,7 +205,7 @@ const PaymentDetailsForm = ({
           );
         }
       } catch (err) {
-        console.error("Failed to fetch group assignments", err);
+        console.error("Failed to fetch chit assignments", err);
       } finally {
         setIsLoading(false);
       }
@@ -217,7 +217,7 @@ const PaymentDetailsForm = ({
 
   // 3. Populate ASSIGNMENTS when *both* are selected
   useEffect(() => {
-    if (selectedGroupId && selectedMemberId && mode !== "view") {
+    if (selectedChitId && selectedMemberId && mode !== "view") {
       const fetchAssignments = async () => {
         setIsAssignmentsLoading(true);
         try {
@@ -227,7 +227,7 @@ const PaymentDetailsForm = ({
             token
           );
           const finalAssignments = assignments.filter(
-            (a) => a.chit_group.id === parseInt(selectedGroupId)
+            (a) => a.chit.id === parseInt(selectedChitId)
           );
           setFilteredAssignments(finalAssignments);
 
@@ -259,7 +259,7 @@ const PaymentDetailsForm = ({
       if (
         defaultAssignmentId &&
         mode === "create" &&
-        allGroups.length > 0 &&
+        allChits.length > 0 &&
         allMembers.length > 0
       ) {
         // Find the assignment to pre-fill both dropdowns
@@ -271,14 +271,14 @@ const PaymentDetailsForm = ({
           );
           if (matchingAssignment) {
             setSelectedMemberId(String(member.id));
-            setSelectedGroupId(String(matchingAssignment.chit_group.id));
+            setSelectedChitId(String(matchingAssignment.chit.id));
             onFormChange({
               target: { name: "member_id", value: String(member.id) },
             });
             onFormChange({
               target: {
-                name: "chit_group_id",
-                value: String(matchingAssignment.chit_group.id),
+                name: "chit_id",
+                value: String(matchingAssignment.chit.id),
               },
             });
             onFormChange({
@@ -295,17 +295,17 @@ const PaymentDetailsForm = ({
     };
     // Only run if the form isn't already populated from edit/view mode
     // --- MODIFICATION: Also check default props ---
-    if (!paymentData && !defaultGroupId && !defaultMemberId) {
+    if (!paymentData && !defaultChitId && !defaultMemberId) {
       prefillFromAssignmentId();
     }
   }, [
     defaultAssignmentId,
     mode,
-    allGroups,
+    allChits,
     allMembers,
     token,
     paymentData,
-    defaultGroupId,
+    defaultChitId,
     defaultMemberId,
   ]);
   // --- END CASCADING DROPDOWN LOGIC ---
@@ -330,8 +330,8 @@ const PaymentDetailsForm = ({
           icon={FiUser}
         />
         <ViewOnlyField
-          label="Chit Group"
-          value={paymentData.chit_group.name}
+          label="Chit"
+          value={paymentData.chit.name}
           icon={FiBox}
         />
         <ViewOnlyField
@@ -411,13 +411,13 @@ const PaymentDetailsForm = ({
         </div>
       </div>
 
-      {/* Group Selector */}
+      {/* Chit Selector */}
       <div>
         <label
-          htmlFor="chit_group_id"
+          htmlFor="chit_id"
           className="block text-lg font-medium text-text-secondary mb-1"
         >
-          Chit Group
+          Chit
         </label>
         <div className="relative flex items-center">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -425,20 +425,20 @@ const PaymentDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
-            id="chit_group_id"
-            name="chit_group_id"
-            value={selectedGroupId}
-            onChange={handleGroupChange}
+            id="chit_id"
+            name="chit_id"
+            value={selectedChitId}
+            onChange={handleChitChange}
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
             required
-            disabled={isLoading || !!defaultGroupId} // --- MODIFICATION: Disable if defaultId
+            disabled={isLoading || !!defaultChitId} // --- MODIFICATION: Disable if defaultId
           >
             <option value="">
-              {isLoading ? "Loading..." : "Select a group..."}
+              {isLoading ? "Loading..." : "Select a chit..."}
             </option>
-            {filteredGroups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
+            {filteredChits.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
@@ -466,7 +466,7 @@ const PaymentDetailsForm = ({
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
             required
             disabled={
-              isAssignmentsLoading || !selectedGroupId || !selectedMemberId
+              isAssignmentsLoading || !selectedChitId || !selectedMemberId
             }
           >
             <option value="">

@@ -26,7 +26,7 @@ async def get_all_members(session: AsyncSession) -> list[Member]:
         select(Member)
         .options(
             selectinload(Member.assignments)
-            .selectinload(ChitAssignment.chit_group) # <-- This eager load is correct
+            .selectinload(ChitAssignment.chit) # <-- This eager load is correct
         ) 
         .order_by(Member.full_name)
     )

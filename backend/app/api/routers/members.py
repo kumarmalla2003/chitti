@@ -13,7 +13,7 @@ from app.security.dependencies import get_current_user
 from app.crud import crud_members, crud_assignments, crud_payments
 from app.schemas import members as members_schemas
 from app.schemas import assignments as assignments_schemas
-from app.schemas.chits import ChitGroupResponse # Import for constructing response
+from app.schemas.chits import ChitResponse # Import for constructing response
 
 router = APIRouter(prefix="/members", tags=["members"])
 
@@ -135,30 +135,30 @@ async def get_member_assignments(
     today = date.today()
 
     for assignment in assignments:
-        group = assignment.chit_group
+        chit = assignment.chit
         
         # Calculate Status
-        status_str = "Active" if group.start_date <= today <= group.end_date else "Inactive"
+        status_str = "Active" if chit.start_date <= today <= chit.end_date else "Inactive"
         
         # Calculate Chit Cycle
         if status_str == "Active":
-            delta = relativedelta(today, group.start_date)
+            delta = relativedelta(today, chit.start_date)
             months_passed = delta.years * 12 + delta.months + 1
-            chit_cycle_str = f"{months_passed}/{group.duration_months}"
+            chit_cycle_str = f"{months_passed}/{chit.duration_months}"
         else:
-            chit_cycle_str = f"-/{group.duration_months}"
+            chit_cycle_str = f"-/{chit.duration_months}"
 
-        # Construct the detailed ChitGroupResponse
-        chit_group_response = ChitGroupResponse(
-            id=group.id, name=group.name, chit_value=group.chit_value,
-            group_size=group.group_size, monthly_installment=group.monthly_installment,
-            duration_months=group.duration_months, start_date=group.start_date,
-            end_date=group.end_date, status=status_str, chit_cycle=chit_cycle_str,
-            collection_day=group.collection_day, payout_day=group.payout_day
+        # Construct the detailed ChitResponse
+        chit_response = ChitResponse(
+            id=chit.id, name=chit.name, chit_value=chit.chit_value,
+            group_size=chit.group_size, monthly_installment=chit.monthly_installment,
+            duration_months=chit.duration_months, start_date=chit.start_date,
+            end_date=chit.end_date, status=status_str, chit_cycle=chit_cycle_str,
+            collection_day=chit.collection_day, payout_day=chit.payout_day
         )
         
         # --- PAYMENT CALCULATION LOGIC ---
-        monthly_installment = assignment.chit_group.monthly_installment
+        monthly_installment = assignment.chit.monthly_installment
         payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
         total_paid = sum(p.amount_paid for p in payments)
         due_amount = monthly_installment - total_paid
@@ -176,7 +176,7 @@ async def get_member_assignments(
             id=assignment.id,
             chit_month=assignment.chit_month,
             member=assignment.member,
-            chit_group=chit_group_response,
+            chit=chit_response,
             # --- ADD NEW FIELDS TO RESPONSE ---
             total_paid=total_paid,
             due_amount=due_amount,
@@ -216,7 +216,7 @@ async def delete_member(
     if assignments:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete member: They are still assigned to one or more chit groups."
+            detail="Cannot delete member: They are still assigned to one or more chits."
         )
 
     await crud_members.delete_member_by_id(session=session, db_member=db_member)

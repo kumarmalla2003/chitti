@@ -22,17 +22,17 @@ async def create_assignment(session: AsyncSession, assignment_in: ChitAssignment
 # --- ADD NEW BULK CREATE FUNCTION ---
 async def create_bulk_assignments(
     session: AsyncSession, 
-    group_id: int, 
+    chit_id: int,
     assignments_in: List[ChitAssignmentBulkItem]
 ) -> bool:
     """
-    Creates multiple chit assignments for a group in a single transaction.
+    Creates multiple chit assignments for a chit in a single transaction.
     """
     db_assignments = [
         ChitAssignment(
             member_id=item.member_id,
             chit_month=item.chit_month,
-            chit_group_id=group_id
+            chit_id=chit_id
         )
         for item in assignments_in
     ]
@@ -44,21 +44,21 @@ async def create_bulk_assignments(
     await session.commit()
     return True
 
-async def get_unassigned_months_for_group(session: AsyncSession, group_id: int) -> list[date]:
-    # 1. Get the chit group details
-    chit_group = await session.get(ChitGroup, group_id)
-    if not chit_group:
+async def get_unassigned_months_for_chit(session: AsyncSession, chit_id: int) -> list[date]:
+    # 1. Get the chit details
+    chit = await session.get(Chit, chit_id)
+    if not chit:
         return []
 
-    # 2. Generate all possible chit months for the group's duration
+    # 2. Generate all possible chit months for the chit's duration
     all_possible_months = set()
-    current_month = chit_group.start_date
-    for _ in range(chit_group.duration_months):
+    current_month = chit.start_date
+    for _ in range(chit.duration_months):
         all_possible_months.add(current_month)
         current_month += relativedelta(months=1)
 
-    # 3. Get all months that are already assigned for this group
-    assigned_months_statement = select(ChitAssignment.chit_month).where(ChitAssignment.chit_group_id == group_id)
+    # 3. Get all months that are already assigned for this chit
+    assigned_months_statement = select(ChitAssignment.chit_month).where(ChitAssignment.chit_id == chit_id)
     assigned_months_result = await session.execute(assigned_months_statement)
     assigned_months = set(assigned_months_result.scalars().all())
 
@@ -72,7 +72,7 @@ async def get_assignments_by_member_id(session: AsyncSession, member_id: int) ->
         select(ChitAssignment)
         .where(ChitAssignment.member_id == member_id)
         .options(
-            selectinload(ChitAssignment.chit_group),
+            selectinload(ChitAssignment.chit),
             selectinload(ChitAssignment.member)
         )
         .order_by(ChitAssignment.chit_month)
@@ -81,14 +81,14 @@ async def get_assignments_by_member_id(session: AsyncSession, member_id: int) ->
     return result.scalars().all()
 
 
-async def get_assignments_by_group_id(session: AsyncSession, group_id: int) -> list[ChitAssignment]:
-    """Retrieves all assignments for a specific group, eagerly loading members."""
+async def get_assignments_by_chit_id(session: AsyncSession, chit_id: int) -> list[ChitAssignment]:
+    """Retrieves all assignments for a specific chit, eagerly loading members."""
     statement = (
         select(ChitAssignment)
-        .where(ChitAssignment.chit_group_id == group_id)
+        .where(ChitAssignment.chit_id == chit_id)
         .options(
             selectinload(ChitAssignment.member),
-            selectinload(ChitAssignment.chit_group) # <-- ADD THIS LINE
+            selectinload(ChitAssignment.chit) # <-- ADD THIS LINE
         ) 
         .order_by(ChitAssignment.chit_month)
     )

@@ -4,7 +4,7 @@ from typing import Optional, List, TYPE_CHECKING # <-- Modified
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import date
 from app.models.members import Member
-from app.models.chits import ChitGroup
+from app.models.chits import Chit
 
 if TYPE_CHECKING: # <-- ADDED
     from app.models.payments import Payment # <-- ADDED
@@ -16,8 +16,8 @@ class ChitAssignment(SQLModel, table=True):
     member_id: int = Field(foreign_key="member.id")
     member: Member = Relationship(back_populates="assignments")
 
-    chit_group_id: int = Field(foreign_key="chitgroup.id")
-    chit_group: ChitGroup = Relationship()
+    chit_id: int = Field(foreign_key="chit.id")
+    chit: Chit = Relationship()
 
     # --- ADD THIS RELATIONSHIP ---
     payments: List["Payment"] = Relationship(back_populates="assignment")

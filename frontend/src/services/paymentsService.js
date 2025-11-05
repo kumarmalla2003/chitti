@@ -34,7 +34,7 @@ export const createPayment = async (paymentData, token) => {
 // --- NEW (Phase 2) ---
 export const getAllPayments = async (token, filters = {}) => {
   const queryParams = new URLSearchParams();
-  if (filters.groupId) queryParams.append("group_id", filters.groupId);
+  if (filters.chitId) queryParams.append("chit_id", filters.chitId);
   if (filters.memberId) queryParams.append("member_id", filters.memberId);
 
   const response = await fetch(`${API_URL}?${queryParams.toString()}`, {
@@ -85,8 +85,8 @@ export const deletePayment = async (paymentId, token) => {
 };
 
 // --- Phase 1 (Unchanged) ---
-export const getPaymentsByGroupId = async (groupId, token) => {
-  const response = await fetch(`${API_URL}/group/${groupId}`, {
+export const getPaymentsByChitId = async (chitId, token) => {
+  const response = await fetch(`${API_URL}/chit/${chitId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
@@ -94,7 +94,7 @@ export const getPaymentsByGroupId = async (groupId, token) => {
   if (!response.ok) {
     await handleError(
       response,
-      "Failed to fetch payment history for the group."
+      "Failed to fetch payment history for the chit."
     );
   }
   return response.json();

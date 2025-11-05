@@ -4,11 +4,11 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List
 from app.schemas.members import MemberPublic
-from app.schemas.chits import ChitGroupResponse # <-- ChitGroupNested is no longer needed here
+from app.schemas.chits import ChitResponse # <-- ChitNested is no longer needed here
 
 class ChitAssignmentBase(BaseModel):
     member_id: int
-    chit_group_id: int
+    chit_id: int
     chit_month: date
 
 class ChitAssignmentCreate(ChitAssignmentBase):
@@ -20,7 +20,7 @@ class ChitAssignmentPublic(BaseModel):
     id: int
     chit_month: date
     member: MemberPublic
-    chit_group: ChitGroupResponse
+    chit: ChitResponse
 
     # --- ADD THESE NEW FIELDS ---
     total_paid: float

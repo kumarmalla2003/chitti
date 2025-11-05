@@ -33,7 +33,7 @@ class PaymentPublic(PaymentBase):
     
     # Nest the full objects for the UI
     member: Optional[MemberPublic] = None 
-    chit_group: Optional[ChitGroupResponse] = None
+    chit: Optional[ChitResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 

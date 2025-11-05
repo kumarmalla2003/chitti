@@ -10,8 +10,7 @@ import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import GroupDetailsForm from "../components/forms/GroupDetailsForm";
-import GroupMembersManager from "../components/sections/GroupMembersManager";
+import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import PaymentHistoryList from "../components/sections/PaymentHistoryList";
 import { RupeeIcon } from "../components/ui/Icons";
@@ -27,9 +26,9 @@ import {
   FiTrendingUp,
 } from "react-icons/fi";
 import {
-  createChitGroup,
-  getChitGroupById,
-  patchChitGroup,
+  createChit,
+  getChitById,
+  patchChit,
 } from "../services/chitsService";
 
 // --- Helper Functions (unchanged) ---
@@ -78,7 +77,7 @@ const DetailsSectionComponent = ({
       <FiInfo /> Details
     </h2>
     <hr className="border-border mb-4" />
-    <GroupDetailsForm
+    <ChitDetailsForm
       mode={mode}
       formData={formData}
       onFormChange={handleFormChange}
@@ -94,11 +93,11 @@ const PayoutsSectionComponent = ({ mode, groupId }) => (
   </Card>
 );
 
-const MembersSectionComponent = ({ mode, groupId, onLogPaymentClick }) => (
+const MembersSectionComponent = ({ mode, chitId, onLogPaymentClick }) => (
   <Card className="flex-1 flex flex-col">
-    <GroupMembersManager
+    <MembersManager
       mode={mode}
-      groupId={groupId}
+      chitId={chitId}
       onLogPaymentClick={onLogPaymentClick}
     />
   </Card>
@@ -111,16 +110,16 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
 
   if (mode === "create") {
     if (isPostCreation) {
-      buttonText = "Update Chit Group";
+      buttonText = "Update Chit";
       Icon = FiEdit;
       buttonVariant = "warning";
     } else {
-      buttonText = "Create Chit Group";
+      buttonText = "Create Chit";
       Icon = FiPlus;
       buttonVariant = "success";
     }
   } else {
-    buttonText = "Update Chit Group";
+    buttonText = "Update Chit";
     Icon = FiEdit;
     buttonVariant = "warning";
   }
@@ -129,7 +128,7 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
     <div className="md:col-start-2 md:flex md:justify-end">
       <Button
         type="submit"
-        form="group-details-form-desktop"
+        form="chit-details-form-desktop"
         variant={buttonVariant}
         disabled={loading}
         className="w-full md:w-auto"
@@ -176,7 +175,7 @@ const MobileContent = ({
   activeTab,
   setActiveTab,
   mode,
-  groupId,
+  chitId,
   formData,
   handleFormChange,
   activeTabIndex,
@@ -221,7 +220,7 @@ const MobileContent = ({
           label="Payouts"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={mode === "create" && !groupId}
+          disabled={mode === "create" && !chitId}
         />
         <TabButton
           ref={(el) => (tabRefs.current["members"] = el)}
@@ -230,7 +229,7 @@ const MobileContent = ({
           label="Members"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={mode === "create" && !groupId}
+          disabled={mode === "create" && !chitId}
         />
         <TabButton
           ref={(el) => (tabRefs.current["payments"] = el)}
@@ -239,7 +238,7 @@ const MobileContent = ({
           label="Payments"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={mode === "create" && !groupId}
+          disabled={mode === "create" && !chitId}
         />
       </div>
 
@@ -270,7 +269,7 @@ const MobileContent = ({
 
       {activeTab === "payouts" && (
         <>
-          <PayoutsSectionComponent mode={mode} groupId={groupId} />
+          <PayoutsSectionComponent mode={mode} groupId={chitId} />
           {mode !== "view" && (
             <StepperButtons
               currentStep={activeTabIndex}
@@ -291,7 +290,7 @@ const MobileContent = ({
         <>
           <MembersSectionComponent
             mode={mode}
-            groupId={groupId}
+            chitId={chitId}
             onLogPaymentClick={onLogPaymentClick} // <-- Pass prop
           />
           {mode !== "view" && (
@@ -313,7 +312,7 @@ const MobileContent = ({
       {activeTab === "payments" && (
         <>
           <PaymentHistoryList
-            groupId={groupId}
+            groupId={chitId}
             mode={mode}
             paymentDefaults={paymentDefaults} // <-- Pass prop
             setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
@@ -337,8 +336,8 @@ const MobileContent = ({
   );
 };
 
-// --- GroupDetailPage (Main component) ---
-const GroupDetailPage = () => {
+// --- ChitDetailPage (Main component) ---
+const ChitDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
   const { id } = useParams();
@@ -364,8 +363,8 @@ const GroupDetailPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [createdGroupId, setCreatedGroupId] = useState(null);
-  const [createdGroupName, setCreatedGroupName] = useState(null);
+  const [createdChitId, setCreatedChitId] = useState(null);
+  const [createdChitName, setCreatedChitName] = useState(null);
 
   // --- ADD THIS STATE ---
   const [paymentDefaults, setPaymentDefaults] = useState(null);
@@ -393,20 +392,20 @@ const GroupDetailPage = () => {
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
 
-    const fetchGroup = async () => {
+    const fetchChit = async () => {
       setPageLoading(true);
       try {
-        const group = await getChitGroupById(id, token);
+        const chit = await getChitById(id, token);
         const fetchedData = {
-          name: group.name,
-          chit_value: group.chit_value.toString(),
-          group_size: group.group_size.toString(),
-          monthly_installment: group.monthly_installment.toString(),
-          duration_months: group.duration_months.toString(),
-          start_date: toYearMonth(group.start_date),
-          end_date: toYearMonth(group.end_date),
-          collection_day: group.collection_day.toString(),
-          payout_day: group.payout_day.toString(),
+          name: chit.name,
+          chit_value: chit.chit_value.toString(),
+          group_size: chit.group_size.toString(),
+          monthly_installment: chit.monthly_installment.toString(),
+          duration_months: chit.duration_months.toString(),
+          start_date: toYearMonth(chit.start_date),
+          end_date: toYearMonth(chit.end_date),
+          collection_day: chit.collection_day.toString(),
+          payout_day: chit.payout_day.toString(),
         };
         setFormData(fetchedData);
         setOriginalData(fetchedData);
@@ -422,10 +421,10 @@ const GroupDetailPage = () => {
       setPageLoading(false);
     } else if (isEdit) {
       setMode("edit");
-      fetchGroup();
+      fetchChit();
     } else {
       setMode("view");
-      fetchGroup();
+      fetchChit();
     }
   }, [id, location.pathname, token]);
 
@@ -540,7 +539,7 @@ const GroupDetailPage = () => {
     setSuccess(null);
 
     try {
-      if (mode === "create" && !createdGroupId) {
+      if (mode === "create" && !createdChitId) {
         const dataToSend = {
           ...formData,
           start_date: getFirstDayOfMonth(formData.start_date),
@@ -552,23 +551,23 @@ const GroupDetailPage = () => {
           payout_day: Number(formData.payout_day),
         };
         delete dataToSend.end_date;
-        const newGroup = await createChitGroup(dataToSend, token);
-        setCreatedGroupId(newGroup.id);
-        setCreatedGroupName(newGroup.name);
+        const newChit = await createChit(dataToSend, token);
+        setCreatedChitId(newChit.id);
+        setCreatedChitName(newChit.name);
         setOriginalData({
-          name: newGroup.name,
-          chit_value: newGroup.chit_value.toString(),
-          group_size: newGroup.group_size.toString(),
-          monthly_installment: newGroup.monthly_installment.toString(),
-          duration_months: newGroup.duration_months.toString(),
-          start_date: toYearMonth(newGroup.start_date),
-          end_date: toYearMonth(newGroup.end_date),
-          collection_day: newGroup.collection_day.toString(),
-          payout_day: newGroup.payout_day.toString(),
+          name: newChit.name,
+          chit_value: newChit.chit_value.toString(),
+          group_size: newChit.group_size.toString(),
+          monthly_installment: newChit.monthly_installment.toString(),
+          duration_months: newChit.duration_months.toString(),
+          start_date: toYearMonth(newChit.start_date),
+          end_date: toYearMonth(newChit.end_date),
+          collection_day: newChit.collection_day.toString(),
+          payout_day: newChit.payout_day.toString(),
         });
         setActiveTab("payouts");
-        setSuccess("Group details saved. You can now manage payouts.");
-      } else if (mode === "create" && createdGroupId) {
+        setSuccess("Chit details saved. You can now manage payouts.");
+      } else if (mode === "create" && createdChitId) {
         const changes = {};
         for (const key in formData) {
           if (formData[key] !== originalData[key]) {
@@ -595,26 +594,26 @@ const GroupDetailPage = () => {
           if (patchData.payout_day)
             patchData.payout_day = Number(patchData.payout_day);
 
-          const updatedGroup = await patchChitGroup(
-            createdGroupId,
+          const updatedChit = await patchChit(
+            createdChitId,
             patchData,
             token
           );
-          setCreatedGroupName(updatedGroup.name);
+          setCreatedChitName(updatedChit.name);
           setOriginalData({
-            name: updatedGroup.name,
-            chit_value: updatedGroup.chit_value.toString(),
-            group_size: updatedGroup.group_size.toString(),
-            monthly_installment: updatedGroup.monthly_installment.toString(),
-            duration_months: updatedGroup.duration_months.toString(),
-            start_date: toYearMonth(updatedGroup.start_date),
-            end_date: toYearMonth(updatedGroup.end_date),
-            collection_day: updatedGroup.collection_day.toString(),
-            payout_day: updatedGroup.payout_day.toString(),
+            name: updatedChit.name,
+            chit_value: updatedChit.chit_value.toString(),
+            group_size: updatedChit.group_size.toString(),
+            monthly_installment: updatedChit.monthly_installment.toString(),
+            duration_months: updatedChit.duration_months.toString(),
+            start_date: toYearMonth(updatedChit.start_date),
+            end_date: toYearMonth(updatedChit.end_date),
+            collection_day: updatedChit.collection_day.toString(),
+            payout_day: updatedChit.payout_day.toString(),
           });
         }
         setActiveTab("payouts");
-        setSuccess("Group details updated successfully!");
+        setSuccess("Chit details updated successfully!");
       } else if (mode === "edit") {
         const changes = {};
         for (const key in formData) {
@@ -642,8 +641,8 @@ const GroupDetailPage = () => {
           if (patchData.payout_day)
             patchData.payout_day = Number(patchData.payout_day);
 
-          await patchChitGroup(id, patchData, token);
-          setSuccess("Chit group updated successfully!");
+          await patchChit(id, patchData, token);
+          setSuccess("Chit updated successfully!");
           if (activeTabIndex < TABS.length - 1) {
             setActiveTab(TABS[activeTabIndex + 1]);
           }
@@ -662,17 +661,17 @@ const GroupDetailPage = () => {
 
   const getTitle = () => {
     if (mode === "create") {
-      return createdGroupName || "Create New Chit Group";
+      return createdChitName || "Create New Chit";
     }
-    if (mode === "edit") return formData.name || "Edit Chit Group";
-    return formData.name || "Group Details";
+    if (mode === "edit") return formData.name || "Edit Chit";
+    return formData.name || "Chit Details";
   };
 
   const handleBackNavigation = () => {
     if (activeTabIndex > 0) {
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
-      navigate("/groups");
+      navigate("/chits");
     }
   };
 
@@ -708,21 +707,21 @@ const GroupDetailPage = () => {
 
   const handleFinalAction = () => {
     if (mode === "edit") {
-      navigate("/groups", {
+      navigate("/chits", {
         state: {
-          success: `Chit group "${formData.name}" has been updated successfully!`,
+          success: `Chit "${formData.name}" has been updated successfully!`,
         },
       });
       return;
     }
-    if (createdGroupId) {
-      navigate(`/groups/view/${createdGroupId}`, {
+    if (createdChitId) {
+      navigate(`/chits/view/${createdChitId}`, {
         state: {
-          success: `Chit group "${createdGroupName}" has been created successfully!`,
+          success: `Chit "${createdChitName}" has been created successfully!`,
         },
       });
     } else {
-      navigate("/groups");
+      navigate("/chits");
     }
   };
 
@@ -730,7 +729,7 @@ const GroupDetailPage = () => {
   const handleLogPaymentClick = (assignment) => {
     setPaymentDefaults({
       assignmentId: assignment.id,
-      groupId: assignment.chit_group.id,
+      chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
     setActiveTab("payments");
@@ -749,7 +748,7 @@ const GroupDetailPage = () => {
       <div
         className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
       >
-        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="groups" />
+        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="chits" />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
@@ -791,7 +790,7 @@ const GroupDetailPage = () => {
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
                   mode={mode}
-                  groupId={id || createdGroupId}
+                  chitId={id || createdChitId}
                   formData={formData}
                   handleFormChange={handleFormChange}
                   activeTabIndex={activeTabIndex}
@@ -800,7 +799,7 @@ const GroupDetailPage = () => {
                   handleNext={handleNext}
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={!!(mode === "create" && createdGroupId)}
+                  isPostCreation={!!(mode === "create" && createdChitId)}
                   onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                   paymentDefaults={paymentDefaults} // <-- Pass prop
                   setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
@@ -809,7 +808,7 @@ const GroupDetailPage = () => {
 
               {/* --- MODIFIED DESKTOP VIEW --- */}
               <div className="hidden md:block">
-                <form id="group-details-form-desktop" onSubmit={handleSubmit}>
+                <form id="chit-details-form-desktop" onSubmit={handleSubmit}>
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
                     {activeTab === "details" && (
                       <div className="md:col-span-1 flex flex-col gap-8">
@@ -818,7 +817,7 @@ const GroupDetailPage = () => {
                           formData={formData}
                           handleFormChange={handleFormChange}
                           isPostCreation={
-                            !!(mode === "create" && createdGroupId)
+                            !!(mode === "create" && createdChitId)
                           }
                           onEnterKeyOnLastInput={handleSubmit}
                         />
@@ -829,7 +828,7 @@ const GroupDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          groupId={id || createdGroupId}
+                          groupId={id || createdChitId}
                         />
                       </div>
                     )}
@@ -838,7 +837,7 @@ const GroupDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <MembersSectionComponent
                           mode={mode}
-                          groupId={id || createdGroupId}
+                          chitId={id || createdChitId}
                           onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
                       </div>
@@ -847,7 +846,7 @@ const GroupDetailPage = () => {
                     {activeTab === "payments" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PaymentHistoryList
-                          groupId={id || createdGroupId}
+                          groupId={id || createdChitId}
                           mode={mode}
                           paymentDefaults={paymentDefaults} // <-- Pass prop
                           setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
@@ -860,11 +859,11 @@ const GroupDetailPage = () => {
                       <div className="md:col-span-1 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          groupId={id || createdGroupId}
+                          groupId={id || createdChitId}
                         />
                         <MembersSectionComponent
                           mode={mode}
-                          groupId={id || createdGroupId}
+                          chitId={id || createdChitId}
                           onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
                         />
                       </div>
@@ -885,7 +884,7 @@ const GroupDetailPage = () => {
                         label="Payouts"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdGroupId}
+                        disabled={mode === "create" && !createdChitId}
                       />
                       <TabButton
                         name="members"
@@ -893,7 +892,7 @@ const GroupDetailPage = () => {
                         label="Members"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdGroupId}
+                        disabled={mode === "create" && !createdChitId}
                       />
                       <TabButton
                         name="payments"
@@ -901,7 +900,7 @@ const GroupDetailPage = () => {
                         label="Payments"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdGroupId}
+                        disabled={mode === "create" && !createdChitId}
                       />
                     </div>
 
@@ -911,7 +910,7 @@ const GroupDetailPage = () => {
                           mode={mode}
                           loading={loading}
                           isPostCreation={
-                            !!(mode === "create" && createdGroupId)
+                            !!(mode === "create" && createdChitId)
                           }
                         />
                       </div>
@@ -927,11 +926,11 @@ const GroupDetailPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection="groups"
+        activeSection="chits"
       />
       <BottomNav />
     </>
   );
 };
 
-export default GroupDetailPage;
+export default ChitDetailPage;
