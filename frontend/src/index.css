@@ -1,17 +1,88 @@
 @import "tailwindcss";
 
 @theme {
+  /* =========================================
+     1. GLOBAL SCALE (ZOOM) TOKEN
+     ========================================= */
+  /* Standard browser default is 16px.
+     - Set to 14px for "Zoom Out" (Compact)
+     - Set to 16px for Standard
+  */
+  --text-base-size: 14px;
+
+  /* =========================================
+     2. TYPOGRAPHY
+     ========================================= */
   /* Font Families */
   --font-heading: serif;
   --font-body: sans-serif;
 
-  /* Border Radius */
-  --radius: 0.5rem; /* Equivalent to rounded-lg */
+  /* Semantic Text Sizes 
+     NOTE: We use explicit REM values here because theme('fontSize.*') 
+     returns a tuple that breaks CSS variables.
+  */
 
+  /* Small Text (Matches text-sm) */
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+
+  /* Body Text (Matches text-base) */
+  --text-body-default: 1rem;
+  --text-body-default--line-height: 1.5rem;
+
+  /* Display/Headings (Matches text-3xl) */
+  --text-display: 1.875rem;
+  --text-display--line-height: 2.25rem;
+
+  /* =========================================
+     3. SHAPES & SPACING
+     ========================================= */
+  /* Border Radius */
+  --radius-btn: theme("borderRadius.md");
+  --radius-card: theme("borderRadius.lg");
+  --radius: theme("borderRadius.lg");
+
+  /* Spacing */
+  --spacing-layout: theme("spacing.8");
+  --spacing-control: theme("spacing.6");
+
+  /* Layout Dimensions */
+  --h-header: theme("spacing.16");
+
+  /* =========================================
+     4. ICONOGRAPHY
+     ========================================= */
+  /* Icon Sizes */
+  --size-icon-xs: theme("spacing.3"); /* 0.75rem */
+  --size-icon-sm: theme("spacing.4"); /* 1rem    */
+  --size-icon-md: theme("spacing.6"); /* 1.5rem  */
+  --size-icon-lg: theme("spacing.8"); /* 2rem    */
+  --size-icon-xl: theme("spacing.12"); /* 3rem    */
+  --size-icon-2xl: theme("spacing.16"); /* 4rem    */
+
+  /* =========================================
+     5. DEPTH & LAYERING
+     ========================================= */
   /* Shadows */
+  --shadow-card: theme("boxShadow.md");
+  --shadow-floating: theme("boxShadow.lg");
+  --shadow-popover: theme("boxShadow.xl");
+
+  /* Base Shadow */
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 
-  /* Colors - Light Mode (Default) */
+  /* Glass Effects */
+  --opacity-overlay: 0.8;
+  --blur-overlay: 4px;
+
+  /* States */
+  --opacity-disabled: theme("opacity.50");
+  --opacity-hover: theme("opacity.90");
+
+  /* =========================================
+     6. COLORS
+     ========================================= */
+  /* Light Mode */
   --color-background-primary: theme(colors.gray.50);
   --color-background-secondary: theme(colors.gray.200);
   --color-background-tertiary: theme(colors.gray.300);
@@ -21,7 +92,7 @@
   --color-accent-hover: theme(colors.blue.600);
   --color-border: theme(colors.gray.400);
 
-  /* State Colors - Light */
+  /* State Colors */
   --color-success-bg: theme(colors.green.100);
   --color-success-accent: theme(colors.green.500);
   --color-success-hover: theme(colors.green.600);
@@ -36,7 +107,58 @@
   --color-info-hover: theme(colors.blue.600);
 }
 
-/* Dark Mode Overrides */
+/* =========================================
+   UTILITY CLASSES
+   ========================================= */
+
+/* Z-Index Layers */
+@utility z-sticky {
+  z-index: theme("zIndex.20");
+}
+@utility z-overlay {
+  z-index: theme("zIndex.40");
+}
+@utility z-modal {
+  z-index: theme("zIndex.50");
+}
+
+/* Animation Presets */
+@utility duration-normal {
+  transition-duration: theme("transitionDuration.300");
+}
+@utility ease-smooth {
+  transition-timing-function: theme("transitionTimingFunction.in-out");
+}
+
+/* Icon Utilities */
+@utility icon-xs {
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+}
+@utility icon-sm {
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+}
+@utility icon-md {
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+}
+@utility icon-lg {
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
+}
+@utility icon-xl {
+  width: var(--size-icon-xl);
+  height: var(--size-icon-xl);
+}
+@utility icon-2xl {
+  width: var(--size-icon-2xl);
+  height: var(--size-icon-2xl);
+}
+
+/* =========================================
+   DARK MODE OVERRIDES
+   ========================================= */
 :is([data-theme="dark"]) {
   --color-background-primary: theme(colors.gray.900);
   --color-background-secondary: theme(colors.gray.800);
@@ -47,7 +169,6 @@
   --color-accent-hover: theme(colors.blue.500);
   --color-border: theme(colors.gray.600);
 
-  /* State Colors - Dark */
   --color-success-bg: theme(colors.green.200);
   --color-success-accent: theme(colors.green.600);
   --color-success-hover: theme(colors.green.500);
@@ -61,20 +182,26 @@
   --color-info-accent: theme(colors.blue.600);
   --color-info-hover: theme(colors.blue.500);
 
-  /* --- NEW: Dark Mode Placeholder --- */
   input::placeholder,
   textarea::placeholder {
     @apply text-white/35;
   }
 }
 
-/* Base Styles */
+/* =========================================
+   BASE STYLES
+   ========================================= */
 @layer base {
   html {
+    /* APPLIES THE ZOOM EFFECT 
+       All rem-based values will scale relative to this.
+    */
+    font-size: var(--text-base-size);
     scroll-behavior: smooth;
   }
   body {
-    @apply font-body bg-background-primary text-text-primary transition-colors duration-300;
+    @apply font-body bg-background-primary text-text-primary;
+    @apply transition-colors duration-normal ease-smooth;
   }
   h1,
   h2,
@@ -84,7 +211,6 @@
   h6 {
     @apply font-heading;
   }
-  /* --- NEW: Light Mode (Default) Placeholder --- */
   input::placeholder,
   textarea::placeholder {
     @apply text-black/35;
@@ -96,7 +222,7 @@
     display: none;
   }
   .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

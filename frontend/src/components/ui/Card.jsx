@@ -1,7 +1,8 @@
 const Card = ({ children, className = "" }) => {
   return (
     <div
-      className={`bg-background-secondary p-8 rounded-md shadow-md transition-all duration-300 ${className}`}
+      // UPDATED: shadow-card
+      className={`bg-background-secondary p-layout rounded-card shadow-card transition-all duration-normal ease-smooth ${className}`}
     >
       {children}
     </div>

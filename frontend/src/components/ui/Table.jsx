@@ -19,17 +19,18 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
     : "";
 
   return (
-    <div className="overflow-x-auto border border-border shadow-md rounded-lg">
-      <table className="w-full text-sm text-text-secondary">
+    <div className="overflow-x-auto border border-border shadow-card rounded-lg">
+      {/* UPDATED: text-small */}
+      <table className="w-full text-small text-text-secondary">
         <thead
-          className={`text-sm text-text-primary uppercase font-heading ${headerClass}`}
+          className={`text-small text-text-primary uppercase font-heading ${headerClass}`}
         >
           <tr>
             {columns.map((col) => (
               <th
                 key={col.accessor || col.header}
                 scope="col"
-                className={`px-6 py-4 font-semibold border-b-2 border-border ${
+                className={`px-control py-4 font-semibold border-b-2 border-border ${
                   col.headerClassName || col.className || ""
                 }`}
               >
@@ -43,12 +44,12 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
             <tr
               key={rowIndex}
               onClick={() => onRowClick && onRowClick(row)}
-              className={`group ${rowClass} transition-all duration-200 ease-in-out ${rowHoverClass}`}
+              className={`group ${rowClass} transition-all duration-normal ease-smooth ${rowHoverClass}`}
             >
               {columns.map((col) => (
                 <td
                   key={col.accessor || col.header}
-                  className={`px-6 py-4 font-medium whitespace-nowrap ${
+                  className={`px-control py-4 font-medium whitespace-nowrap ${
                     col.cellClassName || col.className || ""
                   }`}
                 >

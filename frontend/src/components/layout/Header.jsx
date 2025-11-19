@@ -1,5 +1,3 @@
-// frontend/src/components/layout/Header.jsx
-
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -8,7 +6,6 @@ import ProfileDropdown from "../ui/ProfileDropdown";
 import useClickOutside from "../../hooks/useClickOutside";
 import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
 import { AnimatePresence } from "framer-motion";
-import { RupeeIcon } from "../ui/Icons";
 
 const Header = ({
   onLoginClick,
@@ -32,7 +29,7 @@ const Header = ({
     "why-us": useRef(null),
     contact: useRef(null),
     dashboard: useRef(null),
-    chits: useRef(null), // <-- RENAMED
+    chits: useRef(null),
     members: useRef(null),
     payments: useRef(null),
   };
@@ -48,14 +45,14 @@ const Header = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home", id: "home" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
-    { href: "/chits", text: "Chits", id: "chits" }, // <-- RENAMED
+    { href: "/chits", text: "Chits", id: "chits" },
     { href: "/members", text: "Members", id: "members" },
     { href: "/payments", text: "Payments", id: "payments" },
   ];
 
   const getActiveId = () => {
     if (!isLoggedIn) return activeSection;
-    if (location.pathname.startsWith("/chits")) return "chits"; // <-- RENAMED
+    if (location.pathname.startsWith("/chits")) return "chits";
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
     if (location.pathname.startsWith("/payments")) return "payments";
@@ -87,7 +84,7 @@ const Header = ({
 
   const isLinkActive = (path) => {
     if (path === "/") return location.pathname === "/";
-    if (path === "/chits") return location.pathname.startsWith("/chits"); // <-- ADDED
+    if (path === "/chits") return location.pathname.startsWith("/chits");
     if (path === "/members")
       return (
         location.pathname.startsWith("/members") ||
@@ -105,7 +102,7 @@ const Header = ({
           ref={linkRefs[link.id]}
           to={link.href}
           onMouseEnter={() => setHoveredLink(link.id)}
-          className={`transition-colors ${
+          className={`transition-colors duration-normal ease-smooth ${
             isLinkActive(link.href) ? "text-accent" : "text-text-secondary"
           }`}
         >
@@ -120,7 +117,7 @@ const Header = ({
         href={link.href}
         onClick={(e) => handleLinkClick(e, link.id)}
         onMouseEnter={() => setHoveredLink(link.id)}
-        className={`transition-colors ${
+        className={`transition-colors duration-normal ease-smooth ${
           activeSection === link.id ? "text-accent" : "text-text-secondary"
         }`}
       >
@@ -149,10 +146,12 @@ const Header = ({
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-background-secondary/80 backdrop-blur-sm shadow-md">
+    // UPDATED: z-sticky, shadow-card, glass tokens
+    <header className="sticky top-0 z-sticky bg-background-secondary/opacity-overlay backdrop-blur-overlay shadow-card">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">
-          <BrandLogo className="hidden md:block text-3xl font-bold font-heading text-accent" />
+          {/* UPDATED: text-display */}
+          <BrandLogo className="hidden md:block text-display font-bold font-heading text-accent" />
           <div className="md:hidden">
             <button
               onClick={onMenuOpen}
@@ -165,7 +164,8 @@ const Header = ({
         </div>
 
         <div className="md:hidden">
-          <BrandLogo className="text-3xl font-bold font-heading text-accent" />
+          {/* UPDATED: text-display */}
+          <BrandLogo className="text-display font-bold font-heading text-accent" />
         </div>
 
         <div
@@ -174,7 +174,7 @@ const Header = ({
         >
           <NavLinks />
           <span
-            className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-300 ease-out"
+            className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-normal ease-smooth"
             style={underlineStyle}
           />
         </div>
