@@ -3,30 +3,39 @@
 import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
 import { FiUser, FiPhone } from "react-icons/fi";
+import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import the hook
 
 const MemberDetailsForm = ({
   mode,
   formData,
   onFormChange,
-  onFormSubmit,
   error,
   success,
-  isPostCreation = false, // <-- ADD THIS
+  isPostCreation = false,
 }) => {
   const nameInputRef = useRef(null);
+  const phoneInputRef = useRef(null); // <--- Add ref for phone input
+
+  // Initialize tracking hook for phone number
+  const trackPhoneCursor = useCursorTracking(
+    phoneInputRef,
+    formData.phone_number,
+    /\d/ // Track digits
+  );
 
   useEffect(() => {
-    // Only auto-focus on the 'create' screen, AND not in post-creation
     if (mode === "create" && !isPostCreation) {
-      // <-- UPDATE THIS CONDITION
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
-  }, [mode, isPostCreation]); // <-- ADD DEPENDENCY
+  }, [mode, isPostCreation]);
 
   const isFormDisabled = mode === "view";
 
-  // REMOVED the form wrapper - this component now only returns the fieldset
-  // The parent component (MemberDetailPage) will wrap this in a form
+  const handlePhoneChange = (e) => {
+    trackPhoneCursor(e); // <--- 1. Track cursor before update
+    onFormChange(e); // <--- 2. Trigger parent update (which sanitizes)
+  };
+
   return (
     <>
       {success && <Message type="success">{success}</Message>}
@@ -73,11 +82,12 @@ const MemberDetailsForm = ({
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
+              ref={phoneInputRef} // <--- Attach ref
               type="tel"
               id="phone_number"
               name="phone_number"
               value={formData.phone_number}
-              onChange={onFormChange}
+              onChange={handlePhoneChange} // <--- Use wrapper handler
               className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
               required
               maxLength="10"

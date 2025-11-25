@@ -1,6 +1,6 @@
 // frontend/src/components/sections/PayoutsSection.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { getPayouts, updatePayout } from "../../services/chitsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
@@ -16,6 +16,7 @@ import { RupeeIcon } from "../ui/Icons";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
 import Table from "../ui/Table";
+import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
 
 // --- Helper functions for live formatting ---
 const formatAmount = (value) => {
@@ -25,9 +26,7 @@ const formatAmount = (value) => {
   const parts = rawValue.split(".");
   const integerPart = parts[0];
   const decimalPart = parts[1];
-
   const formattedInteger = new Intl.NumberFormat("en-IN").format(integerPart);
-
   if (decimalPart !== undefined) {
     return `${formattedInteger}.${decimalPart.slice(0, 2)}`;
   }
@@ -39,8 +38,43 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
+// --- NEW SUB-COMPONENT for Table Inputs ---
+const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
+  const inputRef = useRef(null);
+  // Track cursor for this specific input (preserves comma formatting)
+  const trackCursor = useCursorTracking(inputRef, value, /\d/);
+
+  return (
+    <div className="relative w-full mx-auto">
+      <RupeeIcon className="w-4 h-4 text-text-secondary absolute top-1/2 left-3 -translate-y-1/2" />
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="tel"
+        value={value || ""}
+        onFocus={(e) => {
+          if (e.target.value === "") {
+            onChange("0");
+          }
+          setTimeout(() => {
+            e.target.setSelectionRange(
+              e.target.value.length,
+              e.target.value.length
+            );
+          }, 0);
+        }}
+        onChange={(e) => {
+          trackCursor(e); // <--- Track
+          onChange(e.target.value);
+        }}
+        onKeyDown={(e) => onKeyDown(e, isLastInput)}
+        className="w-full text-center bg-background-secondary border border-border rounded-md pl-8 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-accent"
+      />
+    </div>
+  );
+};
+
 const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
-  // <-- PROP RENAMED
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,14 +89,13 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
 
   const fetchPayouts = async (showLoading = true) => {
     if (!chitId) {
-      // <-- Use chitId
       setLoading(false);
       return;
     }
     try {
       if (showLoading) setLoading(true);
       setError(null);
-      const data = await getPayouts(chitId, token); // <-- Use chitId
+      const data = await getPayouts(chitId, token);
       data.payouts.sort((a, b) => a.month - b.month);
       setPayouts(data.payouts);
     } catch (err) {
@@ -74,9 +107,8 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
 
   useEffect(() => {
     fetchPayouts();
-  }, [chitId, token]); // <-- Use chitId
+  }, [chitId, token]);
 
-  // Timer to clear success message
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(null), 3000);
@@ -96,6 +128,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   };
 
   const handleAmountChange = (payoutId, value) => {
+    // We do NOT modify cursor here. The sub-component handles tracking.
     setEditAmounts((prev) => ({
       ...prev,
       [payoutId]: formatAmount(value),
@@ -163,36 +196,16 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
       headerClassName: "w-3/4",
       cellClassName: "w-3/4",
       cell: (row, index) => {
-        const isEvenRow = index % 2 === 0;
         const isLastInput = index === payouts.length - 1;
-        const inputBgClassName = isEvenRow
-          ? "bg-background-primary"
-          : "bg-background-secondary";
 
         return isEditing ? (
-          <div className="relative w-full mx-auto">
-            <RupeeIcon className="w-4 h-4 text-text-secondary absolute top-1/2 left-3 -translate-y-1/2" />
-            <input
-              type="text"
-              inputMode="tel"
-              value={editAmounts[row.id] || ""}
-              onFocus={(e) => {
-                if (e.target.value === "") {
-                  handleAmountChange(row.id, "0");
-                }
-                // Place cursor at the end
-                setTimeout(() => {
-                  e.target.setSelectionRange(
-                    e.target.value.length,
-                    e.target.value.length
-                  );
-                }, 0);
-              }}
-              onChange={(e) => handleAmountChange(row.id, e.target.value)}
-              onKeyDown={(e) => handleInputKeyDown(e, isLastInput)}
-              className={`w-full text-center ${inputBgClassName} border border-border rounded-md pl-8 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-accent`}
-            />
-          </div>
+          // Use the new Sub-Component for editing
+          <EditablePayoutInput
+            value={editAmounts[row.id]}
+            onChange={(val) => handleAmountChange(row.id, val)}
+            onKeyDown={handleInputKeyDown}
+            isLastInput={isLastInput}
+          />
         ) : (
           <span className="text-text-secondary flex items-center justify-center">
             {row.payout_amount === 0 ? (
@@ -218,7 +231,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   }
 
   if (!chitId) {
-    // <-- Use chitId
     return (
       <p className="text-center text-text-secondary py-4">
         Create the chit first to manage payouts.
@@ -228,8 +240,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
 
   return (
     <div>
-      {/* --- MODIFICATION START --- */}
-      {/* Conditionally render the heading and hr */}
       {showTitle && (
         <>
           <div className="relative flex justify-center items-center mb-2">
@@ -248,7 +258,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
           <hr className="border-border mb-4" />
         </>
       )}
-      {/* --- MODIFICATION END --- */}
 
       {success && (
         <Message type="success" title="Success">

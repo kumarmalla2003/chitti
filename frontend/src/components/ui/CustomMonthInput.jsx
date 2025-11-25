@@ -1,21 +1,14 @@
 // frontend/src/components/ui/CustomMonthInput.jsx
 
-import { useRef } from "react";
+import { useRef, useLayoutEffect } from "react";
 import { FiCalendar } from "react-icons/fi";
 
-const CustomMonthInput = ({
-  name,
-  value,
-  onChange,
-  disabled,
-  required,
-  // enterKeyHint prop removed
-}) => {
+const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
   const hiddenInputRef = useRef(null);
+  const textInputRef = useRef(null); // <--- Ref
+  const cursorState = useRef({ capture: false, digitCount: 0 });
 
   const handleKeyDown = (e) => {
-    // Keep this logic for general Enter key behavior if needed elsewhere,
-    // but it won't use enterKeyHint anymore.
     if (e.key === "Enter") {
       e.preventDefault();
       const focusable = Array.from(
@@ -32,32 +25,72 @@ const CustomMonthInput = ({
   };
 
   const handleTextChange = (e) => {
-    let inputValue = e.target.value.replace(/[^0-9/]/g, "");
+    const input = e.target;
 
-    // Automatically add slash
-    if (inputValue.length === 2 && !value.endsWith("/")) {
+    // 1. Capture Cursor
+    const selectionStart = input.selectionStart;
+    const valBeforeCursor = input.value.slice(0, selectionStart);
+    const digitsBeforeCursor = (valBeforeCursor.match(/\d/g) || []).length;
+
+    cursorState.current = {
+      capture: true,
+      digitCount: digitsBeforeCursor,
+    };
+
+    let inputValue = e.target.value.replace(/[^0-9/]/g, "");
+    const currentDisplay = displayValue();
+    const isTyping =
+      inputValue.length > currentDisplay.replace(/[^0-9]/g, "").length;
+
+    // Auto slash logic
+    if (isTyping && inputValue.length === 2) {
       inputValue += "/";
     }
 
-    // Remove slash if user deletes past it
-    if (inputValue.length === 2 && value.endsWith("/")) {
-      inputValue = inputValue.slice(0, 1);
-    }
+    if (inputValue.length > 7) inputValue = inputValue.slice(0, 7);
 
-    // Convert MM/YYYY to YYYY-MM for internal state
+    // Convert MM/YYYY to YYYY-MM
     if (inputValue.length === 7) {
       const [month, year] = inputValue.split("/");
-      // Basic validation
       if (parseInt(month, 10) > 0 && parseInt(month, 10) <= 12) {
         onChange({ target: { name, value: `${year}-${month}` } });
       } else {
-        // Handle invalid month by just showing the typed value
         onChange({ target: { name, value: inputValue } });
       }
     } else {
-      onChange({ target: { name, value: inputValue } }); // Pass partial input
+      onChange({ target: { name, value: inputValue } });
     }
   };
+
+  // 2. Restore Cursor
+  useLayoutEffect(() => {
+    if (cursorState.current.capture && textInputRef.current) {
+      const input = textInputRef.current;
+      const targetDigits = cursorState.current.digitCount;
+      const currentVal = input.value;
+
+      let foundDigits = 0;
+      let newPos = 0;
+
+      for (let i = 0; i < currentVal.length; i++) {
+        if (/\d/.test(currentVal[i])) {
+          foundDigits++;
+        }
+        if (foundDigits === targetDigits) {
+          newPos = i + 1;
+          // Jump over slash
+          if (currentVal[i + 1] === "/") {
+            newPos += 1;
+          }
+          break;
+        }
+      }
+      if (targetDigits === 0) newPos = 0;
+
+      input.setSelectionRange(newPos, newPos);
+      cursorState.current.capture = false;
+    }
+  }, [value]);
 
   const handlePickerChange = (e) => {
     onChange({ target: { name, value: e.target.value } });
@@ -67,25 +100,23 @@ const CustomMonthInput = ({
     hiddenInputRef.current?.showPicker();
   };
 
-  // Format the YYYY-MM value back to MM/YYYY for display
   const displayValue = () => {
     if (value && value.match(/^\d{4}-\d{2}$/)) {
       const [year, month] = value.split("-");
       return `${month}/${year}`;
     }
-    return value; // Show partial input as is
+    return value;
   };
 
   return (
     <div className="relative flex items-center">
-      {/* Left Icon */}
       <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
         <FiCalendar className="w-5 h-5 text-text-secondary" />
       </span>
       <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
 
-      {/* Visible Text Input */}
       <input
+        ref={textInputRef} // <--- Attach Ref
         type="text"
         id={name}
         name={name}
@@ -98,10 +129,8 @@ const CustomMonthInput = ({
         required={required}
         maxLength="7"
         inputMode="numeric"
-        // enterKeyHint attribute removed from input
       />
 
-      {/* Right Clickable Icon */}
       <span className="absolute inset-y-0 right-0 flex items-center pr-3">
         <div
           className={`p-2 rounded-full bg-background-tertiary transition-all duration-200 ${
@@ -115,7 +144,6 @@ const CustomMonthInput = ({
         </div>
       </span>
 
-      {/* Hidden Month Picker */}
       <input
         type="month"
         ref={hiddenInputRef}

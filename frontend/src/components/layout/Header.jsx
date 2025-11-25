@@ -1,3 +1,5 @@
+// frontend/src/components/layout/Header.jsx
+
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -146,11 +148,10 @@ const Header = ({
   };
 
   return (
-    // UPDATED: z-sticky, shadow-card, glass tokens
-    <header className="sticky top-0 z-sticky bg-background-secondary/opacity-overlay backdrop-blur-overlay shadow-card">
+    // UPDATED: Restored opacity-overlay and backdrop-blur-overlay
+    <header className="sticky top-0 z-sticky bg-background-secondary/80 backdrop-blur-overlay shadow-card">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">
-          {/* UPDATED: text-display */}
           <BrandLogo className="hidden md:block text-display font-bold font-heading text-accent" />
           <div className="md:hidden">
             <button
@@ -164,7 +165,6 @@ const Header = ({
         </div>
 
         <div className="md:hidden">
-          {/* UPDATED: text-display */}
           <BrandLogo className="text-display font-bold font-heading text-accent" />
         </div>
 

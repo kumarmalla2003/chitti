@@ -1,6 +1,6 @@
 // frontend/src/components/ui/CustomDateInput.jsx
 
-import { useRef } from "react";
+import { useRef, useLayoutEffect } from "react";
 import { FiCalendar } from "react-icons/fi";
 
 // Helper to format YYYY-MM-DD to DD/MM/YYYY
@@ -14,25 +14,42 @@ const toDisplayFormat = (isoDate) => {
 
 const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
   const hiddenInputRef = useRef(null);
+  const textInputRef = useRef(null); // <--- Ref for visible input
+
+  // We use a simplified cursor tracker here that specifically cares about digits
+  const cursorState = useRef({ position: 0, digitCount: 0, capture: false });
 
   const handleTextChange = (e) => {
+    const input = e.target;
+
+    // 1. Capture Cursor State relative to Digits
+    const selectionStart = input.selectionStart;
+    const valBeforeCursor = input.value.slice(0, selectionStart);
+    const digitsBeforeCursor = (valBeforeCursor.match(/\d/g) || []).length;
+
+    cursorState.current = {
+      capture: true,
+      digitCount: digitsBeforeCursor,
+    };
+
     let inputValue = e.target.value.replace(/[^0-9/]/g, "");
     const displayValue = value.match(/^\d{4}-\d{2}-\d{2}$/)
       ? toDisplayFormat(value)
       : value;
 
-    // Automatically add slashes
-    if (inputValue.length === 2 && displayValue.length === 1) {
-      inputValue += "/";
-    } else if (inputValue.length === 5 && displayValue.length === 4) {
-      inputValue += "/";
+    // Smart Logic: Only add slashes if we are typing forward (length increased)
+    // and we are at the specific positions
+    const isTyping = inputValue.length > displayValue.length;
+
+    if (isTyping) {
+      // Automatically add slashes if typing numbers
+      if (inputValue.length === 2) inputValue += "/";
+      if (inputValue.length === 5) inputValue += "/";
     }
 
-    // Handle backspace
-    if (inputValue.length === 2 && displayValue.length === 3) {
-      inputValue = inputValue.slice(0, 1);
-    } else if (inputValue.length === 5 && displayValue.length === 6) {
-      inputValue = inputValue.slice(0, 4);
+    // Strict sanitization for max length
+    if (inputValue.length > 10) {
+      inputValue = inputValue.slice(0, 10);
     }
 
     // Convert DD/MM/YYYY to YYYY-MM-DD for internal state
@@ -47,12 +64,44 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
       ) {
         onChange({ target: { name, value: `${year}-${month}-${day}` } });
       } else {
-        onChange({ target: { name, value: inputValue } }); // Pass invalid/partial
+        onChange({ target: { name, value: inputValue } });
       }
     } else {
-      onChange({ target: { name, value: inputValue } }); // Pass partial input
+      onChange({ target: { name, value: inputValue } });
     }
   };
+
+  // 2. Restore Cursor
+  useLayoutEffect(() => {
+    if (cursorState.current.capture && textInputRef.current) {
+      const input = textInputRef.current;
+      const targetDigits = cursorState.current.digitCount;
+      const currentVal = input.value;
+
+      let foundDigits = 0;
+      let newPos = 0;
+
+      for (let i = 0; i < currentVal.length; i++) {
+        if (/\d/.test(currentVal[i])) {
+          foundDigits++;
+        }
+        if (foundDigits === targetDigits) {
+          newPos = i + 1;
+          // If the NEXT character is a slash, jump over it
+          if (currentVal[i + 1] === "/") {
+            newPos += 1;
+          }
+          break;
+        }
+      }
+
+      // Handle case where we deleted everything or are at start
+      if (targetDigits === 0) newPos = 0;
+
+      input.setSelectionRange(newPos, newPos);
+      cursorState.current.capture = false;
+    }
+  }, [value]);
 
   const handlePickerChange = (e) => {
     onChange({ target: { name, value: e.target.value } });
@@ -62,29 +111,26 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
     try {
       hiddenInputRef.current?.showPicker();
     } catch (error) {
-      // Fallback for browsers that don't support showPicker() on date inputs
       console.error("showPicker() not supported", error);
     }
   };
 
-  // Format the YYYY-MM-DD value back to DD/MM/YYYY for display
   const getDisplayValue = () => {
     if (value && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
       return toDisplayFormat(value);
     }
-    return value; // Show partial/invalid input as is
+    return value;
   };
 
   return (
     <div className="relative flex items-center">
-      {/* Left Icon */}
       <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
         <FiCalendar className="w-5 h-5 text-text-secondary" />
       </span>
       <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
 
-      {/* Visible Text Input */}
       <input
+        ref={textInputRef} // <--- Attach Ref
         type="text"
         id={name}
         name={name}
@@ -98,7 +144,6 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
         inputMode="numeric"
       />
 
-      {/* Right Clickable Icon */}
       <span className="absolute inset-y-0 right-0 flex items-center pr-3">
         <div
           className={`p-2 rounded-full bg-background-tertiary transition-all duration-200 ${
@@ -112,7 +157,6 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
         </div>
       </span>
 
-      {/* Hidden Date Picker */}
       <input
         type="date"
         ref={hiddenInputRef}

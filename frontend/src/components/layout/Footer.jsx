@@ -1,6 +1,9 @@
+// frontend/src/components/layout/Footer.jsx
+
 const Footer = () => {
   return (
-    <footer className="py-4 bg-background-secondary">
+    // UPDATED: Added /opacity-overlay and backdrop-blur-overlay to match Header
+    <footer className="py-4 bg-background-secondary backdrop-blur-overlay">
       <div className="container mx-auto px-4 text-center text-text-secondary">
         {/* Mobile Text */}
         <p className="md:hidden">

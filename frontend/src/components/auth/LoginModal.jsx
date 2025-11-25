@@ -7,6 +7,7 @@ import Button from "../ui/Button";
 import { FiPhone, FiLock, FiX, FiLoader } from "react-icons/fi";
 import { verifyPhone, login } from "../../services/authService";
 import Message from "../ui/Message";
+import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState("phone");
@@ -21,6 +22,19 @@ const LoginModal = ({ isOpen, onClose }) => {
   const phoneInputRef = useRef(null);
   const pinInputRefs = useRef([]);
   const visibilityTimerRef = useRef(null);
+
+  // --- 1. Restore Formatting Logic ---
+  let formattedPhoneNumber = phoneNumber;
+  if (phoneNumber.length > 5) {
+    formattedPhoneNumber = `${phoneNumber.slice(0, 5)} ${phoneNumber.slice(5)}`;
+  }
+
+  // --- 2. Track Cursor on the FORMATTED value ---
+  const trackPhoneCursor = useCursorTracking(
+    phoneInputRef,
+    formattedPhoneNumber,
+    /\d/ // Track digits only (ignore the space)
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -49,6 +63,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handlePhoneChange = (e) => {
+    trackPhoneCursor(e); // <--- Track cursor before update
     const input = e.target.value.replace(/\D/g, "");
     setPhoneNumber(input.slice(0, 10));
     if (error) setError(null);
@@ -58,7 +73,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
       setError("Please enter a valid 10-digit phone number.");
-      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
+      setTimeout(() => phoneInputRef.current?.focus(), 100);
       return;
     }
     setIsLoading(true);
@@ -68,7 +83,7 @@ const LoginModal = ({ isOpen, onClose }) => {
       setStep("pin");
     } catch (err) {
       setError(err.message);
-      setTimeout(() => phoneInputRef.current?.focus(), 100); // <-- ADD THIS LINE
+      setTimeout(() => phoneInputRef.current?.focus(), 100);
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +105,7 @@ const LoginModal = ({ isOpen, onClose }) => {
       onClose();
     } catch (err) {
       setError(err.message);
-      setPin(new Array(6).fill("")); // Clear PIN on error
+      setPin(new Array(6).fill(""));
       setTimeout(() => pinInputRefs.current[0]?.focus(), 100);
     } finally {
       setIsLoading(false);
@@ -140,11 +155,6 @@ const LoginModal = ({ isOpen, onClose }) => {
     setPin(new Array(6).fill(""));
   };
 
-  let formattedPhoneNumber = phoneNumber;
-  if (phoneNumber.length > 5) {
-    formattedPhoneNumber = `${phoneNumber.slice(0, 5)} ${phoneNumber.slice(5)}`;
-  }
-
   return (
     <div
       className={`fixed inset-0 z-30 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out ${
@@ -170,7 +180,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         <h2 className="text-3xl font-bold text-center text-text-primary">
           Login
         </h2>
-        <hr className="my-4 border-border" /> {/* Moved and margin adjusted */}
+        <hr className="my-4 border-border" />
         <p className="text-sm text-center text-text-secondary h-5 mb-6">
           {step === "phone"
             ? "Enter your authorized phone number"
@@ -196,7 +206,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                 ref={phoneInputRef}
                 type="tel"
                 placeholder="98765 43210"
-                value={formattedPhoneNumber}
+                value={formattedPhoneNumber} // <--- Using the formatted value
                 onChange={handlePhoneChange}
                 required
                 className={`w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
@@ -205,6 +215,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     : "border-border focus:ring-accent"
                 }`}
                 disabled={isLoading}
+                maxLength="11" // 10 digits + 1 space
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>

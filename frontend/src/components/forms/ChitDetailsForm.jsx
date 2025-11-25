@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
 import CustomMonthInput from "../ui/CustomMonthInput";
 import { RupeeIcon } from "../ui/Icons";
+import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
 import {
   FiTag,
   FiUsers,
@@ -23,9 +24,33 @@ const ChitDetailsForm = ({
   onEnterKeyOnLastInput,
 }) => {
   const nameInputRef = useRef(null);
+  const valueInputRef = useRef(null); // <--- Ref for Chit Value
+  const installmentInputRef = useRef(null); // <--- Ref for Installment
+
+  // Helper to safely format value for display
+  const getFormattedValue = (val) => {
+    if (!val) return "";
+    // Ensure we format only valid numbers
+    const num = parseInt(val.toString().replace(/,/g, ""));
+    return isNaN(num) ? "" : num.toLocaleString("en-IN");
+  };
+
+  const formattedChitValue = getFormattedValue(formData.chit_value);
+  const formattedInstallment = getFormattedValue(formData.monthly_installment);
+
+  // Setup trackers
+  const trackValueCursor = useCursorTracking(
+    valueInputRef,
+    formattedChitValue,
+    /\d/
+  );
+  const trackInstallmentCursor = useCursorTracking(
+    installmentInputRef,
+    formattedInstallment,
+    /\d/
+  );
 
   useEffect(() => {
-    // Only auto-focus on the 'create' screen and NOT during post-creation edit
     if (mode === "create" && !isPostCreation) {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
@@ -33,25 +58,18 @@ const ChitDetailsForm = ({
 
   const isFormDisabled = mode === "view";
 
-  // Handle Enter key press
   const handleKeyDown = (e) => {
+    // ... (Keep existing keydown logic unchanged)
     if (e.key === "Enter" && !isFormDisabled) {
-      // Get the input element name
       const inputName = e.target.name || e.target.getAttribute("name");
-
-      // Check if it's the last input field ('payout_day')
       if (inputName === "payout_day") {
-        // Trigger the callback passed from the parent if it exists
         if (onEnterKeyOnLastInput) {
           e.preventDefault();
           e.stopPropagation();
           onEnterKeyOnLastInput();
         }
       } else {
-        // If not the last field, try to find the next focusable element
-        // This relies on the browser's default behavior or the logic in CustomMonthInput
-        // which might try to move focus based on the DOM order.
-        const form = e.target.closest("fieldset"); // Find the parent fieldset
+        const form = e.target.closest("fieldset");
         if (form) {
           const focusable = Array.from(
             form.querySelectorAll(
@@ -61,11 +79,8 @@ const ChitDetailsForm = ({
           const index = focusable.indexOf(e.target);
           if (index !== -1 && index + 1 < focusable.length) {
             const nextElement = focusable[index + 1];
-            // No need for timeout here if we let CustomMonthInput handle its own Enter key logic
-            // If the next element is NOT inside CustomMonthInput, focus it directly
             if (!nextElement.closest(".relative.flex.items-center")) {
-              // Check if it's not wrapped like CustomMonthInput
-              e.preventDefault(); // Prevent default only if we manually move focus
+              e.preventDefault();
               nextElement.focus();
             }
           }
@@ -83,7 +98,6 @@ const ChitDetailsForm = ({
       )}
       {error && (
         <Message type="error" title="Error" onClose={() => {}}>
-          {/* Ensure error displays the validation message from the backend */}
           {typeof error === "string"
             ? error
             : error.message || "An error occurred."}
@@ -92,8 +106,9 @@ const ChitDetailsForm = ({
       <fieldset
         disabled={isFormDisabled}
         className="space-y-6"
-        onKeyDown={handleKeyDown} // Keep keydown listener on the fieldset
+        onKeyDown={handleKeyDown}
       >
+        {/* Name Input (Unchanged) */}
         <div>
           <label
             htmlFor="name"
@@ -126,6 +141,8 @@ const ChitDetailsForm = ({
             />
           </div>
         </div>
+
+        {/* Chit Value & Size */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -140,15 +157,16 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                ref={valueInputRef} // <--- Attach Ref
                 type="text"
                 id="chit_value"
                 name="chit_value"
-                value={
-                  formData.chit_value
-                    ? parseInt(formData.chit_value).toLocaleString("en-IN")
-                    : ""
-                }
-                onChange={onFormChange}
+                // Use calculated formatted value
+                value={formattedChitValue}
+                onChange={(e) => {
+                  trackValueCursor(e); // <--- Track
+                  onFormChange(e);
+                }}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="1,00,000"
                 required
@@ -182,6 +200,8 @@ const ChitDetailsForm = ({
             </div>
           </div>
         </div>
+
+        {/* Installment & Duration */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -196,17 +216,15 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                ref={installmentInputRef} // <--- Attach Ref
                 type="text"
                 id="monthly_installment"
                 name="monthly_installment"
-                value={
-                  formData.monthly_installment
-                    ? parseInt(formData.monthly_installment).toLocaleString(
-                        "en-IN"
-                      )
-                    : ""
-                }
-                onChange={onFormChange}
+                value={formattedInstallment}
+                onChange={(e) => {
+                  trackInstallmentCursor(e); // <--- Track
+                  onFormChange(e);
+                }}
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="5,000"
                 required
@@ -215,6 +233,7 @@ const ChitDetailsForm = ({
             </div>
           </div>
           <div>
+            {/* Duration (Unchanged) */}
             <label
               htmlFor="duration_months"
               className="block text-lg font-medium text-text-secondary mb-1"
@@ -240,7 +259,8 @@ const ChitDetailsForm = ({
             </div>
           </div>
         </div>
-        {/* Date related fields grouped together */}
+
+        {/* Dates and Days (Unchanged components, but kept for context) */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -255,7 +275,6 @@ const ChitDetailsForm = ({
               onChange={onFormChange}
               required
               disabled={isFormDisabled}
-              // enterKeyHint removed
             />
           </div>
           <div>
@@ -270,7 +289,6 @@ const ChitDetailsForm = ({
               value={formData.end_date}
               onChange={onFormChange}
               disabled={isFormDisabled}
-              // enterKeyHint removed
             />
           </div>
         </div>
