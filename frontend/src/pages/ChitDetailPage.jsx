@@ -14,6 +14,7 @@ import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import PaymentHistoryList from "../components/sections/PaymentHistoryList";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
+import ChitViewDashboard from "./ChitViewDashboard";
 import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
@@ -25,6 +26,7 @@ import {
   FiPlus,
   FiEdit,
   FiTrendingUp,
+  FiPrinter,
 } from "react-icons/fi";
 import { createChit, getChitById, patchChit } from "../services/chitsService";
 
@@ -61,7 +63,7 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
   return totalMonths > 0 ? totalMonths.toString() : "";
 };
 
-// --- Helper Components ---
+// --- Helper Components (unchanged) ---
 const DetailsSectionComponent = ({
   mode,
   formData,
@@ -100,7 +102,6 @@ const MembersSectionComponent = ({ mode, chitId, onLogPaymentClick }) => (
   </Card>
 );
 
-// --- DesktopActionButton (unchanged) ---
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "view") return null;
   let buttonText, Icon, buttonVariant;
@@ -143,7 +144,6 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   );
 };
 
-// --- TabButton (unchanged) ---
 const TabButton = React.forwardRef(
   ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
     const isActive = activeTab === name;
@@ -166,7 +166,6 @@ const TabButton = React.forwardRef(
   }
 );
 
-// --- MobileContent (MODIFIED) ---
 const MobileContent = ({
   TABS,
   activeTab,
@@ -333,7 +332,6 @@ const MobileContent = ({
   );
 };
 
-// --- ChitDetailPage (Main component) ---
 const ChitDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
@@ -382,6 +380,13 @@ const ChitDetailPage = () => {
       formData.payout_day.trim() !== "",
     [formData]
   );
+
+  useEffect(() => {
+    if (location.state?.initialTab) {
+      setActiveTab(location.state.initialTab);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const path = location.pathname;
@@ -658,7 +663,7 @@ const ChitDetailPage = () => {
   };
 
   const handleBackNavigation = () => {
-    if (activeTabIndex > 0) {
+    if (activeTabIndex > 0 && mode !== "view") {
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
       navigate("/chits");
@@ -721,7 +726,17 @@ const ChitDetailPage = () => {
       chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
-    setActiveTab("payments");
+    if (mode !== "view") {
+      setActiveTab("payments");
+    }
+  };
+
+  const handleEditClick = () => {
+    navigate(`/chits/edit/${id}`);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   if (pageLoading) {
@@ -737,17 +752,24 @@ const ChitDetailPage = () => {
       <div
         className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
       >
-        <Header onMenuOpen={() => setIsMenuOpen(true)} activeSection="chits" />
+        <div className="print:hidden">
+          <Header
+            onMenuOpen={() => setIsMenuOpen(true)}
+            activeSection="chits"
+          />
+        </div>
+
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
               <div className="relative flex justify-center items-center mb-4">
                 <button
                   onClick={handleBackNavigation}
-                  className="absolute left-0 text-text-primary hover:text-accent transition-colors"
+                  className="absolute left-0 text-text-primary hover:text-accent transition-colors print:hidden"
                 >
                   <FiArrowLeft className="w-6 h-6" />
                 </button>
+
                 <h1
                   ref={titleRef}
                   tabIndex="-1"
@@ -755,9 +777,23 @@ const ChitDetailPage = () => {
                 >
                   {getTitle()}
                 </h1>
+
+                {/* --- UPDATED: Print Icon Button --- */}
+                {mode === "view" && (
+                  <div className="absolute right-0 flex gap-3 print:hidden">
+                    <button
+                      onClick={handlePrint}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200"
+                      title="Print Report"
+                    >
+                      <FiPrinter className="w-6 h-6" />
+                    </button>
+                  </div>
+                )}
               </div>
+
               <hr className="my-4 border-border" />
-              <div className="w-full max-w-2xl mx-auto">
+              <div className="w-full max-w-2xl mx-auto print:hidden">
                 {success && (
                   <Message type="success" title="Success">
                     {success}
@@ -773,151 +809,174 @@ const ChitDetailPage = () => {
                   </Message>
                 )}
               </div>
-              <div className="md:hidden">
-                <MobileContent
-                  TABS={TABS}
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  mode={mode}
-                  chitId={id || createdChitId}
-                  formData={formData}
-                  handleFormChange={handleFormChange}
-                  activeTabIndex={activeTabIndex}
-                  isDetailsFormValid={isDetailsFormValid}
-                  loading={loading}
-                  handleNext={handleNext}
-                  handleMiddle={handleMiddle}
-                  handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={!!(mode === "create" && createdChitId)}
-                  onLogPaymentClick={handleLogPaymentClick}
-                  paymentDefaults={paymentDefaults}
-                  setPaymentDefaults={setPaymentDefaults}
-                />
-              </div>
 
-              {/* --- MODIFIED DESKTOP VIEW --- */}
-              <div className="hidden md:block">
-                <form id="chit-details-form-desktop" onSubmit={handleSubmit}>
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <DetailsSectionComponent
-                          mode={mode}
-                          formData={formData}
-                          handleFormChange={handleFormChange}
-                          isPostCreation={
-                            !!(mode === "create" && createdChitId)
-                          }
-                          onEnterKeyOnLastInput={handleSubmit}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "payouts" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <PayoutsSectionComponent
-                          mode={mode}
-                          chitId={id || createdChitId}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "members" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <MembersSectionComponent
-                          mode={mode}
-                          chitId={id || createdChitId}
-                          onLogPaymentClick={handleLogPaymentClick}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "payments" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <PaymentHistoryList
-                          chitId={id || createdChitId}
-                          mode={mode}
-                          paymentDefaults={paymentDefaults}
-                          setPaymentDefaults={setPaymentDefaults}
-                        />
-                      </div>
-                    )}
-
-                    {/* --- Right Column on Details Tab (Original) --- */}
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <PayoutsSectionComponent
-                          mode={mode}
-                          chitId={id || createdChitId}
-                        />
-                        <MembersSectionComponent
-                          mode={mode}
-                          chitId={id || createdChitId}
-                          onLogPaymentClick={handleLogPaymentClick}
-                        />
-                      </div>
-                    )}
-
-                    {/* --- Desktop Tab Buttons --- */}
-                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                      <TabButton
-                        name="details"
-                        icon={<FiInfo />}
-                        label="Details"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                      />
-                      <TabButton
-                        name="payouts"
-                        icon={<FiTrendingUp />}
-                        label="Payouts"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                      <TabButton
-                        name="members"
-                        icon={<FiUsers />}
-                        label="Members"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                      <TabButton
-                        name="payments"
-                        icon={<RupeeIcon className="w-4 h-4" />}
-                        label="Payments"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                    </div>
-
-                    {mode !== "view" && activeTab === "details" && (
-                      <div className="md:col-span-2">
-                        <DesktopActionButton
-                          mode={mode}
-                          loading={loading}
-                          isPostCreation={
-                            !!(mode === "create" && createdChitId)
-                          }
-                        />
-                      </div>
-                    )}
+              {/* --- VIEW MODE: Single Page Dashboard --- */}
+              {mode === "view" ? (
+                <div className="max-w-6xl mx-auto">
+                  <ChitViewDashboard
+                    chitData={formData}
+                    chitId={id}
+                    onLogPaymentClick={handleLogPaymentClick}
+                    paymentDefaults={paymentDefaults}
+                    setPaymentDefaults={setPaymentDefaults}
+                  />
+                </div>
+              ) : (
+                /* --- CREATE/EDIT MODE --- */
+                <>
+                  <div className="md:hidden">
+                    <MobileContent
+                      TABS={TABS}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                      mode={mode}
+                      chitId={id || createdChitId}
+                      formData={formData}
+                      handleFormChange={handleFormChange}
+                      activeTabIndex={activeTabIndex}
+                      isDetailsFormValid={isDetailsFormValid}
+                      loading={loading}
+                      handleNext={handleNext}
+                      handleMiddle={handleMiddle}
+                      handleMobileFormSubmit={handleMobileFormSubmit}
+                      isPostCreation={!!(mode === "create" && createdChitId)}
+                      onLogPaymentClick={handleLogPaymentClick}
+                      paymentDefaults={paymentDefaults}
+                      setPaymentDefaults={setPaymentDefaults}
+                    />
                   </div>
-                </form>
-              </div>
+
+                  <div className="hidden md:block">
+                    <form
+                      id="chit-details-form-desktop"
+                      onSubmit={handleSubmit}
+                    >
+                      <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
+                        {activeTab === "details" && (
+                          <div className="md:col-span-1 flex flex-col gap-8">
+                            <DetailsSectionComponent
+                              mode={mode}
+                              formData={formData}
+                              handleFormChange={handleFormChange}
+                              isPostCreation={
+                                !!(mode === "create" && createdChitId)
+                              }
+                              onEnterKeyOnLastInput={handleSubmit}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "payouts" && (
+                          <div className="md:col-span-2 flex flex-col gap-8">
+                            <PayoutsSectionComponent
+                              mode={mode}
+                              chitId={id || createdChitId}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "members" && (
+                          <div className="md:col-span-2 flex flex-col gap-8">
+                            <MembersSectionComponent
+                              mode={mode}
+                              chitId={id || createdChitId}
+                              onLogPaymentClick={handleLogPaymentClick}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "payments" && (
+                          <div className="md:col-span-2 flex flex-col gap-8">
+                            <PaymentHistoryList
+                              chitId={id || createdChitId}
+                              mode={mode}
+                              paymentDefaults={paymentDefaults}
+                              setPaymentDefaults={setPaymentDefaults}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "details" && (
+                          <div className="md:col-span-1 flex flex-col gap-8">
+                            <PayoutsSectionComponent
+                              mode={mode}
+                              chitId={id || createdChitId}
+                            />
+                            <MembersSectionComponent
+                              mode={mode}
+                              chitId={id || createdChitId}
+                              onLogPaymentClick={handleLogPaymentClick}
+                            />
+                          </div>
+                        )}
+
+                        <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                          <TabButton
+                            name="details"
+                            icon={<FiInfo />}
+                            label="Details"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                          />
+                          <TabButton
+                            name="payouts"
+                            icon={<FiTrendingUp />}
+                            label="Payouts"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            disabled={mode === "create" && !createdChitId}
+                          />
+                          <TabButton
+                            name="members"
+                            icon={<FiUsers />}
+                            label="Members"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            disabled={mode === "create" && !createdChitId}
+                          />
+                          <TabButton
+                            name="payments"
+                            icon={<RupeeIcon className="w-4 h-4" />}
+                            label="Payments"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            disabled={mode === "create" && !createdChitId}
+                          />
+                        </div>
+
+                        {mode !== "view" && activeTab === "details" && (
+                          <div className="md:col-span-2">
+                            <DesktopActionButton
+                              mode={mode}
+                              loading={loading}
+                              isPostCreation={
+                                !!(mode === "create" && createdChitId)
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+                </>
+              )}
             </div>
           </main>
-          <Footer />
+          <div className="print:hidden">
+            <Footer />
+          </div>
         </div>
       </div>
-      <MobileNav
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        activeSection="chits"
-      />
-      <BottomNav />
+      <div className="print:hidden">
+        <MobileNav
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          activeSection="chits"
+        />
+      </div>
+      <div className="print:hidden">
+        <BottomNav />
+      </div>
     </>
   );
 };

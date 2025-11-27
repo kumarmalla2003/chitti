@@ -28,8 +28,9 @@ const PaymentHistoryList = ({
   chitId,
   memberId,
   mode,
-  paymentDefaults, // <-- ADDED
-  setPaymentDefaults, // <-- ADDED
+  paymentDefaults,
+  setPaymentDefaults,
+  forceTable = false,
 }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ const PaymentHistoryList = ({
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [view, setView] = useState("list"); // 'list' or 'create'
+  const [view, setView] = useState("list");
   const [formData, setFormData] = useState({
     chit_assignment_id: "",
     amount_paid: "",
@@ -85,11 +86,9 @@ const PaymentHistoryList = ({
     }
   }, [formSuccess]);
 
-  // --- ADDED THIS EFFECT ---
   useEffect(() => {
     if (paymentDefaults) {
-      setView("create"); // Open the form
-      // Pre-fill the assignment ID in the form data
+      setView("create");
       setFormData((prev) => ({
         ...prev,
         chit_assignment_id: paymentDefaults.assignmentId,
@@ -102,7 +101,13 @@ const PaymentHistoryList = ({
       setFormSuccess(null);
     }
   }, [paymentDefaults]);
-  // --- END ADD ---
+
+  // --- Header Action: Add Payment ---
+  const handleAddPaymentClick = () => {
+    if (mode === "view") {
+      navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payments" } });
+    }
+  };
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -214,8 +219,7 @@ const PaymentHistoryList = ({
       setView("list");
       fetchData();
       if (setPaymentDefaults) {
-        // <-- MODIFIED
-        setPaymentDefaults(null); // Clear the defaults
+        setPaymentDefaults(null);
       }
     } catch (err) {
       setFormError(err.message);
@@ -229,8 +233,7 @@ const PaymentHistoryList = ({
     setFormError(null);
     setFormSuccess(null);
     if (setPaymentDefaults) {
-      // <-- MODIFIED
-      setPaymentDefaults(null); // Clear any defaults
+      setPaymentDefaults(null);
     }
   };
 
@@ -238,8 +241,7 @@ const PaymentHistoryList = ({
     setView("list");
     setFormError(null);
     if (setPaymentDefaults) {
-      // <-- MODIFIED
-      setPaymentDefaults(null); // Clear defaults when manually going back
+      setPaymentDefaults(null);
     }
   };
 
@@ -261,6 +263,7 @@ const PaymentHistoryList = ({
 
   return (
     <Card className="flex-1 flex flex-col">
+      {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
       <div className="relative flex justify-center items-center mb-2">
         {view === "create" && (
           <button
@@ -274,10 +277,20 @@ const PaymentHistoryList = ({
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <RupeeIcon className="w-5 h-5" /> {headerTitle}
         </h2>
+        {/* --- ADDED: Add Payment Icon in Header for View Mode --- */}
+        {mode === "view" && view === "list" && (
+          <button
+            onClick={handleAddPaymentClick}
+            // --- MODIFIED: Green Icon ---
+            className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
+            title="Add Payment"
+          >
+            <FiPlus className="w-5 h-5" />
+          </button>
+        )}
       </div>
       <hr className="border-border mb-4" />
 
-      {/* --- Render Create View --- */}
       {view === "create" ? (
         <form onSubmit={handleFormSubmit}>
           {formSuccess && <Message type="success">{formSuccess}</Message>}
@@ -291,11 +304,9 @@ const PaymentHistoryList = ({
             mode="create"
             formData={formData}
             onFormChange={handleFormChange}
-            // --- MODIFIED ---
             defaultAssignmentId={paymentDefaults?.assignmentId}
             defaultChitId={paymentDefaults?.chitId || chitId}
             defaultMemberId={paymentDefaults?.memberId || memberId}
-            // --- END MODIFICATION ---
           />
           <div className="flex justify-end mt-6">
             <Button
@@ -316,7 +327,6 @@ const PaymentHistoryList = ({
           </div>
         </form>
       ) : (
-        // --- Render List View ---
         <>
           {formSuccess && <Message type="success">{formSuccess}</Message>}
           {mode !== "view" && (
@@ -331,58 +341,69 @@ const PaymentHistoryList = ({
             </div>
           )}
 
-          {payments.length > 1 && (
-            <div className="relative flex items-center mb-4">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiSearch className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-              />
-            </div>
-          )}
-
-          {payments.length === 0 && (
+          {payments.length === 0 ? (
             <div className="text-center py-8">
               <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
               <p className="mt-2 text-sm text-text-secondary">
                 No payments have been logged yet.
               </p>
             </div>
-          )}
-
-          {payments.length > 0 && filteredPayments.length === 0 ? (
-            <div className="text-center py-8">
-              <FiSearch className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
-              <p className="mt-2 text-sm text-text-secondary">
-                No payments found matching "{searchQuery}".
-              </p>
-            </div>
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table
-                  columns={columns}
-                  data={filteredPayments}
-                  variant="secondary"
-                  onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
-                />
-              </div>
-              <div className="block md:hidden space-y-4">
-                {filteredPayments.map((payment) => (
-                  <PaymentHistoryCard
-                    key={payment.id}
-                    payment={payment}
-                    viewType={viewType}
-                    onClick={() => navigate(`/payments/view/${payment.id}`)}
+              {payments.length > 1 && (
+                <div className="relative flex items-center mb-4">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <FiSearch className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <input
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
                   />
-                ))}
-              </div>
+                </div>
+              )}
+
+              {filteredPayments.length === 0 ? (
+                <div className="text-center py-8">
+                  <FiSearch className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
+                  <p className="mt-2 text-sm text-text-secondary">
+                    No payments found matching "{searchQuery}".
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={
+                      forceTable ? "block overflow-x-auto" : "hidden md:block"
+                    }
+                  >
+                    <Table
+                      columns={columns}
+                      data={filteredPayments}
+                      variant="secondary"
+                      onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
+                    />
+                  </div>
+
+                  {!forceTable && (
+                    <div className="block md:hidden space-y-4">
+                      {filteredPayments.map((payment) => (
+                        <PaymentHistoryCard
+                          key={payment.id}
+                          payment={payment}
+                          viewType={viewType}
+                          onClick={() =>
+                            navigate(`/payments/view/${payment.id}`)
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </>

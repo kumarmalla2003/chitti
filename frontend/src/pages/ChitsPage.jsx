@@ -23,6 +23,8 @@ import {
   FiEye,
   FiSearch,
   FiTrash2,
+  FiGrid,
+  FiList,
 } from "react-icons/fi";
 
 const ChitsPage = () => {
@@ -36,12 +38,27 @@ const ChitsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
+  // --- View Mode State ---
+  // Default to 'card' for mobile (<768px) and 'table' for desktop
+  const [viewMode, setViewMode] = useState(() =>
+    window.innerWidth < 768 ? "card" : "table"
+  );
+
   // State for delete confirmation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  // Auto-scroll to top when messages change
+
   useScrollToTop(success || error);
+
+  // --- Update view mode on window resize (optional, keeps UI responsive) ---
+  useEffect(() => {
+    const handleResize = () => {
+      // Logic to handle resizing if needed, currently we stick to user choice
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [viewMode]);
 
   useEffect(() => {
     const fetchChits = async () => {
@@ -59,11 +76,9 @@ const ChitsPage = () => {
     }
   }, [token]);
 
-  // Handle success message from navigation state
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
-      // Clear the state to prevent showing message on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -197,7 +212,6 @@ const ChitsPage = () => {
               </div>
               <hr className="my-4 border-border" />
 
-              {/* Success/Error Messages */}
               {success && <Message type="success">{success}</Message>}
               {error && (
                 <Message type="error" onClose={() => setError(null)}>
@@ -205,8 +219,9 @@ const ChitsPage = () => {
                 </Message>
               )}
 
-              <div className="mb-6">
-                <div className="relative flex items-center">
+              {/* Controls Row: Search + View Toggle */}
+              <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
+                <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                     <FiSearch className="w-5 h-5 text-text-secondary" />
                   </span>
@@ -219,6 +234,29 @@ const ChitsPage = () => {
                     className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
                   />
                 </div>
+
+                {/* --- UPDATED: Single View Toggle Button --- */}
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={() =>
+                      setViewMode((prev) =>
+                        prev === "table" ? "card" : "table"
+                      )
+                    }
+                    className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
+                    title={
+                      viewMode === "table"
+                        ? "Switch to Card View"
+                        : "Switch to Table View"
+                    }
+                  >
+                    {viewMode === "table" ? (
+                      <FiGrid className="w-5 h-5" />
+                    ) : (
+                      <FiList className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {loading && (
@@ -230,9 +268,7 @@ const ChitsPage = () => {
               {!loading && filteredChits.length === 0 && (
                 <Card className="text-center p-8">
                   <h2 className="text-2xl font-bold text-text-primary mb-2">
-                    {searchQuery
-                      ? "No Matching Chits"
-                      : "No Chits Found"}
+                    {searchQuery ? "No Matching Chits" : "No Chits Found"}
                   </h2>
                   <p className="text-text-secondary">
                     {searchQuery
@@ -244,27 +280,29 @@ const ChitsPage = () => {
 
               {!loading && filteredChits.length > 0 && (
                 <>
-                  {/* Table View for Medium screens and up */}
-                  <div className="hidden md:block">
-                    <Table
-                      columns={columns}
-                      data={filteredChits}
-                      onRowClick={(row) => navigate(`/chits/view/${row.id}`)}
-                    />
-                  </div>
-
-                  {/* Card View for screens smaller than Medium */}
-                  <div className="block md:hidden space-y-4">
-                    {filteredChits.map((chit) => (
-                      <ChitCard
-                        key={chit.id}
-                        chit={chit}
-                        onView={() => navigate(`/chits/view/${chit.id}`)}
-                        onEdit={() => navigate(`/chits/edit/${chit.id}`)}
-                        onDelete={() => handleDeleteClick(chit)}
+                  {/* Conditional Rendering based on viewMode */}
+                  {viewMode === "table" ? (
+                    <div className="overflow-x-auto rounded-lg shadow-sm">
+                      <Table
+                        columns={columns}
+                        data={filteredChits}
+                        onRowClick={(row) => navigate(`/chits/view/${row.id}`)}
                       />
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    // Card View (Grid on desktop, Stack on mobile)
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredChits.map((chit) => (
+                        <ChitCard
+                          key={chit.id}
+                          chit={chit}
+                          onView={() => navigate(`/chits/view/${chit.id}`)}
+                          onEdit={() => navigate(`/chits/edit/${chit.id}`)}
+                          onDelete={() => handleDeleteClick(chit)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>

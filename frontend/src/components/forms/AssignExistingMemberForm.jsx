@@ -1,12 +1,6 @@
 // frontend/src/components/forms/AssignExistingMemberForm.jsx
 
-import {
-  useState,
-  useEffect,
-  useMemo,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import { FiUser, FiCheck, FiLoader, FiCalendar } from "react-icons/fi";
@@ -31,19 +25,16 @@ const AssignExistingMemberForm = forwardRef(
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // State for the new dropdowns
     const [selectedMemberId, setSelectedMemberId] = useState("");
     const [selectedMonth, setSelectedMonth] = useState("");
 
-    // Expose a simplified goBack function to the parent
     useImperativeHandle(ref, () => ({
       goBack: () => {
-        onMemberNameChange(""); // Clear header
+        onMemberNameChange("");
         onBackToList();
       },
     }));
 
-    // Fetch all members on load
     useEffect(() => {
       const fetchAllMembers = async () => {
         setLoading(true);
@@ -60,7 +51,6 @@ const AssignExistingMemberForm = forwardRef(
       fetchAllMembers();
     }, [token]);
 
-    // Form submission handler
     const handleConfirmAssignment = async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -129,11 +119,9 @@ const AssignExistingMemberForm = forwardRef(
                       : "No members found"}
                   </option>
                   {allMembers.map((member) => (
-                    // --- MODIFICATION ---
                     <option key={member.id} value={member.id}>
                       {member.full_name}
                     </option>
-                    // --- END MODIFICATION ---
                   ))}
                 </select>
               </div>
@@ -156,7 +144,8 @@ const AssignExistingMemberForm = forwardRef(
                   id="chit_month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                  // --- ADDED text-center ---
+                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center"
                   required
                 >
                   <option value="">

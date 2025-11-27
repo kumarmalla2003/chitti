@@ -1,18 +1,12 @@
 // frontend/src/components/forms/AssignNewMemberForm.jsx
 
-import {
-  useState,
-  useEffect,
-  forwardRef, // <-- Import forwardRef
-  useImperativeHandle, // <-- Import useImperativeHandle
-} from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import MemberDetailsForm from "./MemberDetailsForm";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import { FiSave, FiCalendar, FiCheck, FiLoader } from "react-icons/fi";
 import { createMember } from "../../services/membersService";
 
-// --- Wrap component in forwardRef ---
 const AssignNewMemberForm = forwardRef(
   (
     {
@@ -22,7 +16,7 @@ const AssignNewMemberForm = forwardRef(
       onAssignment,
       formatDate,
       onMemberNameChange,
-      onBackToList, // <-- Receive prop from parent
+      onBackToList,
     },
     ref
   ) => {
@@ -30,28 +24,24 @@ const AssignNewMemberForm = forwardRef(
       full_name: "",
       phone_number: "",
     });
-    const [createdMember, setCreatedMember] = useState(null); // <-- This is the internal step
+    const [createdMember, setCreatedMember] = useState(null);
     const [selectedMonth, setSelectedMonth] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [memberCreatedSuccess, setMemberCreatedSuccess] = useState(null);
 
-    // --- Expose goBack function to parent via ref ---
     useImperativeHandle(ref, () => ({
       goBack: () => {
         if (createdMember) {
-          // On step 2 (month select), go back to step 1 (details)
           setCreatedMember(null);
-          onMemberNameChange(""); // Clear header
+          onMemberNameChange("");
         } else {
-          // On step 1 (details), tell parent to go back to list
           onBackToList();
         }
       },
     }));
 
     useEffect(() => {
-      // ... (useEffects are unchanged)
       if (memberCreatedSuccess) {
         const timer = setTimeout(() => {
           setMemberCreatedSuccess(null);
@@ -70,7 +60,6 @@ const AssignNewMemberForm = forwardRef(
     }, []);
 
     const handleFormChange = (e) => {
-      // ... (logic unchanged)
       const { name, value } = e.target;
       let processedValue = value;
       if (name === "phone_number") {
@@ -82,7 +71,6 @@ const AssignNewMemberForm = forwardRef(
     };
 
     const handleCreateMember = async (e) => {
-      // ... (logic unchanged)
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -110,7 +98,6 @@ const AssignNewMemberForm = forwardRef(
     };
 
     const handleConfirmAssignment = async (e) => {
-      // ... (logic unchanged)
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -129,7 +116,6 @@ const AssignNewMemberForm = forwardRef(
     };
 
     const handleKeyDown = (e) => {
-      // ... (logic unchanged)
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
@@ -189,7 +175,8 @@ const AssignNewMemberForm = forwardRef(
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                // --- ADDED text-center ---
+                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center"
               >
                 <option value="">Select an available month...</option>
                 {availableMonths.map((month) => (

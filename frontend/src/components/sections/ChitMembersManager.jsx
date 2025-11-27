@@ -1,7 +1,8 @@
-// src/components/sections/ChitMembersManager.jsx
+// frontend/src/components/sections/ChitMembersManager.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Table from "../ui/Table";
 import ConfirmationModal from "../ui/ConfirmationModal";
@@ -28,10 +29,16 @@ import {
   deleteAssignment,
 } from "../../services/assignmentsService";
 
-const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
+const ChitMembersManager = ({
+  mode,
+  chitId,
+  onLogPaymentClick,
+  forceTable = false,
+}) => {
   const { token } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
-  const [view, setView] = useState("list"); // 'list', 'new', 'existing', 'rapid'
+  const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +89,12 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  const handleAddMemberClick = () => {
+    if (mode === "view") {
+      navigate(`/chits/edit/${chitId}`, { state: { initialTab: "members" } });
+    }
+  };
 
   const handleAssignment = async (assignmentData) => {
     setLoading(true);
@@ -138,11 +151,13 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
     setActiveMemberName(name);
   };
 
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "long",
-    });
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${month}/${year}`;
+  };
 
   const filteredAssignments = useMemo(() => {
     if (!searchQuery) return assignments;
@@ -155,7 +170,6 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
   }, [assignments, searchQuery]);
 
   const columns = [
-    // ... (columns definition remains unchanged)
     {
       header: "S.No",
       cell: (row, index) => index + 1,
@@ -168,7 +182,9 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
     },
     {
       header: "Assigned Month",
-      cell: (row) => formatDate(row.chit_month),
+      cell: (row) => (
+        <div className="text-center w-full">{formatDate(row.chit_month)}</div>
+      ),
       className: "text-center",
     },
     {
@@ -255,13 +271,13 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
         <RapidAssignForm
           ref={formRef}
           token={token}
-          chitId={chitId} // <-- RENAMED
+          chitId={chitId}
           formatDate={formatDate}
           onAssignmentSuccess={() => {
             setSuccess("Members assigned successfully!");
             setView("list");
             setActiveMemberName("");
-            fetchData(); // Re-fetch all data
+            fetchData();
           }}
           onBackToList={() => handleViewChange("list")}
         />
@@ -319,23 +335,31 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
                 />
               </div>
             )}
-            <div className="hidden md:block">
+
+            <div
+              className={
+                forceTable ? "block overflow-x-auto" : "hidden md:block"
+              }
+            >
               <Table
                 columns={columns}
                 data={filteredAssignments}
                 variant="secondary"
               />
             </div>
-            <div className="block md:hidden space-y-4">
-              {filteredAssignments.map((assignment) => (
-                <AssignedMemberCard
-                  key={assignment.id}
-                  assignment={assignment}
-                  onDelete={() => handleDeleteClick(assignment)}
-                  onLogPayment={onLogPaymentClick}
-                />
-              ))}
-            </div>
+
+            {!forceTable && (
+              <div className="block md:hidden space-y-4">
+                {filteredAssignments.map((assignment) => (
+                  <AssignedMemberCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    onDelete={() => handleDeleteClick(assignment)}
+                    onLogPayment={onLogPaymentClick}
+                  />
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">
@@ -361,6 +385,7 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
 
   return (
     <div className="flex-1 flex flex-col">
+      {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
       <div className="relative flex justify-center items-center mb-2">
         {view !== "list" && (
           <button
@@ -373,6 +398,16 @@ const ChitMembersManager = ({ mode, chitId, onLogPaymentClick }) => {
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <HeaderIcon /> {getHeaderTitle()}
         </h2>
+        {mode === "view" && view === "list" && (
+          <button
+            onClick={handleAddMemberClick}
+            // --- MODIFIED: Green Icon ---
+            className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
+            title="Add Member"
+          >
+            <FiUserPlus className="w-5 h-5" />
+          </button>
+        )}
       </div>
       <hr className="border-border mb-4" />
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { getPayouts, updatePayout } from "../../services/chitsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
 import {
@@ -16,9 +17,8 @@ import { RupeeIcon } from "../ui/Icons";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
 import Table from "../ui/Table";
-import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
+import useCursorTracking from "../../hooks/useCursorTracking";
 
-// --- Helper functions for live formatting ---
 const formatAmount = (value) => {
   if (value === 0) return "0";
   if (!value) return "";
@@ -38,10 +38,8 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
-// --- NEW SUB-COMPONENT for Table Inputs ---
 const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
   const inputRef = useRef(null);
-  // Track cursor for this specific input (preserves comma formatting)
   const trackCursor = useCursorTracking(inputRef, value, /\d/);
 
   return (
@@ -64,7 +62,7 @@ const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
           }, 0);
         }}
         onChange={(e) => {
-          trackCursor(e); // <--- Track
+          trackCursor(e);
           onChange(e.target.value);
         }}
         onKeyDown={(e) => onKeyDown(e, isLastInput)}
@@ -84,6 +82,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   const { token } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
   useScrollToTop(success);
 
@@ -117,6 +116,11 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   }, [success]);
 
   const handleEditClick = () => {
+    if (mode === "view") {
+      navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payouts" } });
+      return;
+    }
+
     const initialAmounts = payouts.reduce((acc, payout) => {
       acc[payout.id] = formatAmount(payout.payout_amount);
       return acc;
@@ -128,7 +132,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   };
 
   const handleAmountChange = (payoutId, value) => {
-    // We do NOT modify cursor here. The sub-component handles tracking.
     setEditAmounts((prev) => ({
       ...prev,
       [payoutId]: formatAmount(value),
@@ -188,6 +191,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
       className: "text-center font-medium",
       headerClassName: "w-1/4",
       cellClassName: "w-1/4",
+      cell: (row) => <div className="text-center w-full">{row.month}</div>,
     },
     {
       header: "Payout",
@@ -199,7 +203,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
         const isLastInput = index === payouts.length - 1;
 
         return isEditing ? (
-          // Use the new Sub-Component for editing
           <EditablePayoutInput
             value={editAmounts[row.id]}
             onChange={(val) => handleAmountChange(row.id, val)}
@@ -242,8 +245,10 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     <div>
       {showTitle && (
         <>
+          {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
           <div className="relative flex justify-center items-center mb-2">
             {isEditing && (
+              // This back button stays absolute left as before
               <button
                 onClick={() => setIsEditing(false)}
                 className="absolute left-0 text-text-primary hover:text-accent"
@@ -254,6 +259,16 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
               <FiTrendingUp /> {isEditing ? "Edit Payouts" : "Payouts"}
             </h2>
+            {mode === "view" && (
+              <button
+                onClick={handleEditClick}
+                // --- MODIFIED: Blue Icon ---
+                className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
+                title="Edit Payouts"
+              >
+                <FiEdit className="w-5 h-5" />
+              </button>
+            )}
           </div>
           <hr className="border-border mb-4" />
         </>
