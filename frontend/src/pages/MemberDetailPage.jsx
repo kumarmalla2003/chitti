@@ -628,7 +628,7 @@ const MemberDetailPage = () => {
                 {/* --- Header Actions (Edit, Print) --- */}
                 {/* Visible ONLY in View Mode */}
                 {mode === "view" && (
-                  <div className="absolute right-0 flex items-center gap-2">
+                  <div className="absolute right-0 flex items-center">
                     {/* Edit Button */}
                     <button
                       onClick={() => navigate(`/members/edit/${id}`)}

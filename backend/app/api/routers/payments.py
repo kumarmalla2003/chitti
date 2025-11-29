@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Annotated, List, Optional
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from sqlalchemy.orm import selectinload # <-- ADDED IMPORT
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.models.payments import Payment
 from app.models.assignments import ChitAssignment 
-from app.models.chits import Chit # <-- ADDED IMPORT
+from app.models.chits import Chit
 from app.security.dependencies import get_current_user
 from app.crud import crud_payments, crud_chits, crud_members
 from app.schemas.payments import PaymentPublic, PaymentListResponse, PaymentCreate, PaymentUpdate
@@ -20,7 +20,6 @@ from app.schemas.chits import ChitResponse
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-# --- MODIFIED HELPER ---
 async def _get_payment_response(session: AsyncSession, payment: Payment) -> PaymentPublic:
     """Helper to build the full PaymentPublic response."""
     chit_response = await crud_chits.get_chit_by_id_with_details(session, chit_id=payment.chit_id)
@@ -28,7 +27,6 @@ async def _get_payment_response(session: AsyncSession, payment: Payment) -> Paym
     member_response = MemberPublic.model_validate(member) if member else None
     
     if not payment.assignment:
-        # This should ideally not happen if CRUD is correct, but as a safeguard
         raise HTTPException(status_code=500, detail="Payment is missing assignment link.")
 
     return PaymentPublic(
@@ -43,17 +41,12 @@ async def _get_payment_response(session: AsyncSession, payment: Payment) -> Paym
         chit=chit_response
     )
 
-
 @router.post("/", response_model=PaymentPublic, status_code=status.HTTP_201_CREATED)
 async def create_payment(
     payment_in: PaymentCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Logs a new payment."""
-    
-    # --- START: OVERPAYMENT VALIDATION ---
-    
     # Eagerly load the chit related to the assignment
     assignment = await session.get(
         ChitAssignment, 
@@ -82,10 +75,8 @@ async def create_payment(
     if payment_in.amount_paid > (due_amount + 0.001):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Payment (₹{payment_in.amount_paid:.2f}) exceeds the due amount of ₹{due_amount:.2f}." # <-- FIXED
+            detail=f"Payment ({payment_in.amount_paid:.2f}) exceeds the due amount of {due_amount:.2f}."
         )
-    
-    # --- END: OVERPAYMENT VALIDATION ---
     
     db_payment = Payment(
         amount_paid=payment_in.amount_paid,
@@ -107,18 +98,25 @@ async def create_payment(
     return await _get_payment_response(session, db_payment_with_relations)
 
 
+# --- MODIFIED ENDPOINT ---
 @router.get("/", response_model=PaymentListResponse)
 async def get_all_payments(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     chit_id: Optional[int] = Query(default=None),
     member_id: Optional[int] = Query(default=None),
+    start_date: Optional[date] = Query(default=None), # <--- ADDED
+    end_date: Optional[date] = Query(default=None),   # <--- ADDED
 ):
     """
-    Retrieves all payments, optionally filtered by chit or member.
+    Retrieves all payments, optionally filtered by chit, member, or date range.
     """
     payments = await crud_payments.get_all_payments(
-        session, chit_id=chit_id, member_id=member_id
+        session, 
+        chit_id=chit_id, 
+        member_id=member_id,
+        start_date=start_date, # <--- PASSED TO CRUD
+        end_date=end_date      # <--- PASSED TO CRUD
     )
     
     chit_responses_cache = {}
@@ -173,10 +171,7 @@ async def update_payment(
     if not db_payment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
         
-    # --- START: OVERPAYMENT VALIDATION ---
     if payment_in.amount_paid is not None:
-        # We have the chit via the direct relationship on the payment model,
-        # loaded by crud_payments.get_payment_by_id
         if not db_payment.chit:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -185,32 +180,27 @@ async def update_payment(
 
         monthly_installment = db_payment.chit.monthly_installment
         
-        # Get all other payments for this assignment
         all_payments = await crud_payments.get_payments_for_assignment(
             session, 
             assignment_id=db_payment.chit_assignment_id
         )
         
-        # Sum all payments *except* the one being updated
         total_paid_without_this_one = sum(
             p.amount_paid for p in all_payments if p.id != payment_id
         )
         
-        # Use a small tolerance for floating point comparisons
         due_amount = round(monthly_installment - total_paid_without_this_one, 2)
         
         if payment_in.amount_paid > (due_amount + 0.001):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Updated payment (₹{payment_in.amount_paid:.2f}) exceeds the total allowable amount of ₹{due_amount:.2f} for this assignment." # <-- FIXED
+                detail=f"Updated payment ({payment_in.amount_paid:.2f}) exceeds the total allowable amount of {due_amount:.2f} for this assignment."
             )
-    # --- END: OVERPAYMENT VALIDATION ---
         
     updated_payment = await crud_payments.update_payment(
         session=session, db_payment=db_payment, payment_in=payment_in
     )
     
-    # refetch with relations for the response
     updated_payment_with_relations = await crud_payments.get_payment_by_id(session, updated_payment.id)
     
     return await _get_payment_response(session, updated_payment_with_relations)
@@ -229,18 +219,13 @@ async def delete_payment(
     await crud_payments.delete_payment(session=session, db_payment=db_payment)
     return
 
-
-# --- Phase 1 Endpoints (Modified to be correct) ---
-
 @router.get("/chit/{chit_id}", response_model=PaymentListResponse)
 async def get_payments_for_chit(
     chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves all payments for a specific chit.
-    """
+    """Retrieves all payments for a specific chit."""
     payments = await crud_payments.get_payments_for_chit(session, chit_id=chit_id)
     
     chit_response = await crud_chits.get_chit_by_id_with_details(session, chit_id=chit_id)
@@ -273,9 +258,7 @@ async def get_payments_for_member(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves all payments for a specific member.
-    """
+    """Retrieves all payments for a specific member."""
     payments = await crud_payments.get_payments_for_member(session, member_id=member_id)
     
     chit_responses_cache = {}

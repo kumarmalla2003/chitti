@@ -4,11 +4,13 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
+from datetime import date  # <--- IMPORT ADDED
 
 from app.models.payments import Payment
 from app.schemas.payments import PaymentCreate, PaymentUpdate
 
-# --- NEW FUNCTION ---
+# ... (create_payment and get_payment_by_id remain unchanged) ...
+
 async def create_payment(session: AsyncSession, payment_in: PaymentCreate) -> Payment:
     """Creates a new payment record."""
     db_payment = Payment.model_validate(payment_in)
@@ -17,7 +19,6 @@ async def create_payment(session: AsyncSession, payment_in: PaymentCreate) -> Pa
     await session.refresh(db_payment)
     return db_payment
 
-# --- MODIFIED FUNCTION ---
 async def get_payment_by_id(session: AsyncSession, payment_id: int) -> Optional[Payment]:
     """Gets a single payment by its ID, with related member, chit, and assignment."""
     result = await session.execute(
@@ -26,32 +27,44 @@ async def get_payment_by_id(session: AsyncSession, payment_id: int) -> Optional[
         .options(
             selectinload(Payment.member),
             selectinload(Payment.chit),
-            selectinload(Payment.assignment)  # <-- ADDED THIS LINE
+            selectinload(Payment.assignment)
         )
     )
     return result.scalar_one_or_none()
 
-# --- NEW FUNCTION ---
+# --- MODIFIED FUNCTION ---
 async def get_all_payments(
     session: AsyncSession, 
     chit_id: Optional[int] = None,
-    member_id: Optional[int] = None
+    member_id: Optional[int] = None,
+    start_date: Optional[date] = None, # <--- PARAM ADDED
+    end_date: Optional[date] = None    # <--- PARAM ADDED
 ) -> List[Payment]:
-    """Gets all payments, with optional filters for chit or member."""
+    """Gets all payments, with optional filters for chit, member, or date range."""
     statement = select(Payment).options(
         selectinload(Payment.member),
         selectinload(Payment.chit)
     ).order_by(Payment.payment_date.desc())
     
+    # The backend applies whichever filters are provided.
+    # This supports your "One of Three" logic perfectly.
+    
     if chit_id:
         statement = statement.where(Payment.chit_id == chit_id)
     if member_id:
         statement = statement.where(Payment.member_id == member_id)
+    
+    # --- DATE FILTERS ADDED ---
+    if start_date:
+        statement = statement.where(Payment.payment_date >= start_date)
+    if end_date:
+        statement = statement.where(Payment.payment_date <= end_date)
         
     result = await session.execute(statement)
     return result.scalars().all()
 
-# --- NEW FUNCTION ---
+# ... (update_payment, delete_payment, and other fetch functions remain unchanged) ...
+
 async def update_payment(
     session: AsyncSession, 
     db_payment: Payment, 
@@ -66,17 +79,13 @@ async def update_payment(
     await session.refresh(db_payment)
     return db_payment
 
-# --- NEW FUNCTION ---
 async def delete_payment(session: AsyncSession, db_payment: Payment):
     """Deletes a payment record."""
     await session.delete(db_payment)
     await session.commit()
     return
 
-# --- Phase 1 Functions (Unchanged) ---
-
 async def get_payments_for_assignment(session: AsyncSession, assignment_id: int) -> List[Payment]:
-    """Gets all payments for a single assignment."""
     result = await session.execute(
         select(Payment)
         .where(Payment.chit_assignment_id == assignment_id)
@@ -85,25 +94,19 @@ async def get_payments_for_assignment(session: AsyncSession, assignment_id: int)
     return result.scalars().all()
 
 async def get_payments_for_chit(session: AsyncSession, chit_id: int) -> List[Payment]:
-    """Gets all payments for an entire chit."""
     result = await session.execute(
         select(Payment)
         .where(Payment.chit_id == chit_id)
-        .options(
-            selectinload(Payment.member) # Eager load member details
-        ) 
+        .options(selectinload(Payment.member)) 
         .order_by(Payment.payment_date.desc())
     )
     return result.scalars().all()
 
 async def get_payments_for_member(session: AsyncSession, member_id: int) -> List[Payment]:
-    """Gets all payments made by a single member."""
     result = await session.execute(
         select(Payment)
         .where(Payment.member_id == member_id)
-        .options(
-            selectinload(Payment.chit) # Eager load chit details
-        )
+        .options(selectinload(Payment.chit))
         .order_by(Payment.payment_date.desc())
     )
     return result.scalars().all()

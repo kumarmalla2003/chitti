@@ -10,21 +10,14 @@ import PaymentHistoryList from "../components/sections/PaymentHistoryList";
 // --- MODIFIED: Horizontal Layout for MetricCard (Reduced Size) ---
 // --- FINAL MODIFIED: Horizontal Layout for MetricCard ---
 const MetricCard = ({ label, value, icon: Icon }) => (
-  <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-row items-center justify-between gap-4 hover:border-accent/30 transition-colors h-full">
-    <div className="flex items-center gap-2 text-text-secondary">
-      {/* Icon size remains w-4 h-4 */}
+  <div className="bg-background-secondary/50 p-4 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors h-full">
+    <div className="flex items-center gap-1.5 mb-2 text-text-secondary">
       <Icon className="w-4 h-4" />
-      {/* Label uses text-sm */}
-      <span className="text-sm font-bold uppercase tracking-wider">
+      <span className="text-xs font-bold uppercase tracking-wider">
         {label}
       </span>
     </div>
-
-    {/* Separator height adjusted for aesthetic alignment */}
-    <div className="h-5 w-px bg-border mx-2"></div>
-
-    {/* Value uses text-lg */}
-    <div className="text-text-primary font-bold text-lg">{value}</div>
+    <div className="text-text-primary font-bold text-2xl">{value}</div>
   </div>
 );
 

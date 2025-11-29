@@ -4,9 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/ui/ChitCard";
-// --- 1. Added getPayouts to imports ---
 import { getAllChits, deleteChit, getPayouts } from "../services/chitsService";
-// --- 2. Added Service imports for Report Data ---
 import { getAssignmentsForChit } from "../services/assignmentsService";
 import { getPaymentsByChitId } from "../services/paymentsService";
 import { useSelector } from "react-redux";
@@ -24,7 +22,6 @@ import {
   FiPlus,
   FiLoader,
   FiEdit,
-  FiEye,
   FiSearch,
   FiTrash2,
   FiGrid,
@@ -32,9 +29,7 @@ import {
   FiPrinter,
 } from "react-icons/fi";
 
-// --- IMPORTS FOR REPORT ---
 import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
-// --- 3. Added ChitReportPDF import ---
 import ChitReportPDF from "../components/reports/ChitReportPDF";
 import { pdf } from "@react-pdf/renderer";
 
@@ -49,17 +44,13 @@ const ChitsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
-  // State for printing "All Chits"
   const [isPrintingAll, setIsPrintingAll] = useState(false);
-  // --- 4. Added state to track which specific chit is printing ---
   const [printingChitId, setPrintingChitId] = useState(null);
 
-  // --- View Mode State ---
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
   );
 
-  // State for delete confirmation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -140,7 +131,6 @@ const ChitsPage = () => {
     });
   }, [chits, searchQuery]);
 
-  // --- PRINT ALL HANDLER ---
   const handlePrintAll = async () => {
     if (filteredChits.length === 0) return;
 
@@ -152,7 +142,6 @@ const ChitsPage = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      // Consistent Filename (Spaces instead of underscores)
       link.download = "All Chits Report.pdf";
       document.body.appendChild(link);
       link.click();
@@ -166,13 +155,11 @@ const ChitsPage = () => {
     }
   };
 
-  // --- 5. Added Single Chit Print Handler ---
   const handlePrintChit = async (chit) => {
     setPrintingChitId(chit.id);
     setError(null);
 
     try {
-      // Fetch all necessary data for the full report
       const [payoutsData, assignmentsData, paymentsData] = await Promise.all([
         getPayouts(chit.id, token),
         getAssignmentsForChit(chit.id, token),
@@ -186,26 +173,21 @@ const ChitsPage = () => {
         payments: paymentsData.payments,
       };
 
-      // --- UPDATED FILENAME LOGIC ---
       let reportName = chit.name;
       if (!reportName.toLowerCase().endsWith("chit")) {
         reportName += " Chit";
       }
       reportName += " Report";
 
-      // Generate PDF
       const blob = await pdf(<ChitReportPDF {...reportProps} />).toBlob();
 
-      // Download
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      // Filename matches the header logic EXACTLY (including spaces)
       link.download = `${reportName}.pdf`;
       document.body.appendChild(link);
       link.click();
 
-      // Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -251,7 +233,6 @@ const ChitsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          {/* --- 6. Added Print Button to Table View as well --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -267,16 +248,7 @@ const ChitsPage = () => {
               <FiPrinter />
             )}
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/chits/view/${row.id}`);
-            }}
-            className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="View Details"
-          >
-            <FiEye />
-          </button>
+          {/* View Button Removed */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -422,7 +394,6 @@ const ChitsPage = () => {
                           onView={() => navigate(`/chits/view/${chit.id}`)}
                           onEdit={() => navigate(`/chits/edit/${chit.id}`)}
                           onDelete={() => handleDeleteClick(chit)}
-                          // --- 7. Added Missing Props Here ---
                           onPrint={handlePrintChit}
                           isPrinting={printingChitId === chit.id}
                         />

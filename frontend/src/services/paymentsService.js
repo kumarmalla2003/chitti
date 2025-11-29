@@ -7,18 +7,15 @@ const getAuthHeaders = (token) => ({
   Authorization: `Bearer ${token}`,
 });
 
-// Helper to extract specific error messages from the backend
 const handleError = async (response, defaultMessage) => {
   try {
     const errorData = await response.json();
     throw new Error(errorData.detail || defaultMessage);
   } catch (e) {
-    // Handle cases where .json() fails or errorData.detail doesn't exist
     throw new Error(e.message || defaultMessage);
   }
 };
 
-// --- NEW (Phase 2) ---
 export const createPayment = async (paymentData, token) => {
   const response = await fetch(API_URL, {
     method: "POST",
@@ -31,11 +28,15 @@ export const createPayment = async (paymentData, token) => {
   return response.json();
 };
 
-// --- NEW (Phase 2) ---
+// --- MODIFIED FUNCTION ---
 export const getAllPayments = async (token, filters = {}) => {
   const queryParams = new URLSearchParams();
   if (filters.chitId) queryParams.append("chit_id", filters.chitId);
   if (filters.memberId) queryParams.append("member_id", filters.memberId);
+
+  // --- DATE FILTERS ADDED ---
+  if (filters.startDate) queryParams.append("start_date", filters.startDate);
+  if (filters.endDate) queryParams.append("end_date", filters.endDate);
 
   const response = await fetch(`${API_URL}?${queryParams.toString()}`, {
     method: "GET",
@@ -47,7 +48,6 @@ export const getAllPayments = async (token, filters = {}) => {
   return response.json();
 };
 
-// --- NEW (Phase 2) ---
 export const getPaymentById = async (paymentId, token) => {
   const response = await fetch(`${API_URL}/${paymentId}`, {
     method: "GET",
@@ -59,7 +59,6 @@ export const getPaymentById = async (paymentId, token) => {
   return response.json();
 };
 
-// --- NEW (Phase 2) ---
 export const patchPayment = async (paymentId, paymentData, token) => {
   const response = await fetch(`${API_URL}/${paymentId}`, {
     method: "PATCH",
@@ -72,7 +71,6 @@ export const patchPayment = async (paymentId, paymentData, token) => {
   return response.json();
 };
 
-// --- NEW (Phase 2) ---
 export const deletePayment = async (paymentId, token) => {
   const response = await fetch(`${API_URL}/${paymentId}`, {
     method: "DELETE",
@@ -84,7 +82,6 @@ export const deletePayment = async (paymentId, token) => {
   return;
 };
 
-// --- Phase 1 (Unchanged) ---
 export const getPaymentsByChitId = async (chitId, token) => {
   const response = await fetch(`${API_URL}/chit/${chitId}`, {
     method: "GET",

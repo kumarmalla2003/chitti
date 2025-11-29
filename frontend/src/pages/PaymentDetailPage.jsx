@@ -11,16 +11,16 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PaymentDetailsForm from "../components/forms/PaymentDetailsForm";
+import PaymentViewDashboard from "./PaymentViewDashboard"; // <-- IMPORTED
 import Message from "../components/ui/Message";
 import {
   FiLoader,
   FiArrowLeft,
   FiPlus,
-  FiEdit,
   FiSave,
   FiInfo,
+  FiEdit, // Import FiEdit if it wasn't there (though used in conditional Link previously)
 } from "react-icons/fi";
-import { RupeeIcon } from "../components/ui/Icons";
 import {
   getPaymentById,
   createPayment,
@@ -48,7 +48,7 @@ const PaymentDetailPage = () => {
   });
   const [originalData, setOriginalData] = useState(null);
 
-  // --- NEW: State to hold full payment object for 'view' mode ---
+  // State to hold full payment object for 'view' mode
   const [paymentDetails, setPaymentDetails] = useState(null);
 
   const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ const PaymentDetailPage = () => {
         };
         setFormData(fetchedData);
         setOriginalData(fetchedData);
-        setPaymentDetails(payment); // <-- Store full object for view mode
+        setPaymentDetails(payment); // Store full object for view mode
       } catch (err) {
         setError(err.message);
       } finally {
@@ -141,7 +141,6 @@ const PaymentDetailPage = () => {
       } else if (mode === "edit") {
         const changes = {};
         for (const key in dataToSend) {
-          // Compare formData to originalData, not dataToSend
           if (String(formData[key]) !== String(originalData[key])) {
             changes[key] = dataToSend[key];
           }
@@ -149,9 +148,9 @@ const PaymentDetailPage = () => {
 
         if (Object.keys(changes).length > 0) {
           const updatedPayment = await patchPayment(id, changes, token);
-          setOriginalData(formData); // Update original data to match new state
+          setOriginalData(formData);
           setSuccess("Payment updated successfully!");
-          setPaymentDetails(updatedPayment); // Update the view-mode data
+          setPaymentDetails(updatedPayment);
         } else {
           setSuccess("No changes to save.");
         }
@@ -166,6 +165,10 @@ const PaymentDetailPage = () => {
   const getTitle = () => {
     if (mode === "create") return "Log New Payment";
     if (mode === "edit") return "Edit Payment";
+    // For view mode, the Dashboard has its own header title, so we can return null or keep "Payment Details"
+    // Keep it empty or generic here if the dashboard handles it,
+    // but the page header needs *something* or we hide it.
+    // The DetailPage header contains the back button and the title.
     return "Payment Details";
   };
 
@@ -196,7 +199,8 @@ const PaymentDetailPage = () => {
         />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
-            <div className="container mx-auto max-w-2xl">
+            <div className="container mx-auto">
+              {/* --- Header Row --- */}
               <div className="relative flex justify-center items-center mb-4">
                 <button
                   onClick={handleBackNavigation}
@@ -214,13 +218,14 @@ const PaymentDetailPage = () => {
                 {mode === "view" && (
                   <Link
                     to={`/payments/edit/${id}`}
-                    className="absolute right-0 text-text-primary hover:text-accent transition-colors"
+                    className="absolute right-0 p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
                   >
                     <FiEdit className="w-6 h-6" />
                   </Link>
                 )}
               </div>
               <hr className="my-4 border-border" />
+
               <div className="w-full max-w-2xl mx-auto">
                 {success && (
                   <Message type="success" title="Success">
@@ -238,48 +243,63 @@ const PaymentDetailPage = () => {
                 )}
               </div>
 
-              <form onSubmit={handleSubmit}>
-                <Card>
-                  <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-                    <FiInfo /> Details
-                  </h2>
-                  <hr className="border-border mb-4" />
-
-                  <PaymentDetailsForm
-                    mode={mode}
-                    formData={formData}
-                    onFormChange={handleFormChange}
-                    defaultAssignmentId={
-                      mode === "create" ? defaultAssignmentId : null
-                    }
-                    paymentData={paymentDetails} // <-- Pass full object
+              {/* --- VIEW MODE: Dashboard --- */}
+              {mode === "view" && paymentDetails ? (
+                <div className="max-w-4xl mx-auto">
+                  <PaymentViewDashboard
+                    paymentData={paymentDetails}
+                    paymentId={id}
                   />
-                  {mode !== "view" && (
-                    <div className="flex justify-end mt-6">
-                      <Button
-                        type="submit"
-                        variant={mode === "create" ? "success" : "warning"}
-                        disabled={loading}
-                        className="w-full" // <-- FULL WIDTH
-                      >
-                        {loading ? (
-                          <FiLoader className="animate-spin mx-auto" />
-                        ) : mode === "create" ? (
-                          <>
-                            <FiPlus className="inline-block mr-2" />
-                            Log Payment
-                          </>
-                        ) : (
-                          <>
-                            <FiSave className="inline-block mr-2" />
-                            Update Payment
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              </form>
+                </div>
+              ) : (
+                /* --- CREATE / EDIT MODE: Form --- */
+                <div className="max-w-2xl mx-auto">
+                  <form onSubmit={handleSubmit}>
+                    <Card>
+                      {/* Only show "Details" icon header if in Create/Edit mode context */}
+                      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+                        <FiInfo /> Details
+                      </h2>
+                      <hr className="border-border mb-4" />
+
+                      <PaymentDetailsForm
+                        mode={mode}
+                        formData={formData}
+                        onFormChange={handleFormChange}
+                        defaultAssignmentId={
+                          mode === "create" ? defaultAssignmentId : null
+                        }
+                        paymentData={paymentDetails}
+                        // Passing defaults if needed for pre-fill logic inside form
+                      />
+                      {mode !== "view" && (
+                        <div className="flex justify-end mt-6">
+                          <Button
+                            type="submit"
+                            variant={mode === "create" ? "success" : "warning"}
+                            disabled={loading}
+                            className="w-full"
+                          >
+                            {loading ? (
+                              <FiLoader className="animate-spin mx-auto" />
+                            ) : mode === "create" ? (
+                              <>
+                                <FiPlus className="inline-block mr-2" />
+                                Log Payment
+                              </>
+                            ) : (
+                              <>
+                                <FiSave className="inline-block mr-2" />
+                                Update Payment
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  </form>
+                </div>
+              )}
             </div>
           </main>
           <Footer />

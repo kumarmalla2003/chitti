@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAllMembers, deleteMember } from "../services/membersService";
-// --- 1. Added Service imports for Report Data ---
 import { getAssignmentsForMember } from "../services/assignmentsService";
 import { getPaymentsByMemberId } from "../services/paymentsService";
 import { useSelector } from "react-redux";
@@ -22,15 +21,13 @@ import {
   FiPlus,
   FiLoader,
   FiSearch,
-  FiEye,
   FiEdit,
   FiTrash2,
-  FiPrinter, // Added
-  FiGrid, // Added
-  FiList, // Added
+  FiPrinter,
+  FiGrid,
+  FiList,
 } from "react-icons/fi";
 
-// --- 2. IMPORTS FOR REPORTS ---
 import MembersListReportPDF from "../components/reports/MembersListReportPDF";
 import MemberReportPDF from "../components/reports/MemberReportPDF";
 import { pdf } from "@react-pdf/renderer";
@@ -46,23 +43,19 @@ const MembersPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
-  // --- 3. View Mode State ---
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
   );
 
-  // --- 4. Printing States ---
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [printingMemberId, setPrintingMemberId] = useState(null);
 
-  // State for delete confirmation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useScrollToTop(success || error);
 
-  // Handle Resize for View Mode
   useEffect(() => {
     const handleResize = () => {
       // Optional: Auto-switch view on resize if desired
@@ -136,8 +129,6 @@ const MembersPage = () => {
     );
   }, [members, searchQuery]);
 
-  // --- 5. PRINT HANDLERS ---
-
   const handlePrintAll = async () => {
     if (filteredMembers.length === 0) return;
 
@@ -167,7 +158,6 @@ const MembersPage = () => {
     setError(null);
 
     try {
-      // Fetch data specifically for this member
       const [assignmentsData, paymentsData] = await Promise.all([
         getAssignmentsForMember(member.id, token),
         getPaymentsByMemberId(member.id, token),
@@ -175,7 +165,6 @@ const MembersPage = () => {
 
       const reportProps = {
         member: member,
-        // --- FIX: assignmentsData IS the array, so we pass it directly ---
         assignments: assignmentsData,
         payments: paymentsData.payments,
       };
@@ -222,7 +211,6 @@ const MembersPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          {/* --- 6. Added Print Button to Table --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -238,16 +226,7 @@ const MembersPage = () => {
               <FiPrinter />
             )}
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/members/view/${row.id}`);
-            }}
-            className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="View Details"
-          >
-            <FiEye />
-          </button>
+          {/* View Button Removed */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -285,7 +264,6 @@ const MembersPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              {/* --- HEADER ROW WITH PRINT ALL --- */}
               <div className="relative flex justify-center items-center mb-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
                   All Members
@@ -377,7 +355,6 @@ const MembersPage = () => {
 
               {!loading && !error && filteredMembers.length > 0 && (
                 <>
-                  {/* --- CONDITIONAL RENDERING BASED ON VIEW MODE --- */}
                   {viewMode === "table" ? (
                     <div className="overflow-x-auto rounded-lg shadow-sm">
                       <Table
@@ -389,7 +366,6 @@ const MembersPage = () => {
                       />
                     </div>
                   ) : (
-                    // Card View
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredMembers.map((member) => (
                         <MemberCard
@@ -398,7 +374,6 @@ const MembersPage = () => {
                           onView={() => navigate(`/members/view/${member.id}`)}
                           onEdit={() => navigate(`/members/edit/${member.id}`)}
                           onDelete={() => handleDeleteClick(member)}
-                          // --- Pass Print Props ---
                           onPrint={handlePrintMember}
                           isPrinting={printingMemberId === member.id}
                         />

@@ -13,17 +13,23 @@ import Message from "../components/ui/Message";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
-import PaymentCard from "../components/ui/PaymentCard"; // New Component
+import PaymentCard from "../components/ui/PaymentCard";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
-import { RupeeIcon } from "../components/ui/Icons";
 import {
   FiPlus,
   FiLoader,
   FiSearch,
-  FiEye,
   FiEdit,
   FiTrash2,
+  FiPrinter,
+  FiGrid, // <-- Added
+  FiList, // <-- Added
 } from "react-icons/fi";
+
+// --- REPORT IMPORTS ---
+import { pdf } from "@react-pdf/renderer";
+import PaymentReportPDF from "../components/reports/PaymentReportPDF";
+import PaymentReportModal from "../components/reports/PaymentReportModal";
 
 const PaymentsPage = () => {
   const navigate = useNavigate();
@@ -36,17 +42,36 @@ const PaymentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
-  // State for delete confirmation
+  // --- View Mode State ---
+  const [viewMode, setViewMode] = useState(() =>
+    window.innerWidth < 768 ? "card" : "table"
+  );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // --- REPORT STATE ---
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+
   useScrollToTop(success || error);
+
+  // Handle Resize for View Mode
+  useEffect(() => {
+    const handleResize = () => {
+      // Optional: Auto-switch view on resize if desired
+      // if (window.innerWidth < 768) setViewMode("card");
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [viewMode]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllPayments(token); // Using the new global endpoint
+      const data = await getAllPayments(token);
       setPayments(data.payments);
     } catch (err) {
       setError(err.message);
@@ -99,6 +124,72 @@ const PaymentsPage = () => {
     }
   };
 
+  // --- REPORT GENERATION HANDLER ---
+  const handleGenerateReport = async (filters) => {
+    setReportLoading(true);
+    setError(null);
+    try {
+      // 1. Fetch filtered data.
+      const data = await getAllPayments(token, filters);
+
+      if (!data.payments || data.payments.length === 0) {
+        setError("No payments found for the selected criteria.");
+        setReportLoading(false);
+        // We keep the modal open so they can try again
+        return;
+      }
+
+      // 2. Generate PDF
+      const blob = await pdf(
+        <PaymentReportPDF payments={data.payments} filters={filters} />
+      ).toBlob();
+
+      // 3. Trigger Download
+      let filename = "Payment_Report.pdf";
+
+      if (filters.chitName) {
+        let name = filters.chitName;
+        // Append "Chit" logic
+        if (!name.toLowerCase().endsWith("chit")) {
+          name += " Chit";
+        }
+        // Format: "Chit Name Payments Report.pdf" (Spaces preserved)
+        filename = `${filters.chitName} Payments Report.pdf`;
+      } else if (filters.memberName) {
+        // Format: "Member Name Payments Report.pdf" (Spaces preserved)
+        filename = `${filters.memberName} Payments Report.pdf`;
+      } else if (filters.startDate) {
+        // Format dates as DD-MM-YYYY
+        const formatDateForFilename = (dateStr) => {
+          if (!dateStr) return "";
+          const [y, m, d] = dateStr.split("-");
+          return `${d}-${m}-${y}`;
+        };
+        const startStr = formatDateForFilename(filters.startDate);
+        const endStr = formatDateForFilename(filters.endDate);
+
+        // Format: "DD-MM-YYYY to DD-MM-YYYY Payments Report.pdf" (Spaces preserved)
+        filename = `${startStr} to ${endStr} Payments Report.pdf`;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setIsReportModalOpen(false);
+    } catch (err) {
+      console.error("Report generation failed", err);
+      setError(err.message || "Failed to generate report.");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const filteredPayments = useMemo(() => {
     if (!searchQuery) return payments;
     const lowercasedQuery = searchQuery.toLowerCase();
@@ -127,12 +218,12 @@ const PaymentsPage = () => {
     {
       header: "Member",
       accessor: "member.full_name",
-      className: "text-left",
+      className: "text-center",
     },
     {
       header: "Chit",
       accessor: "chit.name",
-      className: "text-left",
+      className: "text-center",
     },
     {
       header: "Amount",
@@ -151,16 +242,7 @@ const PaymentsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/payments/view/${row.id}`);
-            }}
-            className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="View Details"
-          >
-            <FiEye />
-          </button>
+          {/* View Button Removed */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -198,11 +280,26 @@ const PaymentsPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              <div className="text-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+              {/* --- HEADER ROW WITH PRINT BUTTON --- */}
+              <div className="relative flex justify-center items-center mb-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
                   All Payments
                 </h1>
+
+                {/* Print Button */}
+                {payments.length > 0 && (
+                  <div className="absolute right-0 flex items-center">
+                    <button
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 cursor-pointer"
+                      title="Generate Report"
+                    >
+                      <FiPrinter className="w-6 h-6" />
+                    </button>
+                  </div>
+                )}
               </div>
+
               <hr className="my-4 border-border" />
 
               {success && <Message type="success">{success}</Message>}
@@ -212,8 +309,9 @@ const PaymentsPage = () => {
                 </Message>
               )}
 
-              <div className="mb-6">
-                <div className="relative flex items-center">
+              {/* --- CONTROLS ROW: Search + View Toggle --- */}
+              <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
+                <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                     <FiSearch className="w-5 h-5 text-text-secondary" />
                   </span>
@@ -225,6 +323,28 @@ const PaymentsPage = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
                   />
+                </div>
+
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={() =>
+                      setViewMode((prev) =>
+                        prev === "table" ? "card" : "table"
+                      )
+                    }
+                    className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
+                    title={
+                      viewMode === "table"
+                        ? "Switch to Card View"
+                        : "Switch to Table View"
+                    }
+                  >
+                    {viewMode === "table" ? (
+                      <FiGrid className="w-5 h-5" />
+                    ) : (
+                      <FiList className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -249,25 +369,32 @@ const PaymentsPage = () => {
 
               {!loading && !error && filteredPayments.length > 0 && (
                 <>
-                  <div className="hidden md:block">
-                    <Table
-                      columns={columns}
-                      data={filteredPayments}
-                      onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
-                    />
-                  </div>
-
-                  <div className="block md:hidden space-y-4">
-                    {filteredPayments.map((payment) => (
-                      <PaymentCard
-                        key={payment.id}
-                        payment={payment}
-                        onView={() => navigate(`/payments/view/${payment.id}`)}
-                        onEdit={() => navigate(`/payments/edit/${payment.id}`)}
-                        onDelete={() => handleDeleteClick(payment)}
+                  {/* --- CONDITIONAL RENDERING BASED ON VIEW MODE --- */}
+                  {viewMode === "table" ? (
+                    <div className="overflow-x-auto rounded-lg shadow-sm">
+                      <Table
+                        columns={columns}
+                        data={filteredPayments}
+                        onRowClick={(row) =>
+                          navigate(`/payments/view/${row.id}`)
+                        }
                       />
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    // Card View
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredPayments.map((payment) => (
+                        <PaymentCard
+                          key={payment.id}
+                          payment={payment}
+                          onEdit={() =>
+                            navigate(`/payments/edit/${payment.id}`)
+                          }
+                          onDelete={() => handleDeleteClick(payment)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -286,6 +413,16 @@ const PaymentsPage = () => {
           <FiPlus className="w-6 h-6" />
         </Button>
       </Link>
+
+      {/* --- REPORT MODAL --- */}
+      <PaymentReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onGenerate={handleGenerateReport}
+        token={token}
+        loading={reportLoading}
+      />
+
       <ConfirmationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
