@@ -32,7 +32,7 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
         id=db_chit.id,
         name=db_chit.name,
         chit_value=db_chit.chit_value,
-        size=db_chit.size, # <-- RENAMED
+        size=db_chit.size, 
         monthly_installment=db_chit.monthly_installment,
         duration_months=db_chit.duration_months,
         start_date=db_chit.start_date,
@@ -75,3 +75,35 @@ async def update_payout(session: AsyncSession, payout_id: int, payout_data: Payo
         await session.commit()
         await session.refresh(db_payout)
     return db_payout
+
+# --- NEW FUNCTION FOR SYNCING ---
+async def sync_payouts(session: AsyncSession, chit_id: int, new_duration: int):
+    """
+    Synchronizes the Payout table rows to match the Chit's duration_months.
+    Adds rows if duration increased, deletes from end if decreased.
+    """
+    # 1. Get current payouts
+    result = await session.execute(
+        select(Payout).where(Payout.chit_id == chit_id).order_by(Payout.month)
+    )
+    current_payouts = result.scalars().all()
+    current_count = len(current_payouts)
+
+    if new_duration == current_count:
+        return
+
+    if new_duration > current_count:
+        # Add missing months
+        new_payouts = [
+            Payout(chit_id=chit_id, month=m, payout_amount=0.0)
+            for m in range(current_count + 1, new_duration + 1)
+        ]
+        session.add_all(new_payouts)
+    
+    elif new_duration < current_count:
+        # Remove extra months from the end
+        payouts_to_delete = current_payouts[new_duration:]
+        for p in payouts_to_delete:
+            await session.delete(p)
+            
+    await session.commit()

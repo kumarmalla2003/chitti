@@ -20,6 +20,7 @@ import {
   FiArrowLeft,
   FiUserPlus,
   FiFastForward,
+  FiArrowRight,
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
@@ -28,6 +29,8 @@ import {
   createAssignment,
   deleteAssignment,
 } from "../../services/assignmentsService";
+
+const ITEMS_PER_PAGE = 10;
 
 const ChitMembersManager = ({
   mode,
@@ -46,6 +49,9 @@ const ChitMembersManager = ({
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMemberName, setActiveMemberName] = useState("");
+
+  // --- NEW: Pagination State ---
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -72,6 +78,7 @@ const ChitMembersManager = ({
       ]);
       setAssignments(assignmentsData.assignments);
       setAvailableMonths(monthsData.available_months);
+      setCurrentPage(1); // Reset pagination
     } catch (err) {
       setError(err.message);
     } finally {
@@ -82,6 +89,11 @@ const ChitMembersManager = ({
   useEffect(() => {
     fetchData();
   }, [chitId, token]);
+
+  // Reset pagination when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (success) {
@@ -169,16 +181,27 @@ const ChitMembersManager = ({
     );
   }, [assignments, searchQuery]);
 
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(filteredAssignments.length / ITEMS_PER_PAGE);
+  const paginatedAssignments =
+    mode === "view"
+      ? filteredAssignments.slice(
+          (currentPage - 1) * ITEMS_PER_PAGE,
+          currentPage * ITEMS_PER_PAGE
+        )
+      : filteredAssignments;
+
   const columns = [
     {
       header: "S.No",
-      cell: (row, index) => index + 1,
+      cell: (row, index) =>
+        (mode === "view" ? (currentPage - 1) * ITEMS_PER_PAGE : 0) + index + 1,
       className: "text-center",
     },
     {
       header: "Member Name",
       accessor: "member.full_name",
-      className: "text-left",
+      className: "text-center",
     },
     {
       header: "Assigned Month",
@@ -341,16 +364,44 @@ const ChitMembersManager = ({
                 forceTable ? "block overflow-x-auto" : "hidden md:block"
               }
             >
+              {/* --- MODIFIED: Standard Table using paginated data --- */}
               <Table
                 columns={columns}
-                data={filteredAssignments}
+                data={paginatedAssignments}
                 variant="secondary"
               />
+
+              {/* --- NEW: Pagination Controls (No Background, Arrows at Ends) --- */}
+              {mode === "view" && totalPages > 1 && (
+                <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                  >
+                    <FiArrowLeft className="w-5 h-5" />
+                  </button>
+
+                  <span className="font-medium">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                  >
+                    <FiArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {!forceTable && (
               <div className="block md:hidden space-y-4">
-                {filteredAssignments.map((assignment) => (
+                {paginatedAssignments.map((assignment) => (
                   <AssignedMemberCard
                     key={assignment.id}
                     assignment={assignment}
@@ -358,6 +409,7 @@ const ChitMembersManager = ({
                     onLogPayment={onLogPaymentClick}
                   />
                 ))}
+                {/* Mobile Pagination would go here if needed, but 'View All' usually better for mobile lists */}
               </div>
             )}
           </>
@@ -385,7 +437,6 @@ const ChitMembersManager = ({
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
       <div className="relative flex justify-center items-center mb-2">
         {view !== "list" && (
           <button
@@ -401,7 +452,6 @@ const ChitMembersManager = ({
         {mode === "view" && view === "list" && (
           <button
             onClick={handleAddMemberClick}
-            // --- MODIFIED: Green Icon ---
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
             title="Add Member"
           >

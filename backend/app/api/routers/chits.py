@@ -11,15 +11,14 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.schemas.chits import (
-    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse, # <-- RENAMED
-    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate # <-- RENAMED
+    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
+    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
 )
 from app.schemas.assignments import ChitAssignmentPublic, ChitAssignmentListResponse
 from app.schemas.members import MemberPublic
 from app.models.chits import Chit
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-# --- ADD crud_payments ---
 from app.crud import crud_chits, crud_assignments, crud_payments
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
@@ -51,7 +50,7 @@ async def create_chit(
     db_chit = Chit(
         name=trimmed_name,
         chit_value=chit.chit_value,
-        size=chit.size, # <-- RENAMED
+        size=chit.size,
         monthly_installment=chit.monthly_installment,
         duration_months=chit.duration_months,
         start_date=chit.start_date,
@@ -150,7 +149,6 @@ async def get_chit_assignments(
             chit_month=assignment.chit_month,
             member=member_public,
             chit=chit_with_details,
-            # --- ADD NEW FIELDS TO RESPONSE ---
             total_paid=total_paid,
             due_amount=due_amount,
             payment_status=payment_status
@@ -198,6 +196,9 @@ async def update_chit(
     await session.commit()
     await session.refresh(db_chit)
 
+    # --- NEW: Sync payouts ---
+    await crud_chits.sync_payouts(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
+
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
@@ -244,6 +245,11 @@ async def patch_chit(
     try:
         await session.commit()
         await session.refresh(db_chit)
+        
+        # --- NEW: Sync payouts if duration changed ---
+        if "duration_months" in chit_data:
+             await crud_chits.sync_payouts(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
+
     except IntegrityError:
         await session.rollback()
         raise HTTPException(

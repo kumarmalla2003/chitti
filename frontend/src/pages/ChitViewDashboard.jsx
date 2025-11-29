@@ -42,17 +42,32 @@ const formatDateShort = (dateString) => {
 // --- Left Aligned, Bold Headings, Medium Text ---
 const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
   <div
-    className={`flex items-center py-4 border-b border-border/50 last:border-0 ${className}`}
+    className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
   >
     <div className="flex items-center gap-3 w-56 flex-shrink-0">
       <div className="p-2 bg-background-secondary rounded-full text-text-secondary">
-        <Icon className="w-5 h-5" />
+        <Icon className="w-4 h-4" />
       </div>
-      <span className="text-base font-bold text-text-primary">{label}</span>
+      <span className="text-sm font-bold text-text-primary">{label}</span>
     </div>
-    <span className="text-base font-medium text-text-secondary text-left">
+    <span className="text-sm font-medium text-text-secondary text-left">
       {value}
     </span>
+  </div>
+);
+
+const MetricCard = ({ label, value, icon: Icon }) => (
+  <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors">
+    <div className="flex items-center gap-1.5 mb-1 text-text-secondary">
+      <Icon className="w-3.5 h-3.5" />
+      <span className="text-xs font-bold uppercase tracking-wider">
+        {label}
+      </span>
+    </div>
+    <div className="flex items-center text-text-primary font-bold text-lg">
+      <RupeeIcon className="w-4 h-4 mr-1" />
+      {value}
+    </div>
   </div>
 );
 
@@ -94,27 +109,34 @@ const ChitViewDashboard = ({
               </h2>
               <button
                 onClick={handleEditDetails}
-                // --- MODIFIED: Blue Icon ---
                 className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
                 title="Edit Details"
               >
                 <FiEdit className="w-5 h-5" />
               </button>
             </div>
-            <hr className="border-border mb-2" />
 
-            <div className="flex flex-col h-full">
-              <div className="flex-grow">
-                <DetailRow
-                  icon={RupeeIcon}
+            <hr className="border-border mb-4" />
+
+            <div className="flex flex-col h-full gap-4">
+              {/* --- Grid View for Key Metrics --- */}
+              <div className="grid grid-cols-2 gap-3">
+                <MetricCard
                   label="Chit Value"
-                  value={`₹ ${formatCurrency(chitData.chit_value)}`}
+                  value={formatCurrency(chitData.chit_value)}
+                  icon={RupeeIcon}
                 />
-                <DetailRow
-                  icon={FiPieChart}
+                <MetricCard
                   label="Installment"
-                  value={`₹ ${formatCurrency(chitData.monthly_installment)}`}
+                  value={formatCurrency(chitData.monthly_installment)}
+                  icon={FiPieChart}
                 />
+              </div>
+
+              {/* --- REMOVED: Horizontal Line Here (per request) --- */}
+
+              {/* --- List View for Other Details --- */}
+              <div className="flex-grow">
                 <DetailRow
                   icon={FiUsers}
                   label="Group Size"

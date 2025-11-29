@@ -14,6 +14,7 @@ import {
   FiSearch,
   FiPlus,
   FiArrowLeft,
+  FiArrowRight,
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
@@ -23,6 +24,8 @@ import {
 } from "../../services/paymentsService";
 import PaymentHistoryCard from "../ui/PaymentHistoryCard";
 import useScrollToTop from "../../hooks/useScrollToTop";
+
+const ITEMS_PER_PAGE = 10;
 
 const PaymentHistoryList = ({
   chitId,
@@ -40,6 +43,10 @@ const PaymentHistoryList = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState("list");
+
+  // --- NEW: Pagination State ---
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [formData, setFormData] = useState({
     chit_assignment_id: "",
     amount_paid: "",
@@ -66,6 +73,7 @@ const PaymentHistoryList = ({
         data = await getPaymentsByMemberId(memberId, token);
       }
       setPayments(data.payments);
+      setCurrentPage(1); // Reset pagination
     } catch (err) {
       setError(err.message);
     } finally {
@@ -78,6 +86,11 @@ const PaymentHistoryList = ({
       fetchData();
     }
   }, [chitId, memberId, token]);
+
+  useEffect(() => {
+    // Reset pagination on search
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (formSuccess) {
@@ -102,7 +115,6 @@ const PaymentHistoryList = ({
     }
   }, [paymentDefaults]);
 
-  // --- Header Action: Add Payment ---
   const handleAddPaymentClick = () => {
     if (mode === "view") {
       navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payments" } });
@@ -137,6 +149,16 @@ const PaymentHistoryList = ({
     });
   }, [payments, searchQuery, viewType]);
 
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
+  const paginatedPayments =
+    mode === "view"
+      ? filteredPayments.slice(
+          (currentPage - 1) * ITEMS_PER_PAGE,
+          currentPage * ITEMS_PER_PAGE
+        )
+      : filteredPayments;
+
   const searchPlaceholder =
     viewType === "chit"
       ? "Search by member, amount, or method..."
@@ -163,7 +185,7 @@ const PaymentHistoryList = ({
           {
             header: "Member",
             accessor: "member.full_name",
-            className: "text-left",
+            className: "text-center",
           },
         ]
       : []),
@@ -181,7 +203,7 @@ const PaymentHistoryList = ({
     {
       header: "Notes",
       accessor: "notes",
-      className: "text-left truncate max-w-xs",
+      className: "text-center truncate max-w-xs",
       cell: (row) => row.notes || "-",
     },
   ];
@@ -263,7 +285,6 @@ const PaymentHistoryList = ({
 
   return (
     <Card className="flex-1 flex flex-col">
-      {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
       <div className="relative flex justify-center items-center mb-2">
         {view === "create" && (
           <button
@@ -277,11 +298,9 @@ const PaymentHistoryList = ({
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <RupeeIcon className="w-5 h-5" /> {headerTitle}
         </h2>
-        {/* --- ADDED: Add Payment Icon in Header for View Mode --- */}
         {mode === "view" && view === "list" && (
           <button
             onClick={handleAddPaymentClick}
-            // --- MODIFIED: Green Icon ---
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
             title="Add Payment"
           >
@@ -380,17 +399,47 @@ const PaymentHistoryList = ({
                       forceTable ? "block overflow-x-auto" : "hidden md:block"
                     }
                   >
+                    {/* --- MODIFIED: Standard Table with pagination --- */}
                     <Table
                       columns={columns}
-                      data={filteredPayments}
+                      data={paginatedPayments}
                       variant="secondary"
                       onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
                     />
+
+                    {/* --- NEW: Pagination Controls (No Background, Arrows at Ends) --- */}
+                    {mode === "view" && totalPages > 1 && (
+                      <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
+                        <button
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={currentPage === 1}
+                          className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        >
+                          <FiArrowLeft className="w-5 h-5" />
+                        </button>
+
+                        <span className="font-medium">
+                          Page {currentPage} of {totalPages}
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          disabled={currentPage === totalPages}
+                          className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        >
+                          <FiArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {!forceTable && (
                     <div className="block md:hidden space-y-4">
-                      {filteredPayments.map((payment) => (
+                      {paginatedPayments.map((payment) => (
                         <PaymentHistoryCard
                           key={payment.id}
                           payment={payment}

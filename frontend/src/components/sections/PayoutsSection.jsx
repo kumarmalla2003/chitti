@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getPayouts, updatePayout } from "../../services/chitsService";
+import {
+  getPayouts,
+  updatePayout,
+  getChitById,
+} from "../../services/chitsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
 import {
   FiLoader,
@@ -12,12 +16,15 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiTrendingUp,
+  FiArrowRight,
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
 import Table from "../ui/Table";
 import useCursorTracking from "../../hooks/useCursorTracking";
+
+const ITEMS_PER_PAGE = 10;
 
 const formatAmount = (value) => {
   if (value === 0) return "0";
@@ -38,13 +45,26 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
+// Helper to Calculate Date from Month Index
+const calculatePayoutDate = (startDateStr, monthIndex) => {
+  if (!startDateStr) return `Month ${monthIndex}`;
+  const d = new Date(startDateStr);
+  // Add months: (monthIndex - 1) because month 1 is the start date
+  d.setMonth(d.getMonth() + (monthIndex - 1));
+
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear();
+  return `${month}/${year}`;
+};
+
 const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
   const inputRef = useRef(null);
   const trackCursor = useCursorTracking(inputRef, value, /\d/);
 
   return (
     <div className="relative w-full mx-auto">
-      <RupeeIcon className="w-4 h-4 text-text-secondary absolute top-1/2 left-3 -translate-y-1/2" />
+      <RupeeIcon className="w-4 h-4 text-text-secondary absolute top-1/2 left-2 -translate-y-1/2" />{" "}
+      {/* Adjusted left-2 */}
       <input
         ref={inputRef}
         type="text"
@@ -66,7 +86,7 @@ const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
           onChange(e.target.value);
         }}
         onKeyDown={(e) => onKeyDown(e, isLastInput)}
-        className="w-full text-center bg-background-secondary border border-border rounded-md pl-8 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-accent"
+        className="w-full text-center bg-background-secondary border border-border rounded-md pl-6 pr-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent" /* Adjusted pl-6 and text-sm */
       />
     </div>
   );
@@ -74,6 +94,7 @@ const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
 
 const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const [payouts, setPayouts] = useState([]);
+  const [chitStartDate, setChitStartDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -81,31 +102,42 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const [editAmounts, setEditAmounts] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
   const { token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
   useScrollToTop(success);
 
-  const fetchPayouts = async (showLoading = true) => {
+  const fetchData = async () => {
     if (!chitId) {
       setLoading(false);
       return;
     }
     try {
-      if (showLoading) setLoading(true);
+      setLoading(true);
       setError(null);
-      const data = await getPayouts(chitId, token);
-      data.payouts.sort((a, b) => a.month - b.month);
-      setPayouts(data.payouts);
+      // Fetch both Payouts and Chit Details (to get start_date)
+      const [payoutsData, chitData] = await Promise.all([
+        getPayouts(chitId, token),
+        getChitById(chitId, token),
+      ]);
+
+      payoutsData.payouts.sort((a, b) => a.month - b.month);
+      setPayouts(payoutsData.payouts);
+      setChitStartDate(chitData.start_date);
+
+      setCurrentPage(1);
     } catch (err) {
       setError(err.message);
     } finally {
-      if (showLoading) setLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPayouts();
+    fetchData();
   }, [chitId, token]);
 
   useEffect(() => {
@@ -168,7 +200,11 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     try {
       await Promise.all(updatePromises);
       setIsEditing(false);
-      await fetchPayouts(false);
+      // Re-fetch to sync state
+      const payoutsData = await getPayouts(chitId, token);
+      payoutsData.payouts.sort((a, b) => a.month - b.month);
+      setPayouts(payoutsData.payouts);
+
       setSuccess("Payouts have been updated successfully!");
     } catch (err) {
       setError(err.message);
@@ -185,20 +221,43 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   };
 
   const columns = [
+    // --- S.No Column (1/8th = 12.5%) ---
+    // ADDED !px-1 to override default padding and fit mobile screens
+    {
+      header: "S.No",
+      cell: (row, index) => {
+        const offset =
+          mode === "view" && !isEditing
+            ? (currentPage - 1) * ITEMS_PER_PAGE
+            : 0;
+        return offset + index + 1;
+      },
+      className: "text-center text-text-secondary text-sm",
+      headerClassName: "w-[20%] !pr-1 text-xs md:text-sm",
+      cellClassName: "text-center w-[20%] !pr-1",
+    },
+    // --- Month Column (1/4th = 25%) ---
+    // ADDED !px-1
     {
       header: "Month",
       accessor: "month",
-      className: "text-center font-medium",
-      headerClassName: "w-1/4",
-      cellClassName: "w-1/4",
-      cell: (row) => <div className="text-center w-full">{row.month}</div>,
+      className: "text-center font-medium text-sm",
+      headerClassName: "w-[30%] !px-1 text-xs md:text-sm",
+      cellClassName: "w-[30%] !px-1",
+      cell: (row) => (
+        <div className="text-center w-full">
+          {calculatePayoutDate(chitStartDate, row.month)}
+        </div>
+      ),
     },
+    // --- Payout Column (5/8th = 62.5%) ---
+    // ADDED !px-1
     {
       header: "Payout",
       accessor: "payout_amount",
       className: "text-center",
-      headerClassName: "w-3/4",
-      cellClassName: "w-3/4",
+      headerClassName: "w-[50%] !pl-1 text-xs md:text-sm",
+      cellClassName: "w-[50%] !pl-1",
       cell: (row, index) => {
         const isLastInput = index === payouts.length - 1;
 
@@ -210,12 +269,12 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
             isLastInput={isLastInput}
           />
         ) : (
-          <span className="text-text-secondary flex items-center justify-center">
+          <span className="text-text-secondary flex items-center justify-center text-sm">
             {row.payout_amount === 0 ? (
               "-"
             ) : (
               <>
-                <RupeeIcon className="w-4 h-4 mr-1" />
+                <RupeeIcon className="w-3.5 h-3.5 mr-1" />
                 {formatAmount(row.payout_amount)}
               </>
             )}
@@ -224,6 +283,16 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
       },
     },
   ];
+
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(payouts.length / ITEMS_PER_PAGE);
+  const paginatedPayouts =
+    mode === "view" && !isEditing
+      ? payouts.slice(
+          (currentPage - 1) * ITEMS_PER_PAGE,
+          currentPage * ITEMS_PER_PAGE
+        )
+      : payouts;
 
   if (loading) {
     return (
@@ -245,10 +314,8 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     <div>
       {showTitle && (
         <>
-          {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
           <div className="relative flex justify-center items-center mb-2">
             {isEditing && (
-              // This back button stays absolute left as before
               <button
                 onClick={() => setIsEditing(false)}
                 className="absolute left-0 text-text-primary hover:text-accent"
@@ -262,7 +329,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
             {mode === "view" && (
               <button
                 onClick={handleEditClick}
-                // --- MODIFIED: Blue Icon ---
                 className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
                 title="Edit Payouts"
               >
@@ -299,7 +365,41 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
       )}
 
       {payouts.length > 0 ? (
-        <Table columns={columns} data={payouts} variant="secondary" />
+        <>
+          <Table
+            columns={columns}
+            data={paginatedPayouts}
+            variant="secondary"
+          />
+
+          {mode === "view" && !isEditing && totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                title="Previous Page"
+              >
+                <FiArrowLeft className="w-5 h-5" />
+              </button>
+
+              <span className="font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                title="Next Page"
+              >
+                <FiArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-8">
           <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />

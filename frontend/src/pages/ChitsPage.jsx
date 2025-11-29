@@ -4,7 +4,11 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/ui/ChitCard";
-import { getAllChits, deleteChit } from "../services/chitsService";
+// --- 1. Added getPayouts to imports ---
+import { getAllChits, deleteChit, getPayouts } from "../services/chitsService";
+// --- 2. Added Service imports for Report Data ---
+import { getAssignmentsForChit } from "../services/assignmentsService";
+import { getPaymentsByChitId } from "../services/paymentsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -25,7 +29,14 @@ import {
   FiTrash2,
   FiGrid,
   FiList,
+  FiPrinter,
 } from "react-icons/fi";
+
+// --- IMPORTS FOR REPORT ---
+import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
+// --- 3. Added ChitReportPDF import ---
+import ChitReportPDF from "../components/reports/ChitReportPDF";
+import { pdf } from "@react-pdf/renderer";
 
 const ChitsPage = () => {
   const navigate = useNavigate();
@@ -38,8 +49,12 @@ const ChitsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
+  // State for printing "All Chits"
+  const [isPrintingAll, setIsPrintingAll] = useState(false);
+  // --- 4. Added state to track which specific chit is printing ---
+  const [printingChitId, setPrintingChitId] = useState(null);
+
   // --- View Mode State ---
-  // Default to 'card' for mobile (<768px) and 'table' for desktop
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
   );
@@ -51,10 +66,9 @@ const ChitsPage = () => {
 
   useScrollToTop(success || error);
 
-  // --- Update view mode on window resize (optional, keeps UI responsive) ---
   useEffect(() => {
     const handleResize = () => {
-      // Logic to handle resizing if needed, currently we stick to user choice
+      // Logic to handle resizing if needed
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -126,6 +140,82 @@ const ChitsPage = () => {
     });
   }, [chits, searchQuery]);
 
+  // --- PRINT ALL HANDLER ---
+  const handlePrintAll = async () => {
+    if (filteredChits.length === 0) return;
+
+    setIsPrintingAll(true);
+    try {
+      const blob = await pdf(
+        <ChitsListReportPDF chits={filteredChits} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      // Consistent Filename (Spaces instead of underscores)
+      link.download = "All Chits Report.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Print failed", err);
+      setError("Failed to generate report.");
+    } finally {
+      setIsPrintingAll(false);
+    }
+  };
+
+  // --- 5. Added Single Chit Print Handler ---
+  const handlePrintChit = async (chit) => {
+    setPrintingChitId(chit.id);
+    setError(null);
+
+    try {
+      // Fetch all necessary data for the full report
+      const [payoutsData, assignmentsData, paymentsData] = await Promise.all([
+        getPayouts(chit.id, token),
+        getAssignmentsForChit(chit.id, token),
+        getPaymentsByChitId(chit.id, token),
+      ]);
+
+      const reportProps = {
+        chit: chit,
+        payouts: payoutsData.payouts,
+        assignments: assignmentsData.assignments,
+        payments: paymentsData.payments,
+      };
+
+      // --- UPDATED FILENAME LOGIC ---
+      let reportName = chit.name;
+      if (!reportName.toLowerCase().endsWith("chit")) {
+        reportName += " Chit";
+      }
+      reportName += " Report";
+
+      // Generate PDF
+      const blob = await pdf(<ChitReportPDF {...reportProps} />).toBlob();
+
+      // Download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      // Filename matches the header logic EXACTLY (including spaces)
+      link.download = `${reportName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Single chit print failed", err);
+      setError("Failed to generate report for this chit.");
+    } finally {
+      setPrintingChitId(null);
+    }
+  };
+
   const columns = [
     {
       header: "S.No",
@@ -161,6 +251,22 @@ const ChitsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
+          {/* --- 6. Added Print Button to Table View as well --- */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrintChit(row);
+            }}
+            disabled={printingChitId === row.id}
+            className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50"
+            title="Download PDF"
+          >
+            {printingChitId === row.id ? (
+              <FiLoader className="animate-spin" />
+            ) : (
+              <FiPrinter />
+            )}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -205,11 +311,29 @@ const ChitsPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              <div className="text-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-                  My Chits
+              {/* --- HEADER ROW WITH PRINT BUTTON --- */}
+              <div className="relative flex justify-center items-center mb-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
+                  All Chits
                 </h1>
+                {filteredChits.length > 0 && (
+                  <div className="absolute right-0 flex items-center">
+                    <button
+                      onClick={handlePrintAll}
+                      disabled={isPrintingAll}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 disabled:opacity-50"
+                      title="Print All Chits"
+                    >
+                      {isPrintingAll ? (
+                        <FiLoader className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <FiPrinter className="w-6 h-6" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
+
               <hr className="my-4 border-border" />
 
               {success && <Message type="success">{success}</Message>}
@@ -235,7 +359,6 @@ const ChitsPage = () => {
                   />
                 </div>
 
-                {/* --- UPDATED: Single View Toggle Button --- */}
                 <div className="flex-shrink-0">
                   <button
                     onClick={() =>
@@ -299,6 +422,9 @@ const ChitsPage = () => {
                           onView={() => navigate(`/chits/view/${chit.id}`)}
                           onEdit={() => navigate(`/chits/edit/${chit.id}`)}
                           onDelete={() => handleDeleteClick(chit)}
+                          // --- 7. Added Missing Props Here ---
+                          onPrint={handlePrintChit}
+                          isPrinting={printingChitId === chit.id}
                         />
                       ))}
                     </div>

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { pdf } from "@react-pdf/renderer";
+import ChitReportPDF from "../components/reports/ChitReportPDF";
 import useScrollToTop from "../hooks/useScrollToTop";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -28,7 +30,14 @@ import {
   FiTrendingUp,
   FiPrinter,
 } from "react-icons/fi";
-import { createChit, getChitById, patchChit } from "../services/chitsService";
+import {
+  createChit,
+  getChitById,
+  patchChit,
+  getPayouts,
+} from "../services/chitsService";
+import { getAssignmentsForChit } from "../services/assignmentsService";
+import { getPaymentsByChitId } from "../services/paymentsService";
 
 // --- Helper Functions (unchanged) ---
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
@@ -363,6 +372,9 @@ const ChitDetailPage = () => {
 
   const [paymentDefaults, setPaymentDefaults] = useState(null);
 
+  // --- REPORT STATE ---
+  const [isReportLoading, setIsReportLoading] = useState(false);
+
   useScrollToTop(success || error);
 
   const TABS = ["details", "payouts", "members", "payments"];
@@ -409,7 +421,7 @@ const ChitDetailPage = () => {
           payout_day: chit.payout_day.toString(),
         };
         setFormData(fetchedData);
-        setOriginalData(fetchedData);
+        setOriginalData(chit);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -555,17 +567,7 @@ const ChitDetailPage = () => {
         const newChit = await createChit(dataToSend, token);
         setCreatedChitId(newChit.id);
         setCreatedChitName(newChit.name);
-        setOriginalData({
-          name: newChit.name,
-          chit_value: newChit.chit_value.toString(),
-          size: newChit.size.toString(),
-          monthly_installment: newChit.monthly_installment.toString(),
-          duration_months: newChit.duration_months.toString(),
-          start_date: toYearMonth(newChit.start_date),
-          end_date: toYearMonth(newChit.end_date),
-          collection_day: newChit.collection_day.toString(),
-          payout_day: newChit.payout_day.toString(),
-        });
+        setOriginalData(newChit);
         setActiveTab("payouts");
         setSuccess("Chit details saved. You can now manage payouts.");
       } else if (mode === "create" && createdChitId) {
@@ -596,55 +598,28 @@ const ChitDetailPage = () => {
 
           const updatedChit = await patchChit(createdChitId, patchData, token);
           setCreatedChitName(updatedChit.name);
-          setOriginalData({
-            name: updatedChit.name,
-            chit_value: updatedChit.chit_value.toString(),
-            size: updatedChit.size.toString(),
-            monthly_installment: updatedChit.monthly_installment.toString(),
-            duration_months: updatedChit.duration_months.toString(),
-            start_date: toYearMonth(updatedChit.start_date),
-            end_date: toYearMonth(updatedChit.end_date),
-            collection_day: updatedChit.collection_day.toString(),
-            payout_day: updatedChit.payout_day.toString(),
-          });
+          setOriginalData(updatedChit);
         }
         setActiveTab("payouts");
         setSuccess("Chit details updated successfully!");
       } else if (mode === "edit") {
         const changes = {};
-        for (const key in formData) {
-          if (formData[key] !== originalData[key]) {
-            changes[key] = formData[key];
-          }
-        }
+        const patchData = {
+          ...formData,
+          start_date: getFirstDayOfMonth(formData.start_date),
+          chit_value: Number(formData.chit_value),
+          size: Number(formData.size),
+          monthly_installment: Number(formData.monthly_installment),
+          duration_months: Number(formData.duration_months),
+          collection_day: Number(formData.collection_day),
+          payout_day: Number(formData.payout_day),
+        };
+        delete patchData.end_date;
 
-        if (Object.keys(changes).length > 0) {
-          const patchData = { ...changes };
-          if (patchData.start_date)
-            patchData.start_date = getFirstDayOfMonth(patchData.start_date);
-          if (patchData.chit_value)
-            patchData.chit_value = Number(patchData.chit_value);
-          if (patchData.size) patchData.size = Number(patchData.size);
-          if (patchData.monthly_installment)
-            patchData.monthly_installment = Number(
-              patchData.monthly_installment
-            );
-          if (patchData.duration_months)
-            patchData.duration_months = Number(patchData.duration_months);
-          if (patchData.collection_day)
-            patchData.collection_day = Number(patchData.collection_day);
-          if (patchData.payout_day)
-            patchData.payout_day = Number(patchData.payout_day);
-
-          await patchChit(id, patchData, token);
-          setSuccess("Chit updated successfully!");
-          if (activeTabIndex < TABS.length - 1) {
-            setActiveTab(TABS[activeTabIndex + 1]);
-          }
-        } else {
-          if (activeTabIndex < TABS.length - 1) {
-            setActiveTab(TABS[activeTabIndex + 1]);
-          }
+        await patchChit(id, patchData, token);
+        setSuccess("Chit updated successfully!");
+        if (activeTabIndex < TABS.length - 1) {
+          setActiveTab(TABS[activeTabIndex + 1]);
         }
       }
     } catch (err) {
@@ -731,12 +706,61 @@ const ChitDetailPage = () => {
     }
   };
 
-  const handleEditClick = () => {
-    navigate(`/chits/edit/${id}`);
-  };
+  // --- ONE-CLICK REPORT GENERATION ---
+  const handlePrintReport = async () => {
+    if (!id || mode !== "view") return;
 
-  const handlePrint = () => {
-    window.print();
+    setIsReportLoading(true);
+    setError(null);
+
+    try {
+      // 1. Fetch all necessary data
+      const [payoutsData, assignmentsData, paymentsData] = await Promise.all([
+        getPayouts(id, token),
+        getAssignmentsForChit(id, token),
+        getPaymentsByChitId(id, token),
+      ]);
+
+      const reportProps = {
+        chit: {
+          ...originalData,
+          ...formData, // Ensure latest form state is used
+          id: id,
+        },
+        payouts: payoutsData.payouts,
+        assignments: assignmentsData.assignments,
+        payments: paymentsData.payments,
+      };
+
+      // --- UPDATED FILENAME LOGIC ---
+      // Append "Chit" if missing, then "Report", preserving case.
+      let reportName = formData.name;
+      if (!reportName.toLowerCase().endsWith("chit")) {
+        reportName += " Chit";
+      }
+      reportName += " Report";
+
+      // 2. Generate PDF Blob programmatically
+      const blob = await pdf(<ChitReportPDF {...reportProps} />).toBlob();
+
+      // 3. Create a temporary link and trigger download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      // Filename now matches the header logic EXACTLY (including spaces)
+      link.download = `${reportName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // 4. Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate report", err);
+      setError("Failed to generate report. Please try again.");
+    } finally {
+      setIsReportLoading(false);
+    }
   };
 
   if (pageLoading) {
@@ -778,18 +802,34 @@ const ChitDetailPage = () => {
                   {getTitle()}
                 </h1>
 
-                {/* --- UPDATED: Print Icon Button --- */}
+                {/* --- PDF REPORT BUTTON (ONE-CLICK) + EDIT BUTTON --- */}
                 {mode === "view" && (
-                  <div className="absolute right-0 flex gap-3 print:hidden">
-                    <button
-                      onClick={handlePrint}
-                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200"
-                      title="Print Report"
+                  <div className="absolute right-0 flex print:hidden items-center">
+                    {/* EDIT BUTTON */}
+                    <Link
+                      to={`/chits/edit/${id}`}
+                      className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
+                      title="Edit Chit"
                     >
-                      <FiPrinter className="w-6 h-6" />
+                      <FiEdit className="w-6 h-6" />
+                    </Link>
+
+                    {/* PRINT BUTTON */}
+                    <button
+                      onClick={handlePrintReport}
+                      disabled={isReportLoading}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200"
+                      title="Download PDF Report"
+                    >
+                      {isReportLoading ? (
+                        <FiLoader className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <FiPrinter className="w-6 h-6" />
+                      )}
                     </button>
                   </div>
                 )}
+                {/* --- END BUTTONS --- */}
               </div>
 
               <hr className="my-4 border-border" />
@@ -810,7 +850,7 @@ const ChitDetailPage = () => {
                 )}
               </div>
 
-              {/* --- VIEW MODE: Single Page Dashboard --- */}
+              {/* --- VIEW MODE --- */}
               {mode === "view" ? (
                 <div className="max-w-6xl mx-auto">
                   <ChitViewDashboard
@@ -822,7 +862,7 @@ const ChitDetailPage = () => {
                   />
                 </div>
               ) : (
-                /* --- CREATE/EDIT MODE --- */
+                /* --- CREATE/EDIT MODE (unchanged structure) --- */
                 <>
                   <div className="md:hidden">
                     <MobileContent

@@ -6,11 +6,13 @@ import {
   FiCalendar,
   FiRepeat,
   FiRefreshCw,
+  FiPrinter,
+  FiLoader,
 } from "react-icons/fi";
 import { RupeeIcon } from "./Icons";
 import { useNavigate } from "react-router-dom";
 
-const ChitCard = ({ chit, onView, onEdit, onDelete }) => {
+const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
   const navigate = useNavigate();
 
   const statusStyles = {
@@ -45,6 +47,21 @@ const ChitCard = ({ chit, onView, onEdit, onDelete }) => {
         </div>
         <div className="flex items-center flex-shrink-0">
           {/* --- "VIEW" BUTTON REMOVED --- */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrint(chit);
+            }}
+            disabled={isPrinting}
+            className="p-2 rounded-full text-info-accent hover:bg-info-bg transition-colors duration-200 disabled:opacity-50"
+            title="Download PDF Report"
+          >
+            {isPrinting ? (
+              <FiLoader className="w-5 h-5 animate-spin" />
+            ) : (
+              <FiPrinter className="w-5 h-5" />
+            )}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
