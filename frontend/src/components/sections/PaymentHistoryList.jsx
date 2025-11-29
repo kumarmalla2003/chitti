@@ -15,6 +15,7 @@ import {
   FiPlus,
   FiArrowLeft,
   FiArrowRight,
+  FiEdit, // <-- Imported
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
@@ -34,6 +35,7 @@ const PaymentHistoryList = ({
   paymentDefaults,
   setPaymentDefaults,
   forceTable = false,
+  onManage, // <-- Prop
 }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,6 @@ const PaymentHistoryList = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState("list");
-
-  // --- NEW: Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState({
@@ -73,7 +73,7 @@ const PaymentHistoryList = ({
         data = await getPaymentsByMemberId(memberId, token);
       }
       setPayments(data.payments);
-      setCurrentPage(1); // Reset pagination
+      setCurrentPage(1);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -88,7 +88,6 @@ const PaymentHistoryList = ({
   }, [chitId, memberId, token]);
 
   useEffect(() => {
-    // Reset pagination on search
     setCurrentPage(1);
   }, [searchQuery]);
 
@@ -115,8 +114,9 @@ const PaymentHistoryList = ({
     }
   }, [paymentDefaults]);
 
+  // Modified logic: Only for ChitViewDashboard standard usage
   const handleAddPaymentClick = () => {
-    if (mode === "view") {
+    if (mode === "view" && chitId) {
       navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payments" } });
     }
   };
@@ -149,7 +149,6 @@ const PaymentHistoryList = ({
     });
   }, [payments, searchQuery, viewType]);
 
-  // --- PAGINATION LOGIC ---
   const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
   const paginatedPayments =
     mode === "view"
@@ -298,15 +297,18 @@ const PaymentHistoryList = ({
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <RupeeIcon className="w-5 h-5" /> {headerTitle}
         </h2>
+
+        {/* --- UPDATE: Changed Edit to Add (Plus) Icon --- */}
         {mode === "view" && view === "list" && (
           <button
-            onClick={handleAddPaymentClick}
+            onClick={onManage || handleAddPaymentClick}
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
             title="Add Payment"
           >
             <FiPlus className="w-5 h-5" />
           </button>
         )}
+        {/* --- END UPDATE --- */}
       </div>
       <hr className="border-border mb-4" />
 
@@ -399,7 +401,6 @@ const PaymentHistoryList = ({
                       forceTable ? "block overflow-x-auto" : "hidden md:block"
                     }
                   >
-                    {/* --- MODIFIED: Standard Table with pagination --- */}
                     <Table
                       columns={columns}
                       data={paginatedPayments}
@@ -407,7 +408,6 @@ const PaymentHistoryList = ({
                       onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
                     />
 
-                    {/* --- NEW: Pagination Controls (No Background, Arrows at Ends) --- */}
                     {mode === "view" && totalPages > 1 && (
                       <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
                         <button

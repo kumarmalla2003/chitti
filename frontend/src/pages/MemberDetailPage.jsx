@@ -20,6 +20,14 @@ import {
   createMember,
   patchMember,
 } from "../services/membersService";
+import { getAssignmentsForMember } from "../services/assignmentsService";
+import { getPaymentsByMemberId } from "../services/paymentsService";
+
+import MemberReportPDF from "../components/reports/MemberReportPDF";
+import { pdf } from "@react-pdf/renderer";
+
+import MemberViewDashboard from "./MemberViewDashboard";
+
 import { RupeeIcon } from "../components/ui/Icons";
 import {
   FiLoader,
@@ -28,9 +36,9 @@ import {
   FiArrowLeft,
   FiPlus,
   FiEdit,
+  FiPrinter,
 } from "react-icons/fi";
 
-// --- Helper Components (Extracted) ---
 const DetailsSection = ({
   mode,
   formData,
@@ -53,7 +61,6 @@ const DetailsSection = ({
   </Card>
 );
 
-// --- DesktopActionButton (unchanged) ---
 const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "view") return null;
 
@@ -97,7 +104,6 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   );
 };
 
-// --- TabButton (unchanged) ---
 const TabButton = React.forwardRef(
   ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
     const isActive = activeTab === name;
@@ -120,7 +126,6 @@ const TabButton = React.forwardRef(
   }
 );
 
-// --- MobileContent (MODIFIED) ---
 const MobileContent = ({
   TABS,
   activeTab,
@@ -136,9 +141,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
-  onLogPaymentClick, // <-- ADD THIS
-  paymentDefaults, // <-- ADD THIS
-  setPaymentDefaults, // <-- ADD THIS
+  onLogPaymentClick,
+  paymentDefaults,
+  setPaymentDefaults,
 }) => {
   const tabRefs = useRef({});
 
@@ -214,7 +219,7 @@ const MobileContent = ({
           <MemberChitsManager
             mode={mode}
             memberId={createdMemberId}
-            onLogPaymentClick={onLogPaymentClick} // <-- Pass prop
+            onLogPaymentClick={onLogPaymentClick}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -237,8 +242,8 @@ const MobileContent = ({
           <PaymentHistoryList
             memberId={createdMemberId}
             mode={mode}
-            paymentDefaults={paymentDefaults} // <-- Pass prop
-            setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
+            paymentDefaults={paymentDefaults}
+            setPaymentDefaults={setPaymentDefaults}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -259,7 +264,6 @@ const MobileContent = ({
   );
 };
 
-// --- Main Page Component ---
 const MemberDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
@@ -280,8 +284,8 @@ const MemberDetailPage = () => {
   const [createdMemberId, setCreatedMemberId] = useState(null);
   const [createdMemberName, setCreatedMemberName] = useState(null);
 
-  // --- ADD THIS STATE ---
   const [paymentDefaults, setPaymentDefaults] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useScrollToTop(success || error);
 
@@ -323,11 +327,17 @@ const MemberDetailPage = () => {
     } else if (isEdit) {
       setMode("edit");
       fetchMember();
+      // Handle Initial Tab Navigation
+      if (location.state?.initialTab) {
+        setActiveTab(location.state.initialTab);
+        // Clear state to prevent stuck navigation
+        window.history.replaceState({}, document.title);
+      }
     } else {
       setMode("view");
       fetchMember();
     }
-  }, [id, location.pathname, token]);
+  }, [id, location.pathname, token, location.state]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -512,7 +522,6 @@ const MemberDetailPage = () => {
     });
   };
 
-  // --- MODIFIED THIS HANDLER ---
   const handleLogPaymentClick = (assignment) => {
     setPaymentDefaults({
       assignmentId: assignment.id,
@@ -520,6 +529,63 @@ const MemberDetailPage = () => {
       memberId: assignment.member.id,
     });
     setActiveTab("payments");
+  };
+
+  // --- FIX: Correct Data Passing for PDF Report ---
+  const handlePrint = async () => {
+    const targetId = mode === "create" ? createdMemberId : id;
+    if (!targetId) return;
+
+    setIsPrinting(true);
+    setError(null);
+
+    try {
+      const memberObj = {
+        id: targetId,
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+      };
+
+      const [assignmentsData, paymentsData] = await Promise.all([
+        getAssignmentsForMember(targetId, token),
+        getPaymentsByMemberId(targetId, token),
+      ]);
+
+      const reportProps = {
+        member: memberObj,
+        // --- FIX IS HERE: assignmentsData is the array, not an object containing it ---
+        assignments: assignmentsData,
+        payments: paymentsData.payments,
+      };
+
+      const reportName = `${memberObj.full_name} Report`;
+      const blob = await pdf(<MemberReportPDF {...reportProps} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${reportName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Print failed", err);
+      setError({
+        context: "page",
+        message: "Failed to generate member report.",
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // --- Handlers for Dashboard "Manage" buttons ---
+  const handleManageChits = () => {
+    navigate(`/members/edit/${id}`, { state: { initialTab: "chits" } });
+  };
+
+  const handleManagePayments = () => {
+    navigate(`/members/edit/${id}`, { state: { initialTab: "payments" } });
   };
 
   if (pageLoading) {
@@ -558,7 +624,36 @@ const MemberDetailPage = () => {
                 >
                   {getTitle()}
                 </h1>
+
+                {/* --- Header Actions (Edit, Print) --- */}
+                {/* Visible ONLY in View Mode */}
+                {mode === "view" && (
+                  <div className="absolute right-0 flex items-center gap-2">
+                    {/* Edit Button */}
+                    <button
+                      onClick={() => navigate(`/members/edit/${id}`)}
+                      className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
+                      title="Edit Member"
+                    >
+                      <FiEdit className="w-6 h-6" />
+                    </button>
+                    {/* Print Button */}
+                    <button
+                      onClick={handlePrint}
+                      disabled={isPrinting}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 disabled:opacity-50"
+                      title="Print Member Report"
+                    >
+                      {isPrinting ? (
+                        <FiLoader className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <FiPrinter className="w-6 h-6" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
+
               <hr className="my-4 border-border" />
               <div className="w-full max-w-2xl mx-auto">
                 {success && (
@@ -577,124 +672,140 @@ const MemberDetailPage = () => {
                 )}
               </div>
 
-              {/* --- Mobile View --- */}
-              <div className="md:hidden">
-                <MobileContent
-                  TABS={TABS}
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  mode={mode}
-                  createdMemberId={createdMemberId || id}
-                  formData={formData}
-                  onFormChange={handleFormChange}
-                  activeTabIndex={activeTabIndex}
-                  isDetailsFormValid={isDetailsFormValid}
-                  detailsLoading={detailsLoading}
-                  handleNext={handleNext}
-                  handleMiddle={handleMiddle}
-                  handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={isPostCreation}
-                  onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
-                  paymentDefaults={paymentDefaults} // <-- Pass prop
-                  setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
-                />
-              </div>
-
-              {/* --- MODIFIED DESKTOP VIEW --- */}
-              <div className="hidden md:block">
-                <form
-                  id="member-details-form-desktop"
-                  onSubmit={handleDetailsSubmit}
-                >
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1">
-                        <DetailsSection
-                          mode={mode}
-                          formData={formData}
-                          onFormChange={handleFormChange}
-                          onEnterKeyOnLastInput={handleDetailsSubmit}
-                          isPostCreation={isPostCreation}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "chits" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <MemberChitsManager
-                          mode={mode}
-                          memberId={createdMemberId || id}
-                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "payments" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <PaymentHistoryList
-                          memberId={createdMemberId || id}
-                          mode={mode}
-                          paymentDefaults={paymentDefaults} // <-- Pass prop
-                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <MemberChitsManager
-                          mode={mode}
-                          memberId={createdMemberId || id}
-                          onLogPaymentClick={handleLogPaymentClick} // <-- Pass prop
-                        />
-                        <PaymentHistoryList
-                          memberId={createdMemberId || id}
-                          mode={mode}
-                          paymentDefaults={paymentDefaults} // <-- Pass prop
-                          setPaymentDefaults={setPaymentDefaults} // <-- Pass prop
-                        />
-                      </div>
-                    )}
-
-                    {/* --- Desktop Tab Buttons --- */}
-                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                      <TabButton
-                        name="details"
-                        icon={<FiUser />}
-                        label="Details"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                      />
-                      <TabButton
-                        name="chits"
-                        icon={<FiBox />}
-                        label="Chits"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdMemberId}
-                      />
-                      <TabButton
-                        name="payments"
-                        icon={<RupeeIcon className="w-4 h-4" />}
-                        label="Payments"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdMemberId}
-                      />
-                    </div>
-
-                    {mode !== "view" && activeTab === "details" && (
-                      <div className="md:col-span-2">
-                        <DesktopActionButton
-                          mode={mode}
-                          loading={detailsLoading}
-                          isPostCreation={isPostCreation}
-                        />
-                      </div>
-                    )}
+              {/* --- DASHBOARD VIEW MODE --- */}
+              {mode === "view" ? (
+                <div className="max-w-7xl mx-auto">
+                  <MemberViewDashboard
+                    memberData={formData}
+                    memberId={id}
+                    onLogPaymentClick={handleLogPaymentClick}
+                    paymentDefaults={paymentDefaults}
+                    setPaymentDefaults={setPaymentDefaults}
+                    // --- Pass Manage Handlers ---
+                    onManageChits={handleManageChits}
+                    onManagePayments={handleManagePayments}
+                  />
+                </div>
+              ) : (
+                /* --- EDIT / CREATE MODE --- */
+                <>
+                  <div className="md:hidden">
+                    <MobileContent
+                      TABS={TABS}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                      mode={mode}
+                      createdMemberId={createdMemberId || id}
+                      formData={formData}
+                      onFormChange={handleFormChange}
+                      activeTabIndex={activeTabIndex}
+                      isDetailsFormValid={isDetailsFormValid}
+                      detailsLoading={detailsLoading}
+                      handleNext={handleNext}
+                      handleMiddle={handleMiddle}
+                      handleMobileFormSubmit={handleMobileFormSubmit}
+                      isPostCreation={isPostCreation}
+                      onLogPaymentClick={handleLogPaymentClick}
+                      paymentDefaults={paymentDefaults}
+                      setPaymentDefaults={setPaymentDefaults}
+                    />
                   </div>
-                </form>
-              </div>
+
+                  <div className="hidden md:block">
+                    <form
+                      id="member-details-form-desktop"
+                      onSubmit={handleDetailsSubmit}
+                    >
+                      <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
+                        {activeTab === "details" && (
+                          <div className="md:col-span-1">
+                            <DetailsSection
+                              mode={mode}
+                              formData={formData}
+                              onFormChange={handleFormChange}
+                              onEnterKeyOnLastInput={handleDetailsSubmit}
+                              isPostCreation={isPostCreation}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "chits" && (
+                          <div className="md:col-span-2 flex flex-col gap-8">
+                            <MemberChitsManager
+                              mode={mode}
+                              memberId={createdMemberId || id}
+                              onLogPaymentClick={handleLogPaymentClick}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "payments" && (
+                          <div className="md:col-span-2 flex flex-col gap-8">
+                            <PaymentHistoryList
+                              memberId={createdMemberId || id}
+                              mode={mode}
+                              paymentDefaults={paymentDefaults}
+                              setPaymentDefaults={setPaymentDefaults}
+                            />
+                          </div>
+                        )}
+
+                        {activeTab === "details" && (
+                          <div className="md:col-span-1 flex flex-col gap-8">
+                            <MemberChitsManager
+                              mode={mode}
+                              memberId={createdMemberId || id}
+                              onLogPaymentClick={handleLogPaymentClick}
+                            />
+                            <PaymentHistoryList
+                              memberId={createdMemberId || id}
+                              mode={mode}
+                              paymentDefaults={paymentDefaults}
+                              setPaymentDefaults={setPaymentDefaults}
+                            />
+                          </div>
+                        )}
+
+                        <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                          <TabButton
+                            name="details"
+                            icon={<FiUser />}
+                            label="Details"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                          />
+                          <TabButton
+                            name="chits"
+                            icon={<FiBox />}
+                            label="Chits"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            disabled={mode === "create" && !createdMemberId}
+                          />
+                          <TabButton
+                            name="payments"
+                            icon={<RupeeIcon className="w-4 h-4" />}
+                            label="Payments"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            disabled={mode === "create" && !createdMemberId}
+                          />
+                        </div>
+
+                        {mode !== "view" && activeTab === "details" && (
+                          <div className="md:col-span-2">
+                            <DesktopActionButton
+                              mode={mode}
+                              loading={detailsLoading}
+                              isPostCreation={isPostCreation}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+                </>
+              )}
             </div>
           </main>
           <Footer />

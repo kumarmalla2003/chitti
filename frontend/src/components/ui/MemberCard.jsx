@@ -1,10 +1,24 @@
 // frontend/src/components/ui/MemberCard.jsx
 
-import { FiEdit, FiTrash2, FiPhone, FiBox } from "react-icons/fi";
+import {
+  FiEdit,
+  FiTrash2,
+  FiPhone,
+  FiBox,
+  FiPrinter,
+  FiLoader,
+} from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 
-const MemberCard = ({ member, onView, onEdit, onDelete }) => {
+const MemberCard = ({
+  member,
+  onView,
+  onEdit,
+  onDelete,
+  onPrint,
+  isPrinting,
+}) => {
   const navigate = useNavigate();
 
   // This logic is correct and calculates the active count
@@ -35,7 +49,23 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
-          {/* --- "VIEW" BUTTON REMOVED --- */}
+          {/* --- ADDED: PRINT BUTTON --- */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrint(member);
+            }}
+            disabled={isPrinting}
+            className="p-2 rounded-full text-info-accent hover:bg-info-bg transition-colors duration-200 disabled:opacity-50"
+            title="Download PDF"
+          >
+            {isPrinting ? (
+              <FiLoader className="w-5 h-5 animate-spin" />
+            ) : (
+              <FiPrinter className="w-5 h-5" />
+            )}
+          </button>
+
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -46,6 +76,7 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
           >
             <FiEdit className="w-5 h-5" />
           </button>
+
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -62,7 +93,7 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
       {/* --- <hr> ADDED FOR CONSISTENCY --- */}
       <hr className="border-border mb-3" />
 
-      {/* --- MODIFIED: Bottom Row (Combined, styled as bottom row) --- */}
+      {/* --- Bottom Row --- */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
           <FiPhone className="w-4 h-4" />
@@ -73,7 +104,6 @@ const MemberCard = ({ member, onView, onEdit, onDelete }) => {
           <span>Active: {activeChitsCount}</span>
         </div>
       </div>
-      {/* --- END MODIFICATION --- */}
     </div>
   );
 };

@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAllMembers, deleteMember } from "../services/membersService";
+// --- 1. Added Service imports for Report Data ---
+import { getAssignmentsForMember } from "../services/assignmentsService";
+import { getPaymentsByMemberId } from "../services/paymentsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -22,7 +25,15 @@ import {
   FiEye,
   FiEdit,
   FiTrash2,
+  FiPrinter, // Added
+  FiGrid, // Added
+  FiList, // Added
 } from "react-icons/fi";
+
+// --- 2. IMPORTS FOR REPORTS ---
+import MembersListReportPDF from "../components/reports/MembersListReportPDF";
+import MemberReportPDF from "../components/reports/MemberReportPDF";
+import { pdf } from "@react-pdf/renderer";
 
 const MembersPage = () => {
   const navigate = useNavigate();
@@ -35,12 +46,31 @@ const MembersPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
+  // --- 3. View Mode State ---
+  const [viewMode, setViewMode] = useState(() =>
+    window.innerWidth < 768 ? "card" : "table"
+  );
+
+  // --- 4. Printing States ---
+  const [isPrintingAll, setIsPrintingAll] = useState(false);
+  const [printingMemberId, setPrintingMemberId] = useState(null);
+
   // State for delete confirmation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  // Auto-scroll to top when messages change
+
   useScrollToTop(success || error);
+
+  // Handle Resize for View Mode
+  useEffect(() => {
+    const handleResize = () => {
+      // Optional: Auto-switch view on resize if desired
+      // if (window.innerWidth < 768) setViewMode("card");
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [viewMode]);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -58,11 +88,9 @@ const MembersPage = () => {
     }
   }, [token]);
 
-  // Handle success message from navigation state
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
-      // Clear the state to prevent showing message on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -108,6 +136,69 @@ const MembersPage = () => {
     );
   }, [members, searchQuery]);
 
+  // --- 5. PRINT HANDLERS ---
+
+  const handlePrintAll = async () => {
+    if (filteredMembers.length === 0) return;
+
+    setIsPrintingAll(true);
+    try {
+      const blob = await pdf(
+        <MembersListReportPDF members={filteredMembers} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "All Members Report.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Print failed", err);
+      setError("Failed to generate report.");
+    } finally {
+      setIsPrintingAll(false);
+    }
+  };
+
+  const handlePrintMember = async (member) => {
+    setPrintingMemberId(member.id);
+    setError(null);
+
+    try {
+      // Fetch data specifically for this member
+      const [assignmentsData, paymentsData] = await Promise.all([
+        getAssignmentsForMember(member.id, token),
+        getPaymentsByMemberId(member.id, token),
+      ]);
+
+      const reportProps = {
+        member: member,
+        // --- FIX: assignmentsData IS the array, so we pass it directly ---
+        assignments: assignmentsData,
+        payments: paymentsData.payments,
+      };
+
+      const reportName = `${member.full_name} Report`;
+
+      const blob = await pdf(<MemberReportPDF {...reportProps} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${reportName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Single member print failed", err);
+      setError("Failed to generate report for this member.");
+    } finally {
+      setPrintingMemberId(null);
+    }
+  };
+
   const columns = [
     {
       header: "S.No",
@@ -131,6 +222,22 @@ const MembersPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
+          {/* --- 6. Added Print Button to Table --- */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrintMember(row);
+            }}
+            disabled={printingMemberId === row.id}
+            className="p-2 text-lg rounded-md text-info-accent hover:bg-info-accent hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50"
+            title="Download PDF"
+          >
+            {printingMemberId === row.id ? (
+              <FiLoader className="animate-spin" />
+            ) : (
+              <FiPrinter />
+            )}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -178,14 +285,31 @@ const MembersPage = () => {
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
             <div className="container mx-auto">
-              <div className="text-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+              {/* --- HEADER ROW WITH PRINT ALL --- */}
+              <div className="relative flex justify-center items-center mb-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
                   All Members
                 </h1>
+                {filteredMembers.length > 0 && (
+                  <div className="absolute right-0 flex items-center">
+                    <button
+                      onClick={handlePrintAll}
+                      disabled={isPrintingAll}
+                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 disabled:opacity-50"
+                      title="Print All Members"
+                    >
+                      {isPrintingAll ? (
+                        <FiLoader className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <FiPrinter className="w-6 h-6" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
+
               <hr className="my-4 border-border" />
 
-              {/* Success/Error Messages */}
               {success && <Message type="success">{success}</Message>}
               {error && (
                 <Message type="error" onClose={() => setError(null)}>
@@ -193,8 +317,9 @@ const MembersPage = () => {
                 </Message>
               )}
 
-              <div className="mb-6">
-                <div className="relative flex items-center">
+              {/* --- CONTROLS ROW: Search + View Toggle --- */}
+              <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
+                <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                     <FiSearch className="w-5 h-5 text-text-secondary" />
                   </span>
@@ -206,6 +331,28 @@ const MembersPage = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
                   />
+                </div>
+
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={() =>
+                      setViewMode((prev) =>
+                        prev === "table" ? "card" : "table"
+                      )
+                    }
+                    className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
+                    title={
+                      viewMode === "table"
+                        ? "Switch to Card View"
+                        : "Switch to Table View"
+                    }
+                  >
+                    {viewMode === "table" ? (
+                      <FiGrid className="w-5 h-5" />
+                    ) : (
+                      <FiList className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -230,27 +377,34 @@ const MembersPage = () => {
 
               {!loading && !error && filteredMembers.length > 0 && (
                 <>
-                  {/* Table View for Medium screens and up */}
-                  <div className="hidden md:block">
-                    <Table
-                      columns={columns}
-                      data={filteredMembers}
-                      onRowClick={(row) => navigate(`/members/view/${row.id}`)}
-                    />
-                  </div>
-
-                  {/* Card View for screens smaller than Medium */}
-                  <div className="block md:hidden space-y-4">
-                    {filteredMembers.map((member) => (
-                      <MemberCard
-                        key={member.id}
-                        member={member}
-                        onView={() => navigate(`/members/view/${member.id}`)}
-                        onEdit={() => navigate(`/members/edit/${member.id}`)}
-                        onDelete={() => handleDeleteClick(member)}
+                  {/* --- CONDITIONAL RENDERING BASED ON VIEW MODE --- */}
+                  {viewMode === "table" ? (
+                    <div className="overflow-x-auto rounded-lg shadow-sm">
+                      <Table
+                        columns={columns}
+                        data={filteredMembers}
+                        onRowClick={(row) =>
+                          navigate(`/members/view/${row.id}`)
+                        }
                       />
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    // Card View
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredMembers.map((member) => (
+                        <MemberCard
+                          key={member.id}
+                          member={member}
+                          onView={() => navigate(`/members/view/${member.id}`)}
+                          onEdit={() => navigate(`/members/edit/${member.id}`)}
+                          onDelete={() => handleDeleteClick(member)}
+                          // --- Pass Print Props ---
+                          onPrint={handlePrintMember}
+                          isPrinting={printingMemberId === member.id}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>

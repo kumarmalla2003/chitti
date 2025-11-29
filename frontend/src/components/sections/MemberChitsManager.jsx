@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-// import { useNavigate } from "react-router-dom"; // <-- REMOVED
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Table from "../ui/Table";
@@ -19,6 +18,7 @@ import {
   FiTrash2,
   FiArrowLeft,
   FiPlus,
+  FiEdit, // <-- Imported
 } from "react-icons/fi";
 import { RupeeIcon } from "../ui/Icons";
 import {
@@ -27,10 +27,14 @@ import {
   deleteAssignment,
 } from "../../services/assignmentsService";
 
-const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
-  // <-- Prop added
+const MemberChitsManager = ({
+  mode,
+  memberId,
+  onLogPaymentClick,
+  forceTable = false,
+  onManage, // <-- Prop
+}) => {
   const { token } = useSelector((state) => state.auth);
-  // const navigate = useNavigate(); // <-- REMOVED
 
   const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
@@ -202,7 +206,6 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
             className: "text-center",
             cell: (row) => (
               <div className="flex items-center justify-center space-x-2">
-                {/* --- MODIFIED THIS BUTTON --- */}
                 <button
                   type="button"
                   onClick={() => onLogPaymentClick(row)}
@@ -211,7 +214,6 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
                 >
                   <RupeeIcon className="w-5 h-5" />
                 </button>
-                {/* --- END OF MODIFICATION --- */}
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(row)}
@@ -263,7 +265,6 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
       );
     }
 
-    // Default 'list' view
     return (
       <>
         {mode !== "view" && (
@@ -308,23 +309,33 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
                 />
               </div>
             )}
-            <div className="hidden md:block">
+
+            <div
+              className={
+                forceTable
+                  ? "block overflow-x-auto"
+                  : "hidden md:block overflow-x-auto"
+              }
+            >
               <Table
                 columns={columns}
                 data={filteredAssignments}
                 variant="secondary"
               />
             </div>
-            <div className="block md:hidden space-y-4">
-              {filteredAssignments.map((assignment) => (
-                <AssignedChitCard
-                  key={assignment.id}
-                  assignment={assignment}
-                  onDelete={() => handleDeleteClick(assignment)}
-                  onLogPayment={onLogPaymentClick} // <-- Prop added
-                />
-              ))}
-            </div>
+
+            {!forceTable && (
+              <div className="block md:hidden space-y-4">
+                {filteredAssignments.map((assignment) => (
+                  <AssignedChitCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    onDelete={() => handleDeleteClick(assignment)}
+                    onLogPayment={onLogPaymentClick}
+                  />
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <p className="text-center text-text-secondary py-8">
@@ -358,6 +369,18 @@ const MemberChitsManager = ({ mode, memberId, onLogPaymentClick }) => {
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <FiBox /> {getHeaderTitle()}
         </h2>
+
+        {/* --- UPDATE: Changed Edit to Assign (Plus) Icon --- */}
+        {mode === "view" && view === "list" && onManage && (
+          <button
+            onClick={onManage}
+            className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
+            title="Assign Chit"
+          >
+            <FiPlus className="w-5 h-5" />
+          </button>
+        )}
+        {/* --- END UPDATE --- */}
       </div>
       <hr className="border-border mb-4" />
 
