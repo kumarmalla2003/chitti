@@ -2,13 +2,12 @@
 
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiInfo, FiPhone, FiEdit } from "react-icons/fi";
+import { Info, Phone, SquarePen } from "lucide-react";
 import Card from "../components/ui/Card";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
-import PaymentHistoryList from "../components/sections/PaymentHistoryList";
+import CollectionHistoryList from "../components/sections/CollectionHistoryList";
+import PayoutHistoryList from "../components/sections/PayoutHistoryList";
 
-// --- MODIFIED: Horizontal Layout for MetricCard (Reduced Size) ---
-// --- FINAL MODIFIED: Horizontal Layout for MetricCard ---
 const MetricCard = ({ label, value, icon: Icon }) => (
   <div className="bg-background-secondary/50 p-4 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors h-full">
     <div className="flex items-center gap-1.5 mb-2 text-text-secondary">
@@ -31,16 +30,16 @@ const MemberViewDashboard = ({
   onManagePayments,
 }) => {
   const navigate = useNavigate();
-  const paymentsRef = useRef(null);
+  const collectionsRef = useRef(null);
 
   const handleEditDetails = () => {
     navigate(`/members/edit/${memberId}`);
   };
 
-  const handleLogPayment = (assignment) => {
+  const handleLogCollection = (assignment) => {
     onLogPaymentClick(assignment);
-    if (paymentsRef.current) {
-      paymentsRef.current.scrollIntoView({
+    if (collectionsRef.current) {
+      collectionsRef.current.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
@@ -54,14 +53,14 @@ const MemberViewDashboard = ({
         <Card>
           <div className="relative flex justify-center items-center mb-4">
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <FiInfo /> Details
+              <Info className="w-6 h-6" /> Details
             </h2>
             <button
               onClick={handleEditDetails}
               className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
               title="Edit Details"
             >
-              <FiEdit className="w-5 h-5" />
+              <SquarePen className="w-5 h-5" />
             </button>
           </div>
 
@@ -73,7 +72,7 @@ const MemberViewDashboard = ({
               <MetricCard
                 label="Phone Number"
                 value={memberData.phone_number}
-                icon={FiPhone}
+                icon={Phone}
               />
             </div>
           </div>
@@ -85,22 +84,27 @@ const MemberViewDashboard = ({
         <MemberChitsManager
           memberId={memberId}
           mode="view"
-          onLogPaymentClick={handleLogPayment}
+          onLogPaymentClick={handleLogCollection}
           forceTable={true}
           onManage={onManageChits}
         />
       </div>
 
-      {/* --- Row 3: Payments (Component renders its own Card) --- */}
-      <div ref={paymentsRef} className="grid grid-cols-1">
-        <PaymentHistoryList
+      {/* --- Row 3: Collections Made --- */}
+      <div ref={collectionsRef} className="grid grid-cols-1">
+        <CollectionHistoryList
           memberId={memberId}
           mode="view"
-          paymentDefaults={paymentDefaults}
-          setPaymentDefaults={setPaymentDefaults}
+          collectionDefaults={paymentDefaults}
+          setCollectionDefaults={setPaymentDefaults}
           forceTable={true}
           onManage={onManagePayments}
         />
+      </div>
+
+      {/* --- Row 4: Payouts Received --- */}
+      <div className="grid grid-cols-1">
+        <PayoutHistoryList memberId={memberId} mode="view" forceTable={true} />
       </div>
     </div>
   );

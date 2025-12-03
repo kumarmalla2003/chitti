@@ -60,7 +60,6 @@ export const updateMember = async (memberId, memberData, token) => {
   return response.json();
 };
 
-// --- ADD THIS NEW FUNCTION ---
 export const patchMember = async (memberId, memberData, token) => {
   const response = await fetch(`${API_URL}/${memberId}`, {
     method: "PATCH",
@@ -117,6 +116,5 @@ export const deleteMember = async (memberId, token) => {
     }
     throw new Error("Failed to delete member.");
   }
-  // No content is returned on successful deletion (204)
   return;
 };

@@ -1,11 +1,12 @@
 # backend/app/models/members.py
 
-from typing import Optional, List, TYPE_CHECKING # <-- Modified
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 
-if TYPE_CHECKING: # <-- ADDED
+if TYPE_CHECKING:
     from app.models.assignments import ChitAssignment
-    from app.models.payments import Payment # <-- ADDED
+    from app.models.collections import Collection
+    from app.models.payouts import Payout
 
 class Member(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -13,6 +14,5 @@ class Member(SQLModel, table=True):
     phone_number: str = Field(unique=True, index=True, max_length=15)
 
     assignments: List["ChitAssignment"] = Relationship(back_populates="member")
-    
-    # --- ADD THIS RELATIONSHIP ---
-    payments: List["Payment"] = Relationship(back_populates="member")
+    collections: List["Collection"] = Relationship(back_populates="member")
+    payouts: List["Payout"] = Relationship(back_populates="member")

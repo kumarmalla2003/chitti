@@ -1,9 +1,8 @@
-// frontend/src/components/ui/PaymentHistoryCard.jsx
+// frontend/src/components/ui/CollectionHistoryCard.jsx
 
-import { FiCalendar } from "react-icons/fi";
-import { RupeeIcon } from "./Icons";
+import { Calendar, IndianRupee } from "lucide-react";
 
-const PaymentHistoryCard = ({ payment, viewType, onClick }) => {
+const CollectionHistoryCard = ({ collection, viewType, onClick }) => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -15,7 +14,7 @@ const PaymentHistoryCard = ({ payment, viewType, onClick }) => {
   // If we are on a Chit's page (viewType 'chit'), show the Member's name.
   // If we are on a Member's page (viewType 'member'), show the Chit's name.
   const title =
-    viewType === "chit" ? payment.member.full_name : payment.chit.name; // <-- MODIFIED
+    viewType === "chit" ? collection.member.full_name : collection.chit.name; // <-- MODIFIED
 
   return (
     <div
@@ -36,16 +35,16 @@ const PaymentHistoryCard = ({ payment, viewType, onClick }) => {
       {/* Bottom Row: Stats (Amount & Date) */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
-          <RupeeIcon className="w-4 h-4" />
-          <span>{payment.amount_paid.toLocaleString("en-IN")}/-</span>
+          <IndianRupee className="w-4 h-4" />
+          <span>{collection.amount_paid.toLocaleString("en-IN")}/-</span>
         </div>
         <div className="flex items-center gap-2">
-          <FiCalendar className="w-4 h-4" />
-          <span>{formatDate(payment.payment_date)}</span>
+          <Calendar className="w-4 h-4" />
+          <span>{formatDate(collection.collection_date)}</span>
         </div>
       </div>
     </div>
   );
 };
 
-export default PaymentHistoryCard;
+export default CollectionHistoryCard;

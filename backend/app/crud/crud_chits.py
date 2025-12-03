@@ -2,18 +2,15 @@
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.chits import Chit, Payout
+from app.models.chits import Chit
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from app.schemas.chits import ChitResponse, PayoutCreate, PayoutUpdate
+from app.schemas.chits import ChitResponse
 
 async def get_chit_by_id(session: AsyncSession, chit_id: int) -> Chit | None:
-    """Gets a single chit by its ID."""
-    chit = await session.get(Chit, chit_id)
-    return chit
+    return await session.get(Chit, chit_id)
 
 async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> ChitResponse | None:
-    """Gets a chit and constructs the full response model with dynamic fields."""
     db_chit = await session.get(Chit, chit_id)
     if not db_chit:
         return None
@@ -44,66 +41,5 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
     )
 
 async def delete_chit_by_id(session: AsyncSession, db_chit: Chit):
-    """Deletes a chit from the database."""
     await session.delete(db_chit)
-    await session.commit()
-
-# --- Payout CRUD Functions ---
-
-async def create_payouts_for_chit(session: AsyncSession, chit_id: int, duration_months: int):
-    """Creates initial payout entries for a new chit."""
-    payouts = [
-        Payout(chit_id=chit_id, month=month, payout_amount=0.0)
-        for month in range(1, duration_months + 1)
-    ]
-    session.add_all(payouts)
-    await session.commit()
-
-async def get_payouts_by_chit_id(session: AsyncSession, chit_id: int) -> list[Payout]:
-    """Retrieves all payouts for a specific chit."""
-    result = await session.execute(
-        select(Payout).where(Payout.chit_id == chit_id).order_by(Payout.month)
-    )
-    return result.scalars().all()
-
-async def update_payout(session: AsyncSession, payout_id: int, payout_data: PayoutUpdate) -> Payout | None:
-    """Updates a payout amount."""
-    db_payout = await session.get(Payout, payout_id)
-    if db_payout:
-        db_payout.payout_amount = payout_data.payout_amount
-        session.add(db_payout)
-        await session.commit()
-        await session.refresh(db_payout)
-    return db_payout
-
-# --- NEW FUNCTION FOR SYNCING ---
-async def sync_payouts(session: AsyncSession, chit_id: int, new_duration: int):
-    """
-    Synchronizes the Payout table rows to match the Chit's duration_months.
-    Adds rows if duration increased, deletes from end if decreased.
-    """
-    # 1. Get current payouts
-    result = await session.execute(
-        select(Payout).where(Payout.chit_id == chit_id).order_by(Payout.month)
-    )
-    current_payouts = result.scalars().all()
-    current_count = len(current_payouts)
-
-    if new_duration == current_count:
-        return
-
-    if new_duration > current_count:
-        # Add missing months
-        new_payouts = [
-            Payout(chit_id=chit_id, month=m, payout_amount=0.0)
-            for m in range(current_count + 1, new_duration + 1)
-        ]
-        session.add_all(new_payouts)
-    
-    elif new_duration < current_count:
-        # Remove extra months from the end
-        payouts_to_delete = current_payouts[new_duration:]
-        for p in payouts_to_delete:
-            await session.delete(p)
-            
     await session.commit()

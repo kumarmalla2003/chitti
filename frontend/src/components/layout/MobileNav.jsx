@@ -4,9 +4,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
-import { FiArrowLeft, FiLogIn, FiLogOut } from "react-icons/fi";
+import { ArrowLeft, LogIn, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { RupeeIcon } from "../ui/Icons";
 
 const MobileNav = ({
   isOpen,
@@ -41,7 +40,6 @@ const MobileNav = ({
       return location.pathname === "/";
     }
     if (path === "/chits") {
-      // <-- ADDED
       return location.pathname.startsWith("/chits");
     }
     if (path === "/members") {
@@ -50,8 +48,12 @@ const MobileNav = ({
         location.pathname.startsWith("/assignments")
       );
     }
-    if (path === "/payments") {
-      return location.pathname.startsWith("/payments");
+    if (path === "/collections") {
+      return location.pathname.startsWith("/collections");
+    }
+    if (path === "/payouts") {
+      // <-- ADDED
+      return location.pathname.startsWith("/payouts");
     }
     return location.pathname.startsWith(path);
   };
@@ -67,9 +69,10 @@ const MobileNav = ({
   const loggedInNavLinks = [
     { href: "/", text: "Home" },
     { href: "/dashboard", text: "Dashboard" },
-    { href: "/chits", text: "Chits" }, // <-- RENAMED
+    { href: "/chits", text: "Chits" },
     { href: "/members", text: "Members" },
-    { href: "/payments", text: "Payments" },
+    { href: "/collections", text: "Collections" },
+    { href: "/payouts", text: "Payouts" }, // <-- ADDED
   ];
 
   const BrandLogo = () => {
@@ -114,7 +117,7 @@ const MobileNav = ({
               className="absolute left-0 text-text-primary"
               aria-label="Close menu"
             >
-              <FiArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-6 h-6" />
             </button>
             <BrandLogo />
             {isLoggedIn ? (
@@ -123,7 +126,7 @@ const MobileNav = ({
                 className="absolute right-0 p-1 text-error-accent"
                 aria-label="Log Out"
               >
-                <FiLogOut className="w-6 h-6" />
+                <LogOut className="w-6 h-6" />
               </button>
             ) : (
               <button
@@ -131,7 +134,7 @@ const MobileNav = ({
                 className="absolute right-0 p-1 text-accent"
                 aria-label="Log In"
               >
-                <FiLogIn className="w-6 h-6" />
+                <LogIn className="w-6 h-6" />
               </button>
             )}
           </div>

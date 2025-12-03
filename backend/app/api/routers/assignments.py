@@ -1,4 +1,4 @@
-# app/api/routers/assignments.py
+# backend/app/api/routers/assignments.py
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
 from app.crud import crud_assignments, crud_chits, crud_members
-from app.crud import crud_payments
+from app.crud import crud_collections
 from app.schemas import assignments as assignments_schemas
 from app.schemas.members import MemberPublic
 
@@ -33,30 +33,24 @@ async def create_assignment(
     if not chit_with_details or not member:
         raise HTTPException(status_code=500, detail="Could not retrieve created assignment details after creation.")
 
-    # 3. Construct the Pydantic models for the response
     member_public = MemberPublic.model_validate(member)
 
-    # For a new assignment, payment status is always "Unpaid"
-    # and due_amount is the full monthly_installment.
-    
+    # For a new assignment, collection status is always "Unpaid"
     total_paid = 0.0
     due_amount = chit_with_details.monthly_installment
-    payment_status = "Unpaid"
+    collection_status = "Unpaid"
 
-    # 4. Assemble and return the final, valid response object
     return assignments_schemas.ChitAssignmentPublic(
         id=new_assignment.id,
         chit_month=new_assignment.chit_month,
         member=member_public,
         chit=chit_with_details,
-        
         total_paid=total_paid,
         due_amount=due_amount,
-        payment_status=payment_status
+        collection_status=collection_status
     )
 
 
-# --- ADD NEW BULK ASSIGNMENT ENDPOINT ---
 @router.post("/chit/{chit_id}/bulk-assign", status_code=status.HTTP_201_CREATED)
 async def create_bulk_assignments(
     chit_id: int,
@@ -67,15 +61,10 @@ async def create_bulk_assignments(
     """
     Assigns multiple members to multiple months for a single chit in one transaction.
     """
-    # 1. Check if the chit exists
     db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     
-    # 2. (Optional) Add more validation here, e.g., check if months are already assigned
-    # For now, we trust the frontend will only send valid, unassigned months.
-
-    # 3. Create assignments in bulk
     try:
         await crud_assignments.create_bulk_assignments(
             session=session,
@@ -83,7 +72,6 @@ async def create_bulk_assignments(
             assignments_in=bulk_data.assignments
         )
     except Exception as e:
-        # Catch potential IntegrityErrors or other DB issues
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -116,16 +104,16 @@ async def unassign_member(
     Deletes a specific chit assignment (unassigns a member).
     """
     
-    # Check if any payments are associated with this assignment
-    payments = await crud_payments.get_payments_for_assignment(
+    # Check if any collections are associated with this assignment
+    # --- FIXED CALL HERE ---
+    collections = await crud_collections.collections.get_by_assignment(
         session, 
         assignment_id=assignment_id
     )
-    if payments:
+    if collections:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            # --- THIS IS THE UPDATED MESSAGE ---
-            detail="Cannot unassign member: Payments have already been logged for this assignment."
+            detail="Cannot unassign member: Collections have already been logged for this assignment."
         )
 
     success = await crud_assignments.delete_assignment(session, assignment_id=assignment_id)

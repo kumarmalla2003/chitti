@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
-import { FiUser, FiPhone } from "react-icons/fi";
+import { User, Phone } from "lucide-react";
 import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import the hook
 
 const MemberDetailsForm = ({
@@ -54,7 +54,7 @@ const MemberDetailsForm = ({
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <FiUser className="w-5 h-5 text-text-secondary" />
+              <User className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
@@ -78,7 +78,7 @@ const MemberDetailsForm = ({
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <FiPhone className="w-5 h-5 text-text-secondary" />
+              <Phone className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input

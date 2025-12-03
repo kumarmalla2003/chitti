@@ -3,20 +3,21 @@
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiInfo,
-  FiUsers,
-  FiClock,
-  FiCalendar,
-  FiArrowDownLeft,
-  FiArrowUpRight,
-  FiPieChart,
-  FiEdit,
-} from "react-icons/fi";
-import { RupeeIcon } from "../components/ui/Icons";
+  Info,
+  Users,
+  Clock,
+  Calendar,
+  ArrowDownLeft,
+  ArrowUpRight,
+  PieChart,
+  SquarePen,
+} from "lucide-react";
+import { IndianRupee } from "lucide-react";
 import Card from "../components/ui/Card";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
-import PaymentHistoryList from "../components/sections/PaymentHistoryList";
+import CollectionHistoryList from "../components/sections/CollectionHistoryList";
+import PayoutHistoryList from "../components/sections/PayoutHistoryList";
 
 const formatCurrency = (val) => {
   if (!val) return "0";
@@ -65,7 +66,7 @@ const MetricCard = ({ label, value, icon: Icon }) => (
       </span>
     </div>
     <div className="flex items-center text-text-primary font-bold text-lg">
-      <RupeeIcon className="w-4 h-4 mr-1" />
+      <IndianRupee className="w-4 h-4 mr-1" />
       {value}
     </div>
   </div>
@@ -78,13 +79,13 @@ const ChitViewDashboard = ({
   paymentDefaults,
   setPaymentDefaults,
 }) => {
-  const paymentsRef = useRef(null);
+  const collectionsRef = useRef(null);
   const navigate = useNavigate();
 
-  const handleLogPayment = (assignment) => {
+  const handleLogCollection = (assignment) => {
     onLogPaymentClick(assignment);
-    if (paymentsRef.current) {
-      paymentsRef.current.scrollIntoView({
+    if (collectionsRef.current) {
+      collectionsRef.current.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
@@ -97,7 +98,7 @@ const ChitViewDashboard = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* --- Row 1: Details & Payouts Grid --- */}
+      {/* --- Row 1: Details & Payouts Schedule Grid --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Details */}
         <div className="lg:col-span-1 flex flex-col gap-6">
@@ -105,14 +106,14 @@ const ChitViewDashboard = ({
             {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
             <div className="relative flex justify-center items-center mb-2">
               <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                <FiInfo /> Details
+                <Info className="w-6 h-6" /> Details
               </h2>
               <button
                 onClick={handleEditDetails}
                 className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
                 title="Edit Details"
               >
-                <FiEdit className="w-5 h-5" />
+                <SquarePen className="w-5 h-5" />
               </button>
             </div>
 
@@ -124,46 +125,44 @@ const ChitViewDashboard = ({
                 <MetricCard
                   label="Chit Value"
                   value={formatCurrency(chitData.chit_value)}
-                  icon={RupeeIcon}
+                  icon={IndianRupee}
                 />
                 <MetricCard
                   label="Installment"
                   value={formatCurrency(chitData.monthly_installment)}
-                  icon={FiPieChart}
+                  icon={PieChart}
                 />
               </div>
-
-              {/* --- REMOVED: Horizontal Line Here (per request) --- */}
 
               {/* --- List View for Other Details --- */}
               <div className="flex-grow">
                 <DetailRow
-                  icon={FiUsers}
+                  icon={Users}
                   label="Group Size"
                   value={`${chitData.size} Members`}
                 />
                 <DetailRow
-                  icon={FiClock}
+                  icon={Clock}
                   label="Duration"
                   value={`${chitData.duration_months} Months`}
                 />
                 <DetailRow
-                  icon={FiCalendar}
+                  icon={Calendar}
                   label="Start Date"
                   value={formatDateShort(chitData.start_date)}
                 />
                 <DetailRow
-                  icon={FiCalendar}
+                  icon={Calendar}
                   label="End Date"
                   value={formatDateShort(chitData.end_date)}
                 />
                 <DetailRow
-                  icon={FiArrowDownLeft}
+                  icon={ArrowDownLeft}
                   label="Collection Day"
                   value={`Day ${chitData.collection_day}`}
                 />
                 <DetailRow
-                  icon={FiArrowUpRight}
+                  icon={ArrowUpRight}
                   label="Payout Day"
                   value={`Day ${chitData.payout_day}`}
                 />
@@ -172,35 +171,41 @@ const ChitViewDashboard = ({
           </Card>
         </div>
 
-        {/* Right Column: Payouts */}
+        {/* Right Column: Payout Schedule (Target per month) */}
         <div className="lg:col-span-2">
           <Card className="h-full">
+            {/* This PayoutsSection manages the schedule/plan */}
             <PayoutsSection chitId={chitId} mode="view" showTitle={true} />
           </Card>
         </div>
       </div>
 
-      {/* --- Row 2: Members (Forced Table) --- */}
+      {/* --- Row 2: Members --- */}
       <div className="grid grid-cols-1">
         <Card>
           <ChitMembersManager
             chitId={chitId}
             mode="view"
-            onLogPaymentClick={handleLogPayment}
+            onLogPaymentClick={handleLogCollection}
             forceTable={true}
           />
         </Card>
       </div>
 
-      {/* --- Row 3: Payments (Forced Table) --- */}
-      <div ref={paymentsRef} className="grid grid-cols-1">
-        <PaymentHistoryList
+      {/* --- Row 3: Collections (Formerly Payments) --- */}
+      <div ref={collectionsRef} className="grid grid-cols-1">
+        <CollectionHistoryList
           chitId={chitId}
           mode="view"
-          paymentDefaults={paymentDefaults}
-          setPaymentDefaults={setPaymentDefaults}
+          collectionDefaults={paymentDefaults}
+          setCollectionDefaults={setPaymentDefaults}
           forceTable={true}
         />
+      </div>
+
+      {/* --- Row 4: Payout Transactions (NEW) --- */}
+      <div className="grid grid-cols-1">
+        <PayoutHistoryList chitId={chitId} mode="view" forceTable={true} />
       </div>
     </div>
   );

@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/ui/ChitCard";
-import { getAllChits, deleteChit, getPayouts } from "../services/chitsService";
+import { getAllChits, deleteChit } from "../services/chitsService";
+import { getPayoutsByChitId } from "../services/payoutsService";
 import { getAssignmentsForChit } from "../services/assignmentsService";
-import { getPaymentsByChitId } from "../services/paymentsService";
+import { getCollectionsByChitId } from "../services/collectionsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -19,15 +20,15 @@ import Table from "../components/ui/Table";
 import StatusBadge from "../components/ui/StatusBadge";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
-  FiPlus,
-  FiLoader,
-  FiEdit,
-  FiSearch,
-  FiTrash2,
-  FiGrid,
-  FiList,
-  FiPrinter,
-} from "react-icons/fi";
+  Plus,
+  Loader2,
+  SquarePen,
+  Search,
+  Trash2,
+  LayoutGrid,
+  List,
+  Printer,
+} from "lucide-react";
 
 import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
 import ChitReportPDF from "../components/reports/ChitReportPDF";
@@ -58,9 +59,7 @@ const ChitsPage = () => {
   useScrollToTop(success || error);
 
   useEffect(() => {
-    const handleResize = () => {
-      // Logic to handle resizing if needed
-    };
+    const handleResize = () => {};
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode]);
@@ -160,17 +159,19 @@ const ChitsPage = () => {
     setError(null);
 
     try {
-      const [payoutsData, assignmentsData, paymentsData] = await Promise.all([
-        getPayouts(chit.id, token),
-        getAssignmentsForChit(chit.id, token),
-        getPaymentsByChitId(chit.id, token),
-      ]);
+      const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
+        [
+          getPayoutsByChitId(chit.id, token),
+          getAssignmentsForChit(chit.id, token),
+          getCollectionsByChitId(chit.id, token),
+        ]
+      );
 
       const reportProps = {
         chit: chit,
         payouts: payoutsData.payouts,
         assignments: assignmentsData.assignments,
-        payments: paymentsData.payments,
+        collections: collectionsData.collections,
       };
 
       let reportName = chit.name;
@@ -243,12 +244,11 @@ const ChitsPage = () => {
             title="Download PDF"
           >
             {printingChitId === row.id ? (
-              <FiLoader className="animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <FiPrinter />
+              <Printer className="w-5 h-5" />
             )}
           </button>
-          {/* View Button Removed */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -257,7 +257,7 @@ const ChitsPage = () => {
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit Chit"
           >
-            <FiEdit />
+            <SquarePen className="w-5 h-5" />
           </button>
           <button
             onClick={(e) => {
@@ -267,7 +267,7 @@ const ChitsPage = () => {
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Delete Chit"
           >
-            <FiTrash2 />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       ),
@@ -297,9 +297,9 @@ const ChitsPage = () => {
                       title="Print All Chits"
                     >
                       {isPrintingAll ? (
-                        <FiLoader className="w-6 h-6 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
-                        <FiPrinter className="w-6 h-6" />
+                        <Printer className="w-6 h-6" />
                       )}
                     </button>
                   </div>
@@ -319,7 +319,7 @@ const ChitsPage = () => {
               <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
                 <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiSearch className="w-5 h-5 text-text-secondary" />
+                    <Search className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
@@ -346,9 +346,9 @@ const ChitsPage = () => {
                     }
                   >
                     {viewMode === "table" ? (
-                      <FiGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-5 h-5" />
                     ) : (
-                      <FiList className="w-5 h-5" />
+                      <List className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -356,7 +356,7 @@ const ChitsPage = () => {
 
               {loading && (
                 <div className="flex justify-center items-center h-64">
-                  <FiLoader className="w-10 h-10 animate-spin text-accent" />
+                  <Loader2 className="w-10 h-10 animate-spin text-accent" />
                 </div>
               )}
 
@@ -385,7 +385,7 @@ const ChitsPage = () => {
                       />
                     </div>
                   ) : (
-                    // Card View (Grid on desktop, Stack on mobile)
+                    // Card View
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredChits.map((chit) => (
                         <ChitCard
@@ -415,7 +415,7 @@ const ChitsPage = () => {
       <BottomNav />
       <Link to="/chits/create" className="chit">
         <Button variant="fab" className="chit-hover:scale-110">
-          <FiPlus className="w-6 h-6" />
+          <Plus className="w-6 h-6" />
         </Button>
       </Link>
       <ConfirmationModal

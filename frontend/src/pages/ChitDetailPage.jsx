@@ -14,32 +14,28 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
-import PaymentHistoryList from "../components/sections/PaymentHistoryList";
+import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
 import ChitViewDashboard from "./ChitViewDashboard";
-import { RupeeIcon } from "../components/ui/Icons";
 import StepperButtons from "../components/ui/StepperButtons";
 import Message from "../components/ui/Message";
 import {
-  FiInfo,
-  FiUsers,
-  FiLoader,
-  FiArrowLeft,
-  FiPlus,
-  FiEdit,
-  FiTrendingUp,
-  FiPrinter,
-} from "react-icons/fi";
-import {
-  createChit,
-  getChitById,
-  patchChit,
-  getPayouts,
-} from "../services/chitsService";
+  Info,
+  Users,
+  Loader2,
+  ArrowLeft,
+  Plus,
+  SquarePen,
+  Printer,
+  WalletMinimal,
+  TrendingUp,
+} from "lucide-react";
+import { createChit, getChitById, patchChit } from "../services/chitsService";
+import { getPayoutsByChitId } from "../services/payoutsService";
 import { getAssignmentsForChit } from "../services/assignmentsService";
-import { getPaymentsByChitId } from "../services/paymentsService";
+import { getCollectionsByChitId } from "../services/collectionsService";
 
-// --- Helper Functions (unchanged) ---
+// --- Helper Functions ---
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
 const toYearMonth = (dateString) => {
   if (!dateString) return "";
@@ -72,7 +68,7 @@ const calculateDuration = (startYearMonth, endYearMonth) => {
   return totalMonths > 0 ? totalMonths.toString() : "";
 };
 
-// --- Helper Components (unchanged) ---
+// --- Helper Components ---
 const DetailsSectionComponent = ({
   mode,
   formData,
@@ -82,7 +78,7 @@ const DetailsSectionComponent = ({
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <FiInfo /> Details
+      <Info className="w-6 h-6" /> Details
     </h2>
     <hr className="border-border mb-4" />
     <ChitDetailsForm
@@ -101,12 +97,12 @@ const PayoutsSectionComponent = ({ mode, chitId }) => (
   </Card>
 );
 
-const MembersSectionComponent = ({ mode, chitId, onLogPaymentClick }) => (
+const MembersSectionComponent = ({ mode, chitId, onLogCollectionClick }) => (
   <Card className="flex-1 flex flex-col">
     <ChitMembersManager
       mode={mode}
       chitId={chitId}
-      onLogPaymentClick={onLogPaymentClick}
+      onLogCollectionClick={onLogCollectionClick}
     />
   </Card>
 );
@@ -118,16 +114,16 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "create") {
     if (isPostCreation) {
       buttonText = "Update Chit";
-      Icon = FiEdit;
+      Icon = SquarePen;
       buttonVariant = "warning";
     } else {
       buttonText = "Create Chit";
-      Icon = FiPlus;
+      Icon = Plus;
       buttonVariant = "success";
     }
   } else {
     buttonText = "Update Chit";
-    Icon = FiEdit;
+    Icon = SquarePen;
     buttonVariant = "warning";
   }
 
@@ -141,10 +137,10 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
         className="w-full md:w-auto"
       >
         {loading ? (
-          <FiLoader className="animate-spin mx-auto" />
+          <Loader2 className="animate-spin mx-auto w-5 h-5" />
         ) : (
           <>
-            <Icon className="inline-block mr-2" />
+            <Icon className="inline-block mr-2 w-5 h-5" />
             {buttonText}
           </>
         )}
@@ -154,7 +150,7 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
 };
 
 const TabButton = React.forwardRef(
-  ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
+  ({ name, icon: Icon, label, activeTab, setActiveTab, disabled }, ref) => {
     const isActive = activeTab === name;
     return (
       <button
@@ -168,7 +164,7 @@ const TabButton = React.forwardRef(
             : "text-text-secondary hover:bg-background-tertiary"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        {icon}
+        <Icon className="w-4 h-4" />
         <span>{label}</span>
       </button>
     );
@@ -190,9 +186,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
-  onLogPaymentClick,
-  paymentDefaults,
-  setPaymentDefaults,
+  onLogCollectionClick,
+  collectionDefaults,
+  setCollectionDefaults,
 }) => {
   const tabRefs = useRef({});
 
@@ -213,7 +209,7 @@ const MobileContent = ({
         <TabButton
           ref={(el) => (tabRefs.current["details"] = el)}
           name="details"
-          icon={<FiInfo />}
+          icon={Info}
           label="Details"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -221,7 +217,7 @@ const MobileContent = ({
         <TabButton
           ref={(el) => (tabRefs.current["payouts"] = el)}
           name="payouts"
-          icon={<FiTrendingUp />}
+          icon={TrendingUp}
           label="Payouts"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -230,17 +226,17 @@ const MobileContent = ({
         <TabButton
           ref={(el) => (tabRefs.current["members"] = el)}
           name="members"
-          icon={<FiUsers />}
+          icon={Users}
           label="Members"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           disabled={mode === "create" && !chitId}
         />
         <TabButton
-          ref={(el) => (tabRefs.current["payments"] = el)}
-          name="payments"
-          icon={<RupeeIcon className="w-4 h-4" />}
-          label="Payments"
+          ref={(el) => (tabRefs.current["collections"] = el)}
+          name="collections"
+          icon={WalletMinimal}
+          label="Collections"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           disabled={mode === "create" && !chitId}
@@ -296,7 +292,7 @@ const MobileContent = ({
           <MembersSectionComponent
             mode={mode}
             chitId={chitId}
-            onLogPaymentClick={onLogPaymentClick}
+            onLogCollectionClick={onLogCollectionClick}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -314,13 +310,13 @@ const MobileContent = ({
         </>
       )}
 
-      {activeTab === "payments" && (
+      {activeTab === "collections" && (
         <>
-          <PaymentHistoryList
+          <CollectionHistoryList
             chitId={chitId}
             mode={mode}
-            paymentDefaults={paymentDefaults}
-            setPaymentDefaults={setPaymentDefaults}
+            collectionDefaults={collectionDefaults}
+            setCollectionDefaults={setCollectionDefaults}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -370,14 +366,14 @@ const ChitDetailPage = () => {
   const [createdChitId, setCreatedChitId] = useState(null);
   const [createdChitName, setCreatedChitName] = useState(null);
 
-  const [paymentDefaults, setPaymentDefaults] = useState(null);
+  const [collectionDefaults, setCollectionDefaults] = useState(null);
 
   // --- REPORT STATE ---
   const [isReportLoading, setIsReportLoading] = useState(false);
 
   useScrollToTop(success || error);
 
-  const TABS = ["details", "payouts", "members", "payments"];
+  const TABS = ["details", "payouts", "members", "collections"];
   const activeTabIndex = TABS.indexOf(activeTab);
 
   const isDetailsFormValid = useMemo(
@@ -695,14 +691,14 @@ const ChitDetailPage = () => {
     }
   };
 
-  const handleLogPaymentClick = (assignment) => {
-    setPaymentDefaults({
+  const handleLogCollectionClick = (assignment) => {
+    setCollectionDefaults({
       assignmentId: assignment.id,
       chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
     if (mode !== "view") {
-      setActiveTab("payments");
+      setActiveTab("collections");
     }
   };
 
@@ -714,45 +710,40 @@ const ChitDetailPage = () => {
     setError(null);
 
     try {
-      // 1. Fetch all necessary data
-      const [payoutsData, assignmentsData, paymentsData] = await Promise.all([
-        getPayouts(id, token),
-        getAssignmentsForChit(id, token),
-        getPaymentsByChitId(id, token),
-      ]);
+      const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
+        [
+          getPayoutsByChitId(id, token),
+          getAssignmentsForChit(id, token),
+          getCollectionsByChitId(id, token),
+        ]
+      );
 
       const reportProps = {
         chit: {
           ...originalData,
-          ...formData, // Ensure latest form state is used
+          ...formData,
           id: id,
         },
         payouts: payoutsData.payouts,
         assignments: assignmentsData.assignments,
-        payments: paymentsData.payments,
+        collections: collectionsData.collections,
       };
 
-      // --- UPDATED FILENAME LOGIC ---
-      // Append "Chit" if missing, then "Report", preserving case.
       let reportName = formData.name;
       if (!reportName.toLowerCase().endsWith("chit")) {
         reportName += " Chit";
       }
       reportName += " Report";
 
-      // 2. Generate PDF Blob programmatically
       const blob = await pdf(<ChitReportPDF {...reportProps} />).toBlob();
 
-      // 3. Create a temporary link and trigger download
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      // Filename now matches the header logic EXACTLY (including spaces)
       link.download = `${reportName}.pdf`;
       document.body.appendChild(link);
       link.click();
 
-      // 4. Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -766,7 +757,7 @@ const ChitDetailPage = () => {
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <FiLoader className="w-10 h-10 animate-spin text-accent" />
+        <Loader2 className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
@@ -791,7 +782,7 @@ const ChitDetailPage = () => {
                   onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors print:hidden"
                 >
-                  <FiArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-6 h-6" />
                 </button>
 
                 <h1
@@ -802,19 +793,17 @@ const ChitDetailPage = () => {
                   {getTitle()}
                 </h1>
 
-                {/* --- PDF REPORT BUTTON (ONE-CLICK) + EDIT BUTTON --- */}
+                {/* --- HEADER ACTIONS --- */}
                 {mode === "view" && (
                   <div className="absolute right-0 flex print:hidden items-center">
-                    {/* EDIT BUTTON */}
                     <Link
                       to={`/chits/edit/${id}`}
                       className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
                       title="Edit Chit"
                     >
-                      <FiEdit className="w-6 h-6" />
+                      <SquarePen className="w-6 h-6" />
                     </Link>
 
-                    {/* PRINT BUTTON */}
                     <button
                       onClick={handlePrintReport}
                       disabled={isReportLoading}
@@ -822,14 +811,13 @@ const ChitDetailPage = () => {
                       title="Download PDF Report"
                     >
                       {isReportLoading ? (
-                        <FiLoader className="w-6 h-6 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
-                        <FiPrinter className="w-6 h-6" />
+                        <Printer className="w-6 h-6" />
                       )}
                     </button>
                   </div>
                 )}
-                {/* --- END BUTTONS --- */}
               </div>
 
               <hr className="my-4 border-border" />
@@ -856,13 +844,13 @@ const ChitDetailPage = () => {
                   <ChitViewDashboard
                     chitData={formData}
                     chitId={id}
-                    onLogPaymentClick={handleLogPaymentClick}
-                    paymentDefaults={paymentDefaults}
-                    setPaymentDefaults={setPaymentDefaults}
+                    onLogCollectionClick={handleLogCollectionClick}
+                    collectionDefaults={collectionDefaults}
+                    setCollectionDefaults={setCollectionDefaults}
                   />
                 </div>
               ) : (
-                /* --- CREATE/EDIT MODE (unchanged structure) --- */
+                /* --- CREATE/EDIT MODE --- */
                 <>
                   <div className="md:hidden">
                     <MobileContent
@@ -880,9 +868,9 @@ const ChitDetailPage = () => {
                       handleMiddle={handleMiddle}
                       handleMobileFormSubmit={handleMobileFormSubmit}
                       isPostCreation={!!(mode === "create" && createdChitId)}
-                      onLogPaymentClick={handleLogPaymentClick}
-                      paymentDefaults={paymentDefaults}
-                      setPaymentDefaults={setPaymentDefaults}
+                      onLogCollectionClick={handleLogCollectionClick}
+                      collectionDefaults={collectionDefaults}
+                      setCollectionDefaults={setCollectionDefaults}
                     />
                   </div>
 
@@ -920,18 +908,18 @@ const ChitDetailPage = () => {
                             <MembersSectionComponent
                               mode={mode}
                               chitId={id || createdChitId}
-                              onLogPaymentClick={handleLogPaymentClick}
+                              onLogCollectionClick={handleLogCollectionClick}
                             />
                           </div>
                         )}
 
-                        {activeTab === "payments" && (
+                        {activeTab === "collections" && (
                           <div className="md:col-span-2 flex flex-col gap-8">
-                            <PaymentHistoryList
+                            <CollectionHistoryList
                               chitId={id || createdChitId}
                               mode={mode}
-                              paymentDefaults={paymentDefaults}
-                              setPaymentDefaults={setPaymentDefaults}
+                              collectionDefaults={collectionDefaults}
+                              setCollectionDefaults={setCollectionDefaults}
                             />
                           </div>
                         )}
@@ -945,7 +933,7 @@ const ChitDetailPage = () => {
                             <MembersSectionComponent
                               mode={mode}
                               chitId={id || createdChitId}
-                              onLogPaymentClick={handleLogPaymentClick}
+                              onLogCollectionClick={handleLogCollectionClick}
                             />
                           </div>
                         )}
@@ -953,14 +941,14 @@ const ChitDetailPage = () => {
                         <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
                           <TabButton
                             name="details"
-                            icon={<FiInfo />}
+                            icon={Info}
                             label="Details"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                           />
                           <TabButton
                             name="payouts"
-                            icon={<FiTrendingUp />}
+                            icon={TrendingUp}
                             label="Payouts"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
@@ -968,16 +956,16 @@ const ChitDetailPage = () => {
                           />
                           <TabButton
                             name="members"
-                            icon={<FiUsers />}
+                            icon={Users}
                             label="Members"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                             disabled={mode === "create" && !createdChitId}
                           />
                           <TabButton
-                            name="payments"
-                            icon={<RupeeIcon className="w-4 h-4" />}
-                            label="Payments"
+                            name="collections"
+                            icon={WalletMinimal}
+                            label="Collections"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                             disabled={mode === "create" && !createdChitId}

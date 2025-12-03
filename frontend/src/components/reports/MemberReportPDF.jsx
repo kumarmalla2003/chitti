@@ -161,7 +161,7 @@ const formatFullDate = (dateString) => {
   });
 };
 
-const MemberReportPDF = ({ member, assignments, payments }) => {
+const MemberReportPDF = ({ member, assignments, collections }) => {
   // --- FIX 1: Corrected Logic for Participating Chits ---
   const uniqueChitsMap = new Map();
 
@@ -227,18 +227,18 @@ const MemberReportPDF = ({ member, assignments, payments }) => {
     },
   ];
 
-  const sortedPayments = payments
-    ? [...payments].sort(
-        (a, b) => new Date(a.payment_date) - new Date(b.payment_date)
+  const sortedCollections = collections
+    ? [...collections].sort(
+        (a, b) => new Date(a.collection_date) - new Date(b.collection_date)
       )
     : [];
 
-  const paymentColumns = [
+  const collectionColumns = [
     {
       header: "Date",
-      accessor: "payment_date",
+      accessor: "collection_date",
       style: { width: "20%", textAlign: "center" },
-      cell: (row) => formatFullDate(row.payment_date),
+      cell: (row) => formatFullDate(row.collection_date),
     },
     {
       header: "Chit Name",
@@ -254,7 +254,7 @@ const MemberReportPDF = ({ member, assignments, payments }) => {
     },
     {
       header: "Method",
-      accessor: "payment_method",
+      accessor: "collection_method",
       style: { width: "25%", textAlign: "center" },
     },
   ];
@@ -302,11 +302,11 @@ const MemberReportPDF = ({ member, assignments, payments }) => {
 
         <View style={styles.divider} />
 
-        {/* --- PAYMENT HISTORY --- */}
+        {/* --- COLLECTION HISTORY --- */}
         <AtomicTable
-          title="Payment History"
-          columns={paymentColumns}
-          data={sortedPayments}
+          title="Collection History"
+          columns={collectionColumns}
+          data={sortedCollections}
         />
 
         {/* --- FOOTER --- */}

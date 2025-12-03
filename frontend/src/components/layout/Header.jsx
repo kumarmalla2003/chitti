@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 import ThemeToggle from "../ui/ThemeToggle";
 import ProfileDropdown from "../ui/ProfileDropdown";
 import useClickOutside from "../../hooks/useClickOutside";
-import { FiMenu, FiLogIn, FiUser } from "react-icons/fi";
+import { Menu, LogIn, User } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
 const Header = ({
@@ -33,7 +33,8 @@ const Header = ({
     dashboard: useRef(null),
     chits: useRef(null),
     members: useRef(null),
-    payments: useRef(null),
+    collections: useRef(null),
+    payouts: useRef(null), // <-- ADDED
   };
 
   const loggedOutNavLinks = [
@@ -49,7 +50,8 @@ const Header = ({
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/chits", text: "Chits", id: "chits" },
     { href: "/members", text: "Members", id: "members" },
-    { href: "/payments", text: "Payments", id: "payments" },
+    { href: "/collections", text: "Collections", id: "collections" },
+    { href: "/payouts", text: "Payouts", id: "payouts" }, // <-- ADDED
   ];
 
   const getActiveId = () => {
@@ -57,7 +59,8 @@ const Header = ({
     if (location.pathname.startsWith("/chits")) return "chits";
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
-    if (location.pathname.startsWith("/payments")) return "payments";
+    if (location.pathname.startsWith("/collections")) return "collections";
+    if (location.pathname.startsWith("/payouts")) return "payouts"; // <-- ADDED
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -92,7 +95,9 @@ const Header = ({
         location.pathname.startsWith("/members") ||
         location.pathname.startsWith("/assignments")
       );
-    if (path === "/payments") return location.pathname.startsWith("/payments");
+    if (path === "/collections")
+      return location.pathname.startsWith("/collections");
+    if (path === "/payouts") return location.pathname.startsWith("/payouts"); // <-- ADDED
     return location.pathname.startsWith(path);
   };
 
@@ -159,7 +164,7 @@ const Header = ({
               className="text-text-primary"
               aria-label="Open menu"
             >
-              <FiMenu className="w-6 h-6" />
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
@@ -190,7 +195,7 @@ const Header = ({
                 className="text-text-primary cursor-pointer"
                 aria-label="Profile"
               >
-                <FiUser className="w-6 h-6 md:w-8 md:h-8" />
+                <User className="w-6 h-6 md:w-8 md:h-8" />
               </button>
               <AnimatePresence>
                 {isDropdownOpen && (
@@ -204,7 +209,7 @@ const Header = ({
               className="text-accent transition-opacity hover:opacity-80 cursor-pointer"
               aria-label="Log In"
             >
-              <FiLogIn className="w-8 h-8" />
+              <LogIn className="w-8 h-8" />
             </button>
           )}
         </div>

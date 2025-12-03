@@ -7,13 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# UPDATE IMPORTS
 from app.api.routers import (
     auth as auth_router, 
     chits as chits_router, 
     members as members_router,             
     assignments as assignments_router,     
-    payments as payments_router            # <-- ADD THIS
+    collections as collections_router,
+    payouts as payouts_router
 )
 from app.core.config import settings
 from app.db.session import engine, AsyncSessionLocal
@@ -22,7 +22,8 @@ from app.models import (
     chits as chits_models,
     members as members_models,             
     assignments as assignments_models,     
-    payments as payments_models            # <-- ADD THIS
+    collections as collections_models,
+    payouts as payouts_models
 )
 from app.security import core as security
 
@@ -31,12 +32,12 @@ async def lifespan(app: FastAPI):
     print("Starting up...")
     print("Initializing database...")
     async with engine.begin() as conn:
-        # UPDATE METADATA CREATE CALL
         await conn.run_sync(auth_models.SQLModel.metadata.create_all)
         await conn.run_sync(chits_models.SQLModel.metadata.create_all)
         await conn.run_sync(members_models.SQLModel.metadata.create_all)
         await conn.run_sync(assignments_models.SQLModel.metadata.create_all)
-        await conn.run_sync(payments_models.SQLModel.metadata.create_all)  # <-- ADD THIS
+        await conn.run_sync(collections_models.SQLModel.metadata.create_all) 
+        await conn.run_sync(payouts_models.SQLModel.metadata.create_all)
 
     print("Seeding initial data...")
     async with AsyncSessionLocal() as session:
@@ -67,7 +68,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, title="Chitti API")
 
-# Create a list of allowed origins for CORS
 origins = [
     "http://localhost:5173",
 ]
@@ -82,12 +82,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API routers
 app.include_router(auth_router.router)
 app.include_router(chits_router.router)
 app.include_router(members_router.router)
 app.include_router(assignments_router.router)
-app.include_router(payments_router.router)  # <-- ADD THIS
+app.include_router(collections_router.router)
+app.include_router(payouts_router.router)
 
 @app.get("/")
 def read_root():

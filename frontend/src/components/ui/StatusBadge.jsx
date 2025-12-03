@@ -7,7 +7,7 @@ const StatusBadge = ({ status }) => {
     Active: "bg-success-bg text-success-accent",
     Inactive: "bg-error-bg text-error-accent",
 
-    // Payment Statuses
+    // Collection Statuses
     Paid: "bg-success-bg text-success-accent",
     Unpaid: "bg-error-bg text-error-accent",
     Partial: "bg-warning-bg text-warning-accent",

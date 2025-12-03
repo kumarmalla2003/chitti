@@ -1,4 +1,4 @@
-// frontend/src/pages/PaymentDetailPage.jsx
+// frontend/src/pages/CollectionDetailPage.jsx
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
@@ -10,24 +10,25 @@ import MobileNav from "../components/layout/MobileNav";
 import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import PaymentDetailsForm from "../components/forms/PaymentDetailsForm";
-import PaymentViewDashboard from "./PaymentViewDashboard"; // <-- IMPORTED
+import CollectionDetailsForm from "../components/forms/CollectionDetailsForm";
+import CollectionViewDashboard from "./CollectionViewDashboard";
 import Message from "../components/ui/Message";
 import {
-  FiLoader,
-  FiArrowLeft,
-  FiPlus,
-  FiSave,
-  FiInfo,
-  FiEdit, // Import FiEdit if it wasn't there (though used in conditional Link previously)
-} from "react-icons/fi";
+  Loader2,
+  ArrowLeft,
+  Plus,
+  Save,
+  Info,
+  SquarePen,
+  IndianRupee,
+} from "lucide-react";
 import {
-  getPaymentById,
-  createPayment,
-  patchPayment,
-} from "../services/paymentsService";
+  getCollectionById,
+  createCollection,
+  patchCollection,
+} from "../services/collectionsService";
 
-const PaymentDetailPage = () => {
+const CollectionDetailPage = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
   const { id } = useParams();
@@ -42,14 +43,13 @@ const PaymentDetailPage = () => {
   const [formData, setFormData] = useState({
     chit_assignment_id: defaultAssignmentId || "",
     amount_paid: "",
-    payment_date: new Date().toISOString().split("T")[0], // Default to today
-    payment_method: "Cash",
+    collection_date: new Date().toISOString().split("T")[0],
+    collection_method: "Cash",
     notes: "",
   });
   const [originalData, setOriginalData] = useState(null);
 
-  // State to hold full payment object for 'view' mode
-  const [paymentDetails, setPaymentDetails] = useState(null);
+  const [collectionDetails, setCollectionDetails] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -63,20 +63,20 @@ const PaymentDetailPage = () => {
     const isCreate = path.includes("create");
     const isEdit = path.includes("edit");
 
-    const fetchPayment = async () => {
+    const fetchCollection = async () => {
       setPageLoading(true);
       try {
-        const payment = await getPaymentById(id, token);
+        const collection = await getCollectionById(id, token);
         const fetchedData = {
-          chit_assignment_id: payment.chit_assignment_id,
-          amount_paid: payment.amount_paid.toString(),
-          payment_date: payment.payment_date,
-          payment_method: payment.payment_method,
-          notes: payment.notes || "",
+          chit_assignment_id: collection.chit_assignment_id,
+          amount_paid: collection.amount_paid.toString(),
+          collection_date: collection.collection_date,
+          collection_method: collection.collection_method,
+          notes: collection.notes || "",
         };
         setFormData(fetchedData);
         setOriginalData(fetchedData);
-        setPaymentDetails(payment); // Store full object for view mode
+        setCollectionDetails(collection);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -89,10 +89,10 @@ const PaymentDetailPage = () => {
       setPageLoading(false);
     } else if (isEdit) {
       setMode("edit");
-      fetchPayment();
+      fetchCollection();
     } else {
       setMode("view");
-      fetchPayment();
+      fetchCollection();
     }
   }, [id, location.pathname, token]);
 
@@ -134,9 +134,9 @@ const PaymentDetailPage = () => {
       };
 
       if (mode === "create") {
-        const newPayment = await createPayment(dataToSend, token);
-        navigate(`/payments/view/${newPayment.id}`, {
-          state: { success: "Payment logged successfully!" },
+        const newCollection = await createCollection(dataToSend, token);
+        navigate(`/collections/view/${newCollection.id}`, {
+          state: { success: "Collection logged successfully!" },
         });
       } else if (mode === "edit") {
         const changes = {};
@@ -147,10 +147,10 @@ const PaymentDetailPage = () => {
         }
 
         if (Object.keys(changes).length > 0) {
-          const updatedPayment = await patchPayment(id, changes, token);
+          const updatedCollection = await patchCollection(id, changes, token);
           setOriginalData(formData);
-          setSuccess("Payment updated successfully!");
-          setPaymentDetails(updatedPayment);
+          setSuccess("Collection updated successfully!");
+          setCollectionDetails(updatedCollection);
         } else {
           setSuccess("No changes to save.");
         }
@@ -163,27 +163,23 @@ const PaymentDetailPage = () => {
   };
 
   const getTitle = () => {
-    if (mode === "create") return "Log New Payment";
-    if (mode === "edit") return "Edit Payment";
-    // For view mode, the Dashboard has its own header title, so we can return null or keep "Payment Details"
-    // Keep it empty or generic here if the dashboard handles it,
-    // but the page header needs *something* or we hide it.
-    // The DetailPage header contains the back button and the title.
-    return "Payment Details";
+    if (mode === "create") return "Log New Collection";
+    if (mode === "edit") return "Edit Collection";
+    return "Collection Details";
   };
 
   const handleBackNavigation = () => {
     if (location.key !== "default") {
       navigate(-1);
     } else {
-      navigate("/payments");
+      navigate("/collections");
     }
   };
 
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <FiLoader className="w-10 h-10 animate-spin text-accent" />
+        <Loader2 className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
@@ -195,7 +191,7 @@ const PaymentDetailPage = () => {
       >
         <Header
           onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection="payments"
+          activeSection="collections"
         />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
@@ -206,7 +202,7 @@ const PaymentDetailPage = () => {
                   onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
                 >
-                  <FiArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-6 h-6" />
                 </button>
                 <h1
                   ref={titleRef}
@@ -217,10 +213,10 @@ const PaymentDetailPage = () => {
                 </h1>
                 {mode === "view" && (
                   <Link
-                    to={`/payments/edit/${id}`}
+                    to={`/collections/edit/${id}`}
                     className="absolute right-0 p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
                   >
-                    <FiEdit className="w-6 h-6" />
+                    <SquarePen className="w-6 h-6" />
                   </Link>
                 )}
               </div>
@@ -244,11 +240,11 @@ const PaymentDetailPage = () => {
               </div>
 
               {/* --- VIEW MODE: Dashboard --- */}
-              {mode === "view" && paymentDetails ? (
+              {mode === "view" && collectionDetails ? (
                 <div className="max-w-4xl mx-auto">
-                  <PaymentViewDashboard
-                    paymentData={paymentDetails}
-                    paymentId={id}
+                  <CollectionViewDashboard
+                    collectionData={collectionDetails}
+                    collectionId={id}
                   />
                 </div>
               ) : (
@@ -256,21 +252,19 @@ const PaymentDetailPage = () => {
                 <div className="max-w-2xl mx-auto">
                   <form onSubmit={handleSubmit}>
                     <Card>
-                      {/* Only show "Details" icon header if in Create/Edit mode context */}
                       <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-                        <FiInfo /> Details
+                        <Info className="w-6 h-6" /> Details
                       </h2>
                       <hr className="border-border mb-4" />
 
-                      <PaymentDetailsForm
+                      <CollectionDetailsForm
                         mode={mode}
                         formData={formData}
                         onFormChange={handleFormChange}
                         defaultAssignmentId={
                           mode === "create" ? defaultAssignmentId : null
                         }
-                        paymentData={paymentDetails}
-                        // Passing defaults if needed for pre-fill logic inside form
+                        collectionData={collectionDetails}
                       />
                       {mode !== "view" && (
                         <div className="flex justify-end mt-6">
@@ -281,16 +275,16 @@ const PaymentDetailPage = () => {
                             className="w-full"
                           >
                             {loading ? (
-                              <FiLoader className="animate-spin mx-auto" />
+                              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                             ) : mode === "create" ? (
                               <>
-                                <FiPlus className="inline-block mr-2" />
-                                Log Payment
+                                <Plus className="w-5 h-5 inline-block mr-2" />
+                                Log Collection
                               </>
                             ) : (
                               <>
-                                <FiSave className="inline-block mr-2" />
-                                Update Payment
+                                <Save className="w-5 h-5 inline-block mr-2" />
+                                Update Collection
                               </>
                             )}
                           </Button>
@@ -308,11 +302,11 @@ const PaymentDetailPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection="payments"
+        activeSection="collections"
       />
       <BottomNav />
     </>
   );
 };
 
-export default PaymentDetailPage;
+export default CollectionDetailPage;

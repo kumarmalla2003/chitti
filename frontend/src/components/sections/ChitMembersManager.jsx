@@ -13,16 +13,16 @@ import RapidAssignForm from "../forms/RapidAssignForm";
 import AssignedMemberCard from "../ui/AssignedMemberCard";
 import StatusBadge from "../ui/StatusBadge";
 import {
-  FiSearch,
-  FiUsers,
-  FiLoader,
-  FiTrash2,
-  FiArrowLeft,
-  FiUserPlus,
-  FiFastForward,
-  FiArrowRight,
-} from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons";
+  Search,
+  Users,
+  Loader2,
+  Trash2,
+  ArrowLeft,
+  UserPlus,
+  FastForward,
+  ArrowRight,
+  IndianRupee,
+} from "lucide-react";
 import {
   getAssignmentsForChit,
   getUnassignedMonths,
@@ -35,7 +35,7 @@ const ITEMS_PER_PAGE = 10;
 const ChitMembersManager = ({
   mode,
   chitId,
-  onLogPaymentClick,
+  onLogCollectionClick,
   forceTable = false,
 }) => {
   const { token } = useSelector((state) => state.auth);
@@ -226,9 +226,9 @@ const ChitMembersManager = ({
     },
     {
       header: "Status",
-      accessor: "payment_status",
+      accessor: "collection_status",
       className: "text-center",
-      cell: (row) => <StatusBadge status={row.payment_status} />,
+      cell: (row) => <StatusBadge status={row.collection_status} />,
     },
     ...(mode !== "view"
       ? [
@@ -239,18 +239,18 @@ const ChitMembersManager = ({
               <div className="flex items-center justify-center space-x-2">
                 <button
                   type="button"
-                  onClick={() => onLogPaymentClick(row)}
+                  onClick={() => onLogCollectionClick(row)}
                   className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
-                  title="Log Payment"
+                  title="Log Collection"
                 >
-                  <RupeeIcon className="w-5 h-5" />
+                  <IndianRupee className="w-5 h-5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(row)}
                   className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
                 >
-                  <FiTrash2 />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             ),
@@ -316,21 +316,21 @@ const ChitMembersManager = ({
                 onClick={() => handleViewChange("rapid")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiFastForward className="w-5 h-5 mr-2" />
+                <FastForward className="w-5 h-5 mr-2" />
                 <span>Rapid Assign</span>
               </Button>
               <Button
                 onClick={() => handleViewChange("new")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiUserPlus className="w-5 h-5 mr-2" />
+                <UserPlus className="w-5 h-5 mr-2" />
                 <span>Add New Member</span>
               </Button>
               <Button
                 onClick={() => handleViewChange("existing")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiSearch className="mr-2" />
+                <Search className=" w-5 h-5 mr-2" />
                 <span>Add Existing Member</span>
               </Button>
             </div>
@@ -339,14 +339,14 @@ const ChitMembersManager = ({
 
         {loading && !assignments.length ? (
           <div className="flex justify-center p-8">
-            <FiLoader className="w-8 h-8 animate-spin text-accent" />
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
           </div>
         ) : assignments.length > 0 ? (
           <>
             {assignments.length > 1 && (
               <div className="relative flex items-center mb-4">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <FiSearch className="w-5 h-5 text-text-secondary" />
+                  <Search className="w-5 h-5 text-text-secondary" />
                 </span>
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <input
@@ -379,7 +379,7 @@ const ChitMembersManager = ({
                     disabled={currentPage === 1}
                     className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                   >
-                    <FiArrowLeft className="w-5 h-5" />
+                    <ArrowLeft className="w-5 h-5" />
                   </button>
 
                   <span className="font-medium">
@@ -393,7 +393,7 @@ const ChitMembersManager = ({
                     disabled={currentPage === totalPages}
                     className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                   >
-                    <FiArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
               )}
@@ -406,7 +406,7 @@ const ChitMembersManager = ({
                     key={assignment.id}
                     assignment={assignment}
                     onDelete={() => handleDeleteClick(assignment)}
-                    onLogPayment={onLogPaymentClick}
+                    onLogCollection={onLogCollectionClick}
                   />
                 ))}
                 {/* Mobile Pagination would go here if needed, but 'View All' usually better for mobile lists */}
@@ -433,7 +433,7 @@ const ChitMembersManager = ({
   };
 
   const HeaderIcon =
-    view === "list" ? FiUsers : view === "rapid" ? FiFastForward : FiUserPlus;
+    view === "list" ? Users : view === "rapid" ? FastForward : UserPlus;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -443,11 +443,11 @@ const ChitMembersManager = ({
             onClick={handleBackNavigation}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
-            <FiArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-6 h-6" />
           </button>
         )}
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <HeaderIcon /> {getHeaderTitle()}
+          <HeaderIcon className="w-6 h-6" /> {getHeaderTitle()}
         </h2>
         {mode === "view" && view === "list" && (
           <button
@@ -455,7 +455,7 @@ const ChitMembersManager = ({
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
             title="Add Member"
           >
-            <FiUserPlus className="w-5 h-5" />
+            <UserPlus className="w-5 h-5" />
           </button>
         )}
       </div>

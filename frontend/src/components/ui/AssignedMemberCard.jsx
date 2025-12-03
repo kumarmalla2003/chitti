@@ -1,14 +1,13 @@
 // frontend/src/components/ui/AssignedMemberCard.jsx
 
-import { FiTrash2, FiCalendar } from "react-icons/fi"; // <-- IMPORT FiCalendar
-import { RupeeIcon } from "./Icons";
+import { Trash2, Calendar, IndianRupee } from "lucide-react";
 // import { useNavigate } from "react-router-dom"; // No longer needed
 
 const AssignedMemberCard = ({
   assignment,
   onDelete,
   // installmentAmount, // <-- REMOVED
-  onLogPayment,
+  onLogCollection,
 }) => {
   const member = assignment.member;
 
@@ -23,9 +22,9 @@ const AssignedMemberCard = ({
   const dueAmount = assignment.due_amount;
   // const totalAmount = installmentAmount || 0; // <-- REMOVED
 
-  const handleLogPayment = (e) => {
+  const handleLogCollection = (e) => {
     e.stopPropagation();
-    onLogPayment(assignment);
+    onLogCollection(assignment);
   };
 
   const handleDelete = (e) => {
@@ -44,18 +43,18 @@ const AssignedMemberCard = ({
         </div>
         <div className="flex items-center flex-shrink-0">
           <button
-            onClick={handleLogPayment}
+            onClick={handleLogCollection}
             className="p-2 rounded-full text-success-accent hover:bg-success-bg transition-colors duration-200"
-            title="Log Payment"
+            title="Log Collection"
           >
-            <RupeeIcon className="w-5 h-5" />
+            <IndianRupee className="w-5 h-5" />
           </button>
           <button
             onClick={handleDelete}
             className="p-2 rounded-full text-error-accent hover:bg-error-bg transition-colors duration-200"
             title="Unassign Member"
           >
-            <FiTrash2 className="w-5 h-5" />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -67,12 +66,12 @@ const AssignedMemberCard = ({
       <div className="flex items-center justify-between text-text-secondary text-sm">
         {/* Left Side: Assigned Month */}
         <div className="flex items-center gap-2">
-          <FiCalendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4" />
           <span>{formatDate(assignment.chit_month)}</span>
         </div>
         {/* Right Side: Due Amount */}
         <div className="flex items-center gap-2">
-          <RupeeIcon className="w-4 h-4" />
+          <IndianRupee className="w-4 h-4" />
           <span>
             Due:{" "}
             <span

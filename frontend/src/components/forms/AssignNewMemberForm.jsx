@@ -4,7 +4,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import MemberDetailsForm from "./MemberDetailsForm";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
-import { FiSave, FiCalendar, FiCheck, FiLoader } from "react-icons/fi";
+import { Save, Calendar, Check, Loader2 } from "lucide-react";
 import { createMember } from "../../services/membersService";
 
 const AssignNewMemberForm = forwardRef(
@@ -150,10 +150,10 @@ const AssignNewMemberForm = forwardRef(
                 className="flex items-center justify-center"
               >
                 {loading ? (
-                  <FiLoader className="animate-spin" />
+                  <Loader2 className="animate-spin" />
                 ) : (
                   <>
-                    <FiSave className="mr-2" /> Save
+                    <Save className="mr-2" /> Save
                   </>
                 )}
               </Button>
@@ -169,7 +169,7 @@ const AssignNewMemberForm = forwardRef(
             </h3>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiCalendar className="w-5 h-5 text-text-secondary" />
+                <Calendar className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <select
@@ -194,7 +194,7 @@ const AssignNewMemberForm = forwardRef(
                 disabled={!selectedMonth}
                 className="flex items-center justify-center"
               >
-                <FiCheck className="mr-2" /> Confirm Assignment
+                <Check className="mr-2" /> Confirm Assignment
               </Button>
             </div>
           </div>

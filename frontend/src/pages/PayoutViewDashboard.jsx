@@ -1,18 +1,17 @@
-// frontend/src/pages/PaymentViewDashboard.jsx
+// frontend/src/pages/PayoutViewDashboard.jsx
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiInfo,
-  FiUser,
-  FiBox,
-  FiCalendar,
-  FiCreditCard,
-  FiFileText,
-  FiEdit,
-  FiClock,
-} from "react-icons/fi";
-import { RupeeIcon } from "../components/ui/Icons";
+  Info,
+  User,
+  Layers,
+  Calendar,
+  CreditCard,
+  FileText,
+  Clock,
+  IndianRupee,
+} from "lucide-react";
 import Card from "../components/ui/Card";
 
 const formatCurrency = (val) => {
@@ -37,7 +36,6 @@ const formatMonthYear = (dateString) => {
   });
 };
 
-// --- Left Aligned, Bold Headings, Medium Text ---
 const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
   <div
     className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
@@ -63,27 +61,22 @@ const MetricCard = ({ label, value, icon: Icon }) => (
       </span>
     </div>
     <div className="flex items-center text-text-primary font-bold text-2xl">
-      <RupeeIcon className="w-5 h-5 mr-1" />
+      <IndianRupee className="w-5 h-5 mr-1" />
       {value}
     </div>
   </div>
 );
 
-const PaymentViewDashboard = ({ paymentData, paymentId }) => {
+const PayoutViewDashboard = ({ payoutData, payoutId }) => {
   const navigate = useNavigate();
-
-  const handleEdit = () => {
-    navigate(`/payments/edit/${paymentId}`);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="grid grid-cols-1">
         <Card className="h-full">
-          {/* --- HEADER --- */}
           <div className="relative flex justify-center items-center mb-4">
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <FiInfo />
+              <Info className="w-6 h-6" />
               Details
             </h2>
           </div>
@@ -91,13 +84,13 @@ const PaymentViewDashboard = ({ paymentData, paymentId }) => {
           <hr className="border-border mb-6" />
 
           <div className="flex flex-col gap-6">
-            {/* --- Key Metric: Amount Paid --- */}
+            {/* --- Key Metric: Amount Disbursed --- */}
             <div className="flex justify-center">
               <div className="w-full max-w-sm">
                 <MetricCard
-                  label="Amount Paid"
-                  value={formatCurrency(paymentData.amount_paid)}
-                  icon={RupeeIcon}
+                  label="Amount Disbursed"
+                  value={formatCurrency(payoutData.amount)}
+                  icon={IndianRupee}
                 />
               </div>
             </div>
@@ -105,34 +98,34 @@ const PaymentViewDashboard = ({ paymentData, paymentId }) => {
             {/* --- List View for Other Details --- */}
             <div className="flex-grow">
               <DetailRow
-                icon={FiUser}
+                icon={User}
                 label="Member"
-                value={paymentData.member?.full_name}
+                value={payoutData.member?.full_name}
               />
               <DetailRow
-                icon={FiBox}
+                icon={Layers}
                 label="Chit Group"
-                value={paymentData.chit?.name}
+                value={payoutData.chit?.name}
               />
               <DetailRow
-                icon={FiClock}
-                label="Assignment Month"
-                value={formatMonthYear(paymentData.chit_month)}
+                icon={Clock}
+                label="Winning Month"
+                value={formatMonthYear(payoutData.assignment?.chit_month)}
               />
               <DetailRow
-                icon={FiCalendar}
-                label="Payment Date"
-                value={formatDateFull(paymentData.payment_date)}
+                icon={Calendar}
+                label="Payout Date"
+                value={formatDateFull(payoutData.payout_date)}
               />
               <DetailRow
-                icon={FiCreditCard}
+                icon={CreditCard}
                 label="Payment Method"
-                value={paymentData.payment_method}
+                value={payoutData.method}
               />
               <DetailRow
-                icon={FiFileText}
+                icon={FileText}
                 label="Notes"
-                value={paymentData.notes}
+                value={payoutData.notes}
               />
             </div>
           </div>
@@ -142,4 +135,4 @@ const PaymentViewDashboard = ({ paymentData, paymentId }) => {
   );
 };
 
-export default PaymentViewDashboard;
+export default PayoutViewDashboard;

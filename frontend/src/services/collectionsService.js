@@ -1,6 +1,6 @@
-// frontend/src/services/paymentsService.js
+// frontend/src/services/collectionsService.js
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/payments`;
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/collections`;
 
 const getAuthHeaders = (token) => ({
   "Content-Type": "application/json",
@@ -16,20 +16,20 @@ const handleError = async (response, defaultMessage) => {
   }
 };
 
-export const createPayment = async (paymentData, token) => {
+export const createCollection = async (collectionData, token) => {
   const response = await fetch(API_URL, {
     method: "POST",
     headers: getAuthHeaders(token),
-    body: JSON.stringify(paymentData),
+    body: JSON.stringify(collectionData),
   });
   if (!response.ok) {
-    await handleError(response, "Failed to log payment.");
+    await handleError(response, "Failed to log collection.");
   }
   return response.json();
 };
 
 // --- MODIFIED FUNCTION ---
-export const getAllPayments = async (token, filters = {}) => {
+export const getAllCollections = async (token, filters = {}) => {
   const queryParams = new URLSearchParams();
   if (filters.chitId) queryParams.append("chit_id", filters.chitId);
   if (filters.memberId) queryParams.append("member_id", filters.memberId);
@@ -43,46 +43,46 @@ export const getAllPayments = async (token, filters = {}) => {
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    await handleError(response, "Failed to fetch payments.");
+    await handleError(response, "Failed to fetch collections.");
   }
   return response.json();
 };
 
-export const getPaymentById = async (paymentId, token) => {
-  const response = await fetch(`${API_URL}/${paymentId}`, {
+export const getCollectionById = async (collectionId, token) => {
+  const response = await fetch(`${API_URL}/${collectionId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    await handleError(response, "Failed to fetch payment details.");
+    await handleError(response, "Failed to fetch collection details.");
   }
   return response.json();
 };
 
-export const patchPayment = async (paymentId, paymentData, token) => {
-  const response = await fetch(`${API_URL}/${paymentId}`, {
+export const patchCollection = async (collectionId, collectionData, token) => {
+  const response = await fetch(`${API_URL}/${collectionId}`, {
     method: "PATCH",
     headers: getAuthHeaders(token),
-    body: JSON.stringify(paymentData),
+    body: JSON.stringify(collectionData),
   });
   if (!response.ok) {
-    await handleError(response, "Failed to update payment.");
+    await handleError(response, "Failed to update collection.");
   }
   return response.json();
 };
 
-export const deletePayment = async (paymentId, token) => {
-  const response = await fetch(`${API_URL}/${paymentId}`, {
+export const deleteCollection = async (collectionId, token) => {
+  const response = await fetch(`${API_URL}/${collectionId}`, {
     method: "DELETE",
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    await handleError(response, "Failed to delete payment.");
+    await handleError(response, "Failed to delete collection.");
   }
   return;
 };
 
-export const getPaymentsByChitId = async (chitId, token) => {
+export const getCollectionsByChitId = async (chitId, token) => {
   const response = await fetch(`${API_URL}/chit/${chitId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
@@ -91,13 +91,13 @@ export const getPaymentsByChitId = async (chitId, token) => {
   if (!response.ok) {
     await handleError(
       response,
-      "Failed to fetch payment history for the chit."
+      "Failed to fetch collection history for the chit."
     );
   }
   return response.json();
 };
 
-export const getPaymentsByMemberId = async (memberId, token) => {
+export const getCollectionsByMemberId = async (memberId, token) => {
   const response = await fetch(`${API_URL}/member/${memberId}`, {
     method: "GET",
     headers: getAuthHeaders(token),
@@ -106,7 +106,7 @@ export const getPaymentsByMemberId = async (memberId, token) => {
   if (!response.ok) {
     await handleError(
       response,
-      "Failed to fetch payment history for the member."
+      "Failed to fetch collection history for the member."
     );
   }
   return response.json();

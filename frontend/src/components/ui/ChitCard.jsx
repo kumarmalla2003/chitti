@@ -1,15 +1,15 @@
 // frontend/src/components/ui/ChitCard.jsx
 
 import {
-  FiEdit,
-  FiTrash2,
-  FiCalendar,
-  FiRepeat,
-  FiRefreshCw,
-  FiPrinter,
-  FiLoader,
-} from "react-icons/fi";
-import { RupeeIcon } from "./Icons";
+  SquarePen,
+  Trash2,
+  Calendar,
+  Repeat,
+  RefreshCw,
+  Printer,
+  Loader2,
+  IndianRupee,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
@@ -57,9 +57,9 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             title="Download PDF Report"
           >
             {isPrinting ? (
-              <FiLoader className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <FiPrinter className="w-5 h-5" />
+              <Printer className="w-5 h-5" />
             )}
           </button>
           <button
@@ -70,7 +70,7 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             className="p-2 rounded-full text-warning-accent hover:bg-warning-bg transition-colors duration-200"
             title="Edit Chit"
           >
-            <FiEdit className="w-5 h-5" />
+            <SquarePen className="w-5 h-5" />
           </button>
           <button
             onClick={(e) => {
@@ -80,7 +80,7 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             className="p-2 rounded-full text-error-accent hover:bg-error-bg transition-colors duration-200"
             title="Delete Chit"
           >
-            <FiTrash2 className="w-5 h-5" />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -88,14 +88,14 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
       {/* Middle Row: Values */}
       <div className="flex justify-between items-center text-text-primary mb-3 text-base">
         <div className="flex items-center gap-2" title="Total Chit Value">
-          <RupeeIcon className="w-5 h-5" />
+          <IndianRupee className="w-5 h-5" />
           <span className="font-semibold">
             {chit.chit_value.toLocaleString("en-IN")}
           </span>
         </div>
         {/* --- MODIFICATION: Removed all extra text --- */}
         <div className="flex items-center gap-2" title="Monthly Installment">
-          <FiRepeat className="w-5 h-5" />
+          <Repeat className="w-5 h-5" />
           <span className="font-semibold">
             ₹{chit.monthly_installment.toLocaleString("en-IN")}
           </span>
@@ -109,13 +109,13 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
       {/* Bottom Row: Dates and Cycle */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
-          <FiCalendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4" />
           <span>
             {formatDate(chit.start_date)} - {formatDate(chit.end_date)}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <FiRefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4" />
           <span>Cycle {chit.chit_cycle}</span>
         </div>
       </div>

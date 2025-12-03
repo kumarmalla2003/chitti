@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { FiArrowRight } from "react-icons/fi";
+import { ArrowRight } from "lucide-react";
 
 const Workflow = forwardRef((props, ref) => {
   return (
@@ -32,7 +32,7 @@ const Workflow = forwardRef((props, ref) => {
 
           {/* Arrow Separator */}
           <div className="hidden md:block text-accent opacity-80 pt-16">
-            <FiArrowRight className="w-10 h-10" />
+            <ArrowRight className="w-10 h-10" />
           </div>
 
           {/* Step 2 */}
@@ -51,7 +51,7 @@ const Workflow = forwardRef((props, ref) => {
 
           {/* Arrow Separator */}
           <div className="hidden md:block text-accent opacity-80 pt-16">
-            <FiArrowRight className="w-10 h-10" />
+            <ArrowRight className="w-10 h-10" />
           </div>
 
           {/* Step 3 */}

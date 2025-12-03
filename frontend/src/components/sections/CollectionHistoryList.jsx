@@ -1,4 +1,4 @@
-// frontend/src/components/sections/PaymentHistoryList.jsx
+// frontend/src/components/sections/CollectionHistoryList.jsx
 
 import { useState, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
@@ -6,38 +6,38 @@ import { useNavigate } from "react-router-dom";
 import Table from "../ui/Table";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
-import PaymentDetailsForm from "../forms/PaymentDetailsForm";
+import CollectionDetailsForm from "../forms/CollectionDetailsForm";
 import Card from "../ui/Card";
 import {
-  FiLoader,
-  FiAlertCircle,
-  FiSearch,
-  FiPlus,
-  FiArrowLeft,
-  FiArrowRight,
-  FiEdit, // <-- Imported
-} from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons";
+  Loader2,
+  AlertCircle,
+  Search,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  IndianRupee,
+} from "lucide-react";
 import {
-  getPaymentsByChitId,
-  getPaymentsByMemberId,
-  createPayment,
-} from "../../services/paymentsService";
-import PaymentHistoryCard from "../ui/PaymentHistoryCard";
+  getCollectionsByChitId,
+  getCollectionsByMemberId,
+  createCollection,
+} from "../../services/collectionsService";
+// --- FIXED IMPORT BELOW ---
+import CollectionHistoryCard from "../ui/CollectionHistoryCard";
 import useScrollToTop from "../../hooks/useScrollToTop";
 
 const ITEMS_PER_PAGE = 10;
 
-const PaymentHistoryList = ({
+const CollectionHistoryList = ({
   chitId,
   memberId,
   mode,
-  paymentDefaults,
-  setPaymentDefaults,
+  collectionDefaults,
+  setCollectionDefaults,
   forceTable = false,
-  onManage, // <-- Prop
+  onManage,
 }) => {
-  const [payments, setPayments] = useState([]);
+  const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { token } = useSelector((state) => state.auth);
@@ -50,8 +50,8 @@ const PaymentHistoryList = ({
   const [formData, setFormData] = useState({
     chit_assignment_id: "",
     amount_paid: "",
-    payment_date: new Date().toISOString().split("T")[0],
-    payment_method: "Cash",
+    collection_date: new Date().toISOString().split("T")[0],
+    collection_method: "Cash",
     notes: "",
   });
   const [formLoading, setFormLoading] = useState(false);
@@ -68,11 +68,11 @@ const PaymentHistoryList = ({
     try {
       let data;
       if (chitId) {
-        data = await getPaymentsByChitId(chitId, token);
+        data = await getCollectionsByChitId(chitId, token);
       } else if (memberId) {
-        data = await getPaymentsByMemberId(memberId, token);
+        data = await getCollectionsByMemberId(memberId, token);
       }
-      setPayments(data.payments);
+      setCollections(data.collections || []);
       setCurrentPage(1);
     } catch (err) {
       setError(err.message);
@@ -99,25 +99,26 @@ const PaymentHistoryList = ({
   }, [formSuccess]);
 
   useEffect(() => {
-    if (paymentDefaults) {
+    if (collectionDefaults) {
       setView("create");
       setFormData((prev) => ({
         ...prev,
-        chit_assignment_id: paymentDefaults.assignmentId,
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "Cash",
+        chit_assignment_id: collectionDefaults.assignmentId,
+        collection_date: new Date().toISOString().split("T")[0],
+        collection_method: "Cash",
         amount_paid: "",
         notes: "",
       }));
       setFormError(null);
       setFormSuccess(null);
     }
-  }, [paymentDefaults]);
+  }, [collectionDefaults]);
 
-  // Modified logic: Only for ChitViewDashboard standard usage
-  const handleAddPaymentClick = () => {
+  const handleAddCollectionClick = () => {
     if (mode === "view" && chitId) {
-      navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payments" } });
+      navigate(`/chits/edit/${chitId}`, {
+        state: { initialTab: "collections" },
+      });
     }
   };
 
@@ -128,35 +129,34 @@ const PaymentHistoryList = ({
       year: "numeric",
     });
 
-  const filteredPayments = useMemo(() => {
-    if (!searchQuery) return payments;
+  const filteredCollections = useMemo(() => {
+    if (!searchQuery) return collections;
     const lowercasedQuery = searchQuery.toLowerCase();
-    return payments.filter((p) => {
-      const amountMatch = p.amount_paid.toString().includes(lowercasedQuery);
-      const methodMatch = p.payment_method
-        .toLowerCase()
-        .includes(lowercasedQuery);
+    return collections.filter((c) => {
+      const amountMatch = c.amount_paid.toString().includes(lowercasedQuery);
+      const method = c.collection_method || c.payment_method || "";
+      const methodMatch = method.toLowerCase().includes(lowercasedQuery);
 
       if (viewType === "chit") {
-        const memberMatch = p.member.full_name
+        const memberMatch = c.member.full_name
           .toLowerCase()
           .includes(lowercasedQuery);
         return memberMatch || amountMatch || methodMatch;
       } else {
-        const chitMatch = p.chit.name.toLowerCase().includes(lowercasedQuery);
+        const chitMatch = c.chit.name.toLowerCase().includes(lowercasedQuery);
         return chitMatch || amountMatch || methodMatch;
       }
     });
-  }, [payments, searchQuery, viewType]);
+  }, [collections, searchQuery, viewType]);
 
-  const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
-  const paginatedPayments =
+  const totalPages = Math.ceil(filteredCollections.length / ITEMS_PER_PAGE);
+  const paginatedCollections =
     mode === "view"
-      ? filteredPayments.slice(
+      ? filteredCollections.slice(
           (currentPage - 1) * ITEMS_PER_PAGE,
           currentPage * ITEMS_PER_PAGE
         )
-      : filteredPayments;
+      : filteredCollections;
 
   const searchPlaceholder =
     viewType === "chit"
@@ -166,8 +166,8 @@ const PaymentHistoryList = ({
   const columns = [
     {
       header: "Date",
-      accessor: "payment_date",
-      cell: (row) => formatDate(row.payment_date),
+      accessor: "collection_date",
+      cell: (row) => formatDate(row.collection_date || row.payment_date),
       className: "text-center",
     },
     ...(memberId
@@ -192,11 +192,12 @@ const PaymentHistoryList = ({
       header: "Amount",
       accessor: "amount_paid",
       cell: (row) => `₹${row.amount_paid.toLocaleString("en-IN")}/-`,
-      className: "text-center",
+      className: "text-center text-green-600 font-medium",
     },
     {
       header: "Method",
-      accessor: "payment_method",
+      accessor: "collection_method",
+      cell: (row) => row.collection_method || row.payment_method,
       className: "text-center",
     },
     {
@@ -226,21 +227,23 @@ const PaymentHistoryList = ({
         ...formData,
         amount_paid: parseFloat(formData.amount_paid.replace(/,/g, "")),
         chit_assignment_id: parseInt(formData.chit_assignment_id),
+        collection_date: formData.collection_date,
+        collection_method: formData.collection_method,
       };
 
-      await createPayment(dataToSend, token);
-      setFormSuccess("Payment logged successfully!");
+      await createCollection(dataToSend, token);
+      setFormSuccess("Collection logged successfully!");
       setFormData({
         chit_assignment_id: "",
         amount_paid: "",
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "Cash",
+        collection_date: new Date().toISOString().split("T")[0],
+        collection_method: "Cash",
         notes: "",
       });
       setView("list");
       fetchData();
-      if (setPaymentDefaults) {
-        setPaymentDefaults(null);
+      if (setCollectionDefaults) {
+        setCollectionDefaults(null);
       }
     } catch (err) {
       setFormError(err.message);
@@ -253,26 +256,26 @@ const PaymentHistoryList = ({
     setView("create");
     setFormError(null);
     setFormSuccess(null);
-    if (setPaymentDefaults) {
-      setPaymentDefaults(null);
+    if (setCollectionDefaults) {
+      setCollectionDefaults(null);
     }
   };
 
   const handleShowList = () => {
     setView("list");
     setFormError(null);
-    if (setPaymentDefaults) {
-      setPaymentDefaults(null);
+    if (setCollectionDefaults) {
+      setCollectionDefaults(null);
     }
   };
 
-  const headerTitle = view === "list" ? "Payments" : "Log New Payment";
+  const headerTitle = view === "list" ? "Collections" : "Log New Collection";
 
   if (loading) {
     return (
       <Card className="flex-1 flex flex-col">
         <div className="flex justify-center items-center py-8">
-          <FiLoader className="w-6 h-6 animate-spin text-accent" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       </Card>
     );
@@ -291,24 +294,22 @@ const PaymentHistoryList = ({
             onClick={handleShowList}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
-            <FiArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-6 h-6" />
           </button>
         )}
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <RupeeIcon className="w-5 h-5" /> {headerTitle}
+          <IndianRupee className="w-6 h-6 text-green-600" /> {headerTitle}
         </h2>
 
-        {/* --- UPDATE: Changed Edit to Add (Plus) Icon --- */}
         {mode === "view" && view === "list" && (
           <button
-            onClick={onManage || handleAddPaymentClick}
+            onClick={onManage || handleAddCollectionClick}
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
-            title="Add Payment"
+            title="Add Collection"
           >
-            <FiPlus className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
           </button>
         )}
-        {/* --- END UPDATE --- */}
       </div>
       <hr className="border-border mb-4" />
 
@@ -321,13 +322,13 @@ const PaymentHistoryList = ({
             </Message>
           )}
 
-          <PaymentDetailsForm
+          <CollectionDetailsForm
             mode="create"
             formData={formData}
             onFormChange={handleFormChange}
-            defaultAssignmentId={paymentDefaults?.assignmentId}
-            defaultChitId={paymentDefaults?.chitId || chitId}
-            defaultMemberId={paymentDefaults?.memberId || memberId}
+            defaultAssignmentId={collectionDefaults?.assignmentId}
+            defaultChitId={collectionDefaults?.chitId || chitId}
+            defaultMemberId={collectionDefaults?.memberId || memberId}
           />
           <div className="flex justify-end mt-6">
             <Button
@@ -337,11 +338,11 @@ const PaymentHistoryList = ({
               className="w-full"
             >
               {formLoading ? (
-                <FiLoader className="animate-spin mx-auto" />
+                <Loader2 className="w-5 h-5 animate-spin mx-auto" />
               ) : (
                 <>
-                  <FiPlus className="inline-block mr-2" />
-                  Submit Payment
+                  <Plus className="w-5 h-5 inline-block mr-2" />
+                  Submit Collection
                 </>
               )}
             </Button>
@@ -357,24 +358,25 @@ const PaymentHistoryList = ({
                 className="w-full md:w-auto flex items-center justify-center"
                 onClick={handleShowForm}
               >
-                <FiPlus className="mr-2" /> Log New Payment
+                <IndianRupee className="w-6 h-6 text-green-600" /> Log New
+                Collection
               </Button>
             </div>
           )}
 
-          {payments.length === 0 ? (
+          {collections.length === 0 ? (
             <div className="text-center py-8">
-              <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
+              <AlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
               <p className="mt-2 text-sm text-text-secondary">
-                No payments have been logged yet.
+                No collections have been logged yet.
               </p>
             </div>
           ) : (
             <>
-              {payments.length > 1 && (
+              {collections.length > 1 && (
                 <div className="relative flex items-center mb-4">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiSearch className="w-5 h-5 text-text-secondary" />
+                    <Search className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
@@ -387,11 +389,11 @@ const PaymentHistoryList = ({
                 </div>
               )}
 
-              {filteredPayments.length === 0 ? (
+              {filteredCollections.length === 0 ? (
                 <div className="text-center py-8">
-                  <FiSearch className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
+                  <Search className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
                   <p className="mt-2 text-sm text-text-secondary">
-                    No payments found matching "{searchQuery}".
+                    No collections found matching "{searchQuery}".
                   </p>
                 </div>
               ) : (
@@ -403,9 +405,11 @@ const PaymentHistoryList = ({
                   >
                     <Table
                       columns={columns}
-                      data={paginatedPayments}
+                      data={paginatedCollections}
                       variant="secondary"
-                      onRowClick={(row) => navigate(`/payments/view/${row.id}`)}
+                      onRowClick={(row) =>
+                        navigate(`/collections/view/${row.id}`)
+                      }
                     />
 
                     {mode === "view" && totalPages > 1 && (
@@ -417,7 +421,7 @@ const PaymentHistoryList = ({
                           disabled={currentPage === 1}
                           className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                         >
-                          <FiArrowLeft className="w-5 h-5" />
+                          <ArrowLeft className="w-5 h-5" />
                         </button>
 
                         <span className="font-medium">
@@ -431,7 +435,7 @@ const PaymentHistoryList = ({
                           disabled={currentPage === totalPages}
                           className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                         >
-                          <FiArrowRight className="w-5 h-5" />
+                          <ArrowRight className="w-5 h-5" />
                         </button>
                       </div>
                     )}
@@ -439,15 +443,17 @@ const PaymentHistoryList = ({
 
                   {!forceTable && (
                     <div className="block md:hidden space-y-4">
-                      {paginatedPayments.map((payment) => (
-                        <PaymentHistoryCard
-                          key={payment.id}
-                          payment={payment}
+                      {paginatedCollections.map((collection) => (
+                        // --- FIXED COMPONENT USAGE ---
+                        <CollectionHistoryCard
+                          key={collection.id}
+                          collection={collection} // Changed from payment={collection}
                           viewType={viewType}
                           onClick={() =>
-                            navigate(`/payments/view/${payment.id}`)
+                            navigate(`/collections/view/${collection.id}`)
                           }
                         />
+                        // --- END FIX ---
                       ))}
                     </div>
                   )}
@@ -461,4 +467,4 @@ const PaymentHistoryList = ({
   );
 };
 
-export default PaymentHistoryList;
+export default CollectionHistoryList;

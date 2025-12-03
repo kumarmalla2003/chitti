@@ -5,7 +5,7 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAllMembers, deleteMember } from "../services/membersService";
 import { getAssignmentsForMember } from "../services/assignmentsService";
-import { getPaymentsByMemberId } from "../services/paymentsService";
+import { getCollectionsByMemberId } from "../services/collectionsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -18,15 +18,15 @@ import Table from "../components/ui/Table";
 import MemberCard from "../components/ui/MemberCard";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
-  FiPlus,
-  FiLoader,
-  FiSearch,
-  FiEdit,
-  FiTrash2,
-  FiPrinter,
-  FiGrid,
-  FiList,
-} from "react-icons/fi";
+  Plus,
+  Loader2,
+  Search,
+  SquarePen,
+  Trash2,
+  Printer,
+  LayoutGrid,
+  List,
+} from "lucide-react";
 
 import MembersListReportPDF from "../components/reports/MembersListReportPDF";
 import MemberReportPDF from "../components/reports/MemberReportPDF";
@@ -158,15 +158,15 @@ const MembersPage = () => {
     setError(null);
 
     try {
-      const [assignmentsData, paymentsData] = await Promise.all([
+      const [assignmentsData, collectionsData] = await Promise.all([
         getAssignmentsForMember(member.id, token),
-        getPaymentsByMemberId(member.id, token),
+        getCollectionsByMemberId(member.id, token),
       ]);
 
       const reportProps = {
         member: member,
         assignments: assignmentsData,
-        payments: paymentsData.payments,
+        collections: collectionsData.collections,
       };
 
       const reportName = `${member.full_name} Report`;
@@ -221,9 +221,9 @@ const MembersPage = () => {
             title="Download PDF"
           >
             {printingMemberId === row.id ? (
-              <FiLoader className="animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <FiPrinter />
+              <Printer className="w-5 h-5" />
             )}
           </button>
           {/* View Button Removed */}
@@ -235,7 +235,7 @@ const MembersPage = () => {
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Edit Member"
           >
-            <FiEdit />
+            <SquarePen className="w-5 h-5" />
           </button>
           <button
             onClick={(e) => {
@@ -245,7 +245,7 @@ const MembersPage = () => {
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
             title="Delete Member"
           >
-            <FiTrash2 />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       ),
@@ -277,9 +277,9 @@ const MembersPage = () => {
                       title="Print All Members"
                     >
                       {isPrintingAll ? (
-                        <FiLoader className="w-6 h-6 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
-                        <FiPrinter className="w-6 h-6" />
+                        <Printer className="w-6 h-6" />
                       )}
                     </button>
                   </div>
@@ -299,7 +299,7 @@ const MembersPage = () => {
               <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
                 <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiSearch className="w-5 h-5 text-text-secondary" />
+                    <Search className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
@@ -326,9 +326,9 @@ const MembersPage = () => {
                     }
                   >
                     {viewMode === "table" ? (
-                      <FiGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-5 h-5" />
                     ) : (
-                      <FiList className="w-5 h-5" />
+                      <List className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -336,7 +336,7 @@ const MembersPage = () => {
 
               {loading && (
                 <div className="flex justify-center items-center h-64">
-                  <FiLoader className="w-10 h-10 animate-spin text-accent" />
+                  <Loader2 className="w-10 h-10 animate-spin text-accent" />
                 </div>
               )}
 
@@ -395,7 +395,7 @@ const MembersPage = () => {
       <BottomNav />
       <Link to="/members/create" className="group">
         <Button variant="fab" className="group-hover:scale-110">
-          <FiPlus className="w-6 h-6" />
+          <Plus className="w-6 h-6" />
         </Button>
       </Link>
       <ConfirmationModal

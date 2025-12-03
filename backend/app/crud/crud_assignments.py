@@ -1,4 +1,4 @@
-# app/crud/crud_assignments.py
+# backend/app/crud/crud_assignments.py
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession

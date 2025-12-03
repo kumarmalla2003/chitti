@@ -12,15 +12,15 @@ import AssignExistingChitForm from "../forms/AssignExistingChitForm";
 import StatusBadge from "../ui/StatusBadge";
 import AssignedChitCard from "../ui/AssignedChitCard";
 import {
-  FiSearch,
-  FiBox,
-  FiLoader,
-  FiTrash2,
-  FiArrowLeft,
-  FiPlus,
-  FiEdit, // <-- Imported
-} from "react-icons/fi";
-import { RupeeIcon } from "../ui/Icons";
+  Search,
+  Layers,
+  Loader2,
+  Trash2,
+  ArrowLeft,
+  Plus,
+  SquarePen,
+  IndianRupee,
+} from "lucide-react";
 import {
   getAssignmentsForMember,
   createAssignment,
@@ -30,7 +30,7 @@ import {
 const MemberChitsManager = ({
   mode,
   memberId,
-  onLogPaymentClick,
+  onLogCollectionClick,
   forceTable = false,
   onManage, // <-- Prop
 }) => {
@@ -194,10 +194,10 @@ const MemberChitsManager = ({
       ),
     },
     {
-      header: "Payment Status",
-      accessor: "payment_status",
+      header: "Collection Status",
+      accessor: "collection_status",
       className: "text-center",
-      cell: (row) => <StatusBadge status={row.payment_status} />,
+      cell: (row) => <StatusBadge status={row.collection_status} />,
     },
     ...(mode !== "view"
       ? [
@@ -208,18 +208,18 @@ const MemberChitsManager = ({
               <div className="flex items-center justify-center space-x-2">
                 <button
                   type="button"
-                  onClick={() => onLogPaymentClick(row)}
+                  onClick={() => onLogCollectionClick(row)}
                   className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
-                  title="Log Payment"
+                  title="Log Collection"
                 >
-                  <RupeeIcon className="w-5 h-5" />
+                  <IndianRupee className="w-5 h-5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(row)}
                   className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
                 >
-                  <FiTrash2 />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             ),
@@ -274,14 +274,14 @@ const MemberChitsManager = ({
                 onClick={() => handleViewChange("new")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiPlus className="w-5 h-5 mr-2" />
+                <Plus className="w-5 h-5 mr-2" />
                 <span>Assign to New Chit</span>
               </Button>
               <Button
                 onClick={() => handleViewChange("existing")}
                 className="w-full sm:w-auto flex items-center justify-center"
               >
-                <FiSearch className="mr-2" />
+                <Search className="w-5 h-5 mr-2" />
                 <span>Assign to Existing Chit</span>
               </Button>
             </div>
@@ -290,14 +290,14 @@ const MemberChitsManager = ({
 
         {loading && !assignments.length ? (
           <div className="flex justify-center p-8">
-            <FiLoader className="w-8 h-8 animate-spin text-accent" />
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
           </div>
         ) : assignments.length > 0 ? (
           <>
             {assignments.length > 1 && (
               <div className="relative flex items-center mb-4">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <FiSearch className="w-5 h-5 text-text-secondary" />
+                  <Search className="w-5 h-5 text-text-secondary" />
                 </span>
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <input
@@ -331,7 +331,7 @@ const MemberChitsManager = ({
                     key={assignment.id}
                     assignment={assignment}
                     onDelete={() => handleDeleteClick(assignment)}
-                    onLogPayment={onLogPaymentClick}
+                    onLogCollection={onLogCollectionClick}
                   />
                 ))}
               </div>
@@ -363,11 +363,11 @@ const MemberChitsManager = ({
             onClick={handleBackNavigation}
             className="absolute left-0 text-text-primary hover:text-accent"
           >
-            <FiArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-6 h-6" />
           </button>
         )}
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <FiBox /> {getHeaderTitle()}
+          <Layers className="w-6 h-6" /> {getHeaderTitle()}
         </h2>
 
         {/* --- UPDATE: Changed Edit to Assign (Plus) Icon --- */}
@@ -377,7 +377,7 @@ const MemberChitsManager = ({
             className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
             title="Assign Chit"
           >
-            <FiPlus className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
           </button>
         )}
         {/* --- END UPDATE --- */}

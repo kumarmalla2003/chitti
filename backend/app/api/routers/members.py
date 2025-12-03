@@ -9,11 +9,11 @@ from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-# --- ADD crud_payments ---
-from app.crud import crud_members, crud_assignments, crud_payments
+from app.crud import crud_members, crud_assignments, crud_collections, crud_chits, crud_payouts
 from app.schemas import members as members_schemas
 from app.schemas import assignments as assignments_schemas
-from app.schemas.chits import ChitResponse # Import for constructing response
+from app.schemas.chits import ChitResponse
+from app.schemas.payouts import PayoutListResponse
 
 router = APIRouter(prefix="/members", tags=["members"])
 
@@ -23,9 +23,6 @@ async def create_member(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Creates a new unique member.
-    """
     db_member = await crud_members.get_member_by_phone(session, phone_number=member_in.phone_number)
     if db_member:
         raise HTTPException(
@@ -41,9 +38,6 @@ async def update_member_details(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Updates a member's details.
-    """
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
@@ -58,7 +52,6 @@ async def update_member_details(
 
     return await crud_members.update_member(session=session, db_member=db_member, member_in=member_in)
 
-
 @router.patch("/{member_id}", response_model=members_schemas.MemberPublic)
 async def patch_member_details(
     member_id: int,
@@ -66,16 +59,12 @@ async def patch_member_details(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Partially updates a member's details.
-    """
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
     update_data = member_in.model_dump(exclude_unset=True)
 
-    # If phone number is being updated, check if it's already taken
     if "phone_number" in update_data and update_data["phone_number"] != db_member.phone_number:
         existing_member = await crud_members.get_member_by_phone(session, phone_number=update_data["phone_number"])
         if existing_member:
@@ -84,7 +73,6 @@ async def patch_member_details(
                 detail="This phone number is already registered to another member.",
             )
     
-    # Update the model with the new data
     for key, value in update_data.items():
         setattr(db_member, key, value)
 
@@ -93,16 +81,12 @@ async def patch_member_details(
     await session.refresh(db_member)
     return db_member
 
-
 @router.get("/search", response_model=List[members_schemas.MemberSearchResponse])
 async def search_for_members(
     query: Annotated[str, Query(min_length=2)],
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Searches for members by full name or phone number.
-    """
     members = await crud_members.search_members(session, query=query)
     return members
 
@@ -112,9 +96,6 @@ async def read_member_by_id(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves a single member by their ID.
-    """
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if db_member is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
@@ -126,9 +107,6 @@ async def get_member_assignments(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves all chit assignments for a specific member and builds the correct response model.
-    """
     assignments = await crud_assignments.get_assignments_by_member_id(session, member_id=member_id)
     
     response_assignments = []
@@ -136,11 +114,8 @@ async def get_member_assignments(
 
     for assignment in assignments:
         chit = assignment.chit
-        
-        # Calculate Status
         status_str = "Active" if chit.start_date <= today <= chit.end_date else "Inactive"
         
-        # Calculate Chit Cycle
         if status_str == "Active":
             delta = relativedelta(today, chit.start_date)
             months_passed = delta.years * 12 + delta.months + 1
@@ -148,53 +123,58 @@ async def get_member_assignments(
         else:
             chit_cycle_str = f"-/{chit.duration_months}"
 
-        # Construct the detailed ChitResponse
         chit_response = ChitResponse(
             id=chit.id, name=chit.name, chit_value=chit.chit_value,
-            size=chit.size, monthly_installment=chit.monthly_installment, # <-- RENAMED
+            size=chit.size, monthly_installment=chit.monthly_installment,
             duration_months=chit.duration_months, start_date=chit.start_date,
             end_date=chit.end_date, status=status_str, chit_cycle=chit_cycle_str,
             collection_day=chit.collection_day, payout_day=chit.payout_day
         )
         
-        # --- PAYMENT CALCULATION LOGIC ---
         monthly_installment = assignment.chit.monthly_installment
-        payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
-        total_paid = sum(p.amount_paid for p in payments)
+        
+        # --- FIXED CALL HERE ---
+        collections = await crud_collections.collections.get_by_assignment(session, assignment.id)
+        
+        total_paid = sum(p.amount_paid for p in collections)
         due_amount = monthly_installment - total_paid
 
-        if total_paid == 0:
-            payment_status = "Unpaid"
-        elif due_amount > 0:
-            payment_status = "Partial"
-        else:
-            payment_status = "Paid"
-        # --- END OF CALCULATION ---
+        if total_paid == 0: collection_status = "Unpaid"
+        elif due_amount > 0: collection_status = "Partial"
+        else: collection_status = "Paid"
         
-        # Construct the final ChitAssignmentPublic response
         assignment_public = assignments_schemas.ChitAssignmentPublic(
             id=assignment.id,
             chit_month=assignment.chit_month,
             member=assignment.member,
             chit=chit_response,
-            # --- ADD NEW FIELDS TO RESPONSE ---
             total_paid=total_paid,
             due_amount=due_amount,
-            payment_status=payment_status
+            collection_status=collection_status
         )
         response_assignments.append(assignment_public)
         
     return response_assignments
 
+@router.get("/{member_id}/payouts", response_model=PayoutListResponse)
+async def get_member_payouts(
+    member_id: int,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Retrieves all payouts received by a specific member."""
+    db_member = await crud_members.get_member_by_id(session, member_id=member_id)
+    if not db_member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    
+    payouts = await crud_payouts.payouts.get_by_member(session, member_id=member_id)
+    return {"payouts": payouts}
 
 @router.get("/", response_model=members_schemas.MemberListResponse)
 async def read_all_members(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves a list of all unique members.
-    """
     members = await crud_members.get_all_members(session)
     return {"members": members}
 
@@ -204,14 +184,10 @@ async def delete_member(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Deletes a member, only if they have no active chit assignments.
-    """
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
-    # Safety Check: Ensure member has no assignments
     assignments = await crud_assignments.get_assignments_by_member_id(session, member_id=member_id)
     if assignments:
         raise HTTPException(

@@ -4,40 +4,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import List, Optional
 from datetime import date
 
-# --- Payout Schemas ---
-class PayoutBase(BaseModel):
-    month: int
-    payout_amount: float
-
-class PayoutCreate(PayoutBase):
-    pass
-
-class PayoutUpdate(BaseModel):
-    payout_amount: float
-
-class PayoutResponse(PayoutBase):
-    id: int
-    chit_id: int
-
-    model_config = ConfigDict(from_attributes=True)
-
-class PayoutListResponse(BaseModel):
-    payouts: List[PayoutResponse]
-
-# --- Chit Schemas ---
-
-class ChitNested(BaseModel): # <-- RENAMED
-    """Minimal chit info needed for nested responses.""" # <-- RENAMED
+class ChitNested(BaseModel):
+    """Minimal chit info needed for nested responses."""
     start_date: date
     end_date: date
-
+    name: str 
     model_config = ConfigDict(from_attributes=True)
 
-
-class ChitBase(BaseModel): # <-- RENAMED
+class ChitBase(BaseModel):
     name: str
     chit_value: int
-    size: int # <-- RENAMED from group_size
+    size: int
     monthly_installment: int
     duration_months: int
     start_date: date
@@ -45,24 +22,23 @@ class ChitBase(BaseModel): # <-- RENAMED
     payout_day: int = Field(..., ge=1, le=28)
 
     @model_validator(mode='after')
-    def check_collection_before_payout(self) -> 'ChitBase': # <-- RENAMED
-        """Ensure collection_day is strictly less than payout_day."""
+    def check_collection_before_payout(self) -> 'ChitBase':
         collection_day = self.collection_day
         payout_day = self.payout_day
         if collection_day is not None and payout_day is not None and collection_day >= payout_day:
             raise ValueError('Collection day must be before the payout day.')
         return self
 
-class ChitCreate(ChitBase): # <-- RENAMED
+class ChitCreate(ChitBase):
     pass
 
-class ChitUpdate(ChitBase): # <-- RENAMED
+class ChitUpdate(ChitBase):
     pass
 
-class ChitPatch(BaseModel): # <-- RENAMED
+class ChitPatch(BaseModel):
     name: Optional[str] = None
     chit_value: Optional[int] = None
-    size: Optional[int] = None # <-- RENAMED from group_size
+    size: Optional[int] = None
     monthly_installment: Optional[int] = None
     duration_months: Optional[int] = None
     start_date: Optional[date] = None
@@ -70,22 +46,19 @@ class ChitPatch(BaseModel): # <-- RENAMED
     payout_day: Optional[int] = Field(default=None, ge=1, le=28)
 
     @model_validator(mode='after')
-    def check_collection_before_payout_patch(self) -> 'ChitPatch': # <-- RENAMED
-        """Ensure collection_day is strictly less than payout_day if both are provided."""
+    def check_collection_before_payout_patch(self) -> 'ChitPatch':
         collection_day = self.collection_day
         payout_day = self.payout_day
-        # Only validate if both fields are being updated in the patch
         if collection_day is not None and payout_day is not None and collection_day >= payout_day:
             raise ValueError('Collection day must be before the payout day.')
         return self
 
-class ChitResponse(ChitBase): # <-- RENAMED
+class ChitResponse(ChitBase):
     id: int
     end_date: date
     status: str
     chit_cycle: str
-
     model_config = ConfigDict(from_attributes=True)
 
-class ChitListResponse(BaseModel): # <-- RENAMED
-    chits: List[ChitResponse] # <-- RENAMED from groups
+class ChitListResponse(BaseModel):
+    chits: List[ChitResponse]

@@ -2,13 +2,13 @@
 
 import Button from "./Button";
 import {
-  FiChevronLeft,
-  FiChevronRight,
-  FiCheck,
-  FiSave,
-  FiEdit,
-  FiLoader,
-} from "react-icons/fi";
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Save,
+  SquarePen,
+  Loader2,
+} from "lucide-react";
 
 const StepperButtons = ({
   currentStep,
@@ -30,7 +30,8 @@ const StepperButtons = ({
       // Determine button variant and text based on whether chit is already created
       const buttonVariant = isPostCreation ? "warning" : "success";
       const buttonText = isPostCreation ? "Update & Next" : "Save & Next";
-      const ButtonIcon = isPostCreation ? FiEdit : FiSave;
+
+      const ButtonIcon = isPostCreation ? SquarePen : Save;
 
       return (
         <div className="mt-8 md:hidden">
@@ -40,13 +41,13 @@ const StepperButtons = ({
               type="submit"
               variant={buttonVariant}
               disabled={isNextDisabled || loading}
-              className="w-full"
+              className="w-full flex items-center justify-center"
             >
               {loading ? (
-                <FiLoader className="animate-spin mx-auto" />
+                <Loader2 className="animate-spin mx-auto w-5 h-5" />
               ) : (
                 <>
-                  <ButtonIcon className="inline-block mr-2" />
+                  <ButtonIcon className="inline-block mr-2 w-5 h-5" />
                   {buttonText}
                 </>
               )}
@@ -76,9 +77,10 @@ const StepperButtons = ({
               type="button"
               onClick={onNext}
               disabled={isNextDisabled || loading}
+              className="flex items-center"
             >
               Next
-              <FiChevronRight className="inline-block ml-1" />
+              <ChevronRight className="inline-block ml-1 w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -86,7 +88,7 @@ const StepperButtons = ({
     }
   }
 
-  // --- MIDDLE STEPS (Members/Payments Section) ---
+  // --- MIDDLE STEPS (Members/Collections Section) ---
   if (!isLastStep) {
     // Both CREATE and EDIT: Prev | Skip | Next
     return (
@@ -98,8 +100,9 @@ const StepperButtons = ({
             variant="secondary"
             onClick={onPrev}
             disabled={loading}
+            className="flex items-center"
           >
-            <FiChevronLeft className="inline-block mr-1" />
+            <ChevronLeft className="inline-block mr-1 w-5 h-5" />
             Prev
           </Button>
 
@@ -116,16 +119,17 @@ const StepperButtons = ({
             type="button"
             onClick={onNext}
             disabled={isNextDisabled || loading}
+            className="flex items-center"
           >
             Next
-            <FiChevronRight className="inline-block ml-1" />
+            <ChevronRight className="inline-block ml-1 w-5 h-5" />
           </Button>
         </div>
       </div>
     );
   }
 
-  // --- LAST STEP (Payments Section) ---
+  // --- LAST STEP (Collections Section) ---
   // Both CREATE and EDIT: Prev | Skip | Finish/Update
   return (
     <div className="mt-8 md:hidden">
@@ -136,8 +140,9 @@ const StepperButtons = ({
           variant="secondary"
           onClick={onPrev}
           disabled={loading}
+          className="flex items-center"
         >
-          <FiChevronLeft className="inline-block mr-1" />
+          <ChevronLeft className="inline-block mr-1 w-5 h-5" />
           Prev
         </Button>
 
@@ -155,16 +160,17 @@ const StepperButtons = ({
           onClick={onMiddle}
           variant={mode === "create" ? "success" : "warning"}
           disabled={loading}
+          className="flex items-center"
         >
           {loading ? (
-            <FiLoader className="animate-spin mx-auto" />
+            <Loader2 className="animate-spin mx-auto w-5 h-5" />
           ) : (
             <>
               {mode === "create" ? "Finish" : "Update"}
               {mode === "create" ? (
-                <FiCheck className="inline-block ml-1" />
+                <Check className="inline-block ml-1 w-5 h-5" />
               ) : (
-                <FiEdit className="inline-block ml-1" />
+                <SquarePen className="inline-block ml-1 w-5 h-5" />
               )}
             </>
           )}

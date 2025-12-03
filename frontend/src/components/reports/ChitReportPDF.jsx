@@ -239,7 +239,7 @@ const formatFullDate = (dateString) => {
   });
 };
 
-const ChitReportPDF = ({ chit, payouts, assignments, payments }) => {
+const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
   // 1. Prepare Payout Data
   const payoutData = [];
   if (payouts) {
@@ -250,10 +250,12 @@ const ChitReportPDF = ({ chit, payouts, assignments, payments }) => {
       payoutData.push({
         left_s_no: left.month,
         left_month: left.month,
-        left_amount: left.payout_amount,
+        // <-- UPDATED: planned_amount
+        left_amount: left.planned_amount,
         right_s_no: right ? right.month : null,
         right_month: right ? right.month : null,
-        right_amount: right ? right.payout_amount : null,
+        // <-- UPDATED: planned_amount
+        right_amount: right ? right.planned_amount : null,
       });
     }
   }
@@ -342,31 +344,31 @@ const ChitReportPDF = ({ chit, payouts, assignments, payments }) => {
     },
     {
       header: "Status",
-      accessor: "payment_status",
+      accessor: "collection_status",
       style: { width: "20%", textAlign: "center" },
       cell: (row) => (
         <Text
           style={
-            row.payment_status === "Paid"
+            row.collection_status === "Paid"
               ? styles.textSuccess
-              : row.payment_status === "Unpaid"
+              : row.collection_status === "Unpaid"
               ? styles.textError
               : styles.textWarning
           }
         >
-          {row.payment_status}
+          {row.collection_status}
         </Text>
       ),
     },
   ];
 
-  // 4. Process Payments
-  const paymentColumns = [
+  // 4. Process Collections
+  const collectionColumns = [
     {
       header: "Date",
-      accessor: "payment_date",
+      accessor: "collection_date",
       style: { width: "15%", textAlign: "center" },
-      cell: (row) => formatFullDate(row.payment_date),
+      cell: (row) => formatFullDate(row.collection_date),
     },
     {
       header: "Member",
@@ -382,7 +384,7 @@ const ChitReportPDF = ({ chit, payouts, assignments, payments }) => {
     },
     {
       header: "Method",
-      accessor: "payment_method",
+      accessor: "collection_method",
       style: { width: "15%", textAlign: "center" },
     },
     {
@@ -501,11 +503,11 @@ const ChitReportPDF = ({ chit, payouts, assignments, payments }) => {
 
         <View style={styles.divider} />
 
-        {/* --- PAYMENTS --- */}
+        {/* --- COLLECTIONS --- */}
         <AtomicTable
-          title="Payment History"
-          columns={paymentColumns}
-          data={payments}
+          title="Collection History"
+          columns={collectionColumns}
+          data={collections}
         />
 
         {/* --- FOOTER --- */}

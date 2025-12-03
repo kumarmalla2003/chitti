@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
-import { FiPhone, FiLock, FiX, FiLoader } from "react-icons/fi";
+import { Phone, Lock, X, Loader2 } from "lucide-react";
 import { verifyPhone, login } from "../../services/authService";
 import Message from "../ui/Message";
 import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
@@ -175,7 +175,7 @@ const LoginModal = ({ isOpen, onClose }) => {
           className="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-transform duration-300 hover:rotate-90 cursor-pointer"
           aria-label="Close modal"
         >
-          <FiX className="w-6 h-6" />
+          <X className="w-6 h-6" />
         </button>
         <h2 className="text-3xl font-bold text-center text-text-primary">
           Login
@@ -199,7 +199,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             )}
             <div className="relative flex items-center mb-4">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiPhone className="w-5 h-5 text-text-secondary" />
+                <Phone className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -220,7 +220,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                <FiLoader className="animate-spin mx-auto" />
+                <Loader2 className="animate-spin mx-auto w-5 h-5" />
               ) : (
                 "Verify"
               )}
@@ -238,7 +238,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               </Message>
             )}
             <div className="flex justify-center items-center gap-2 mb-4">
-              <FiLock className="w-8 h-8 text-text-secondary" />
+              <Lock className="w-8 h-8 text-text-secondary" />
               <div className="mr-1 h-8 w-px bg-border"></div>
               <div className="flex justify-center gap-2">
                 {pin.map((data, index) => (
@@ -265,7 +265,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                <FiLoader className="animate-spin mx-auto" />
+                <Loader2 className="animate-spin mx-auto w-5 h-5" />
               ) : (
                 "Login"
               )}

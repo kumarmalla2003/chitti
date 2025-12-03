@@ -1,22 +1,14 @@
-// frontend/src/components/reports/PaymentReportModal.jsx
+// frontend/src/components/reports/PayoutReportModal.jsx
 
 import React, { useState, useEffect, useRef } from "react";
-import {
-  FiX,
-  FiCalendar,
-  FiLayers,
-  FiUser,
-  FiChevronDown,
-  FiLoader,
-  FiBox,
-} from "react-icons/fi";
+import { X, Calendar, Layers, User, ChevronDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "../ui/Button";
 import { getAllChits } from "../../services/chitsService";
 import { getAllMembers } from "../../services/membersService";
 import CustomDateInput from "../ui/CustomDateInput";
 
-// --- 1. TabButton Component ---
+// --- TabButton Component ---
 const TabButton = React.forwardRef(
   ({ name, icon: Icon, label, activeTab, setActiveTab }, ref) => {
     const isActive = activeTab === name;
@@ -61,13 +53,7 @@ const getDates = (type) => {
   };
 };
 
-const PaymentReportModal = ({
-  isOpen,
-  onClose,
-  onGenerate,
-  token,
-  loading,
-}) => {
+const PayoutReportModal = ({ isOpen, onClose, onGenerate, token, loading }) => {
   const [activeTab, setActiveTab] = useState("date");
 
   const [startDate, setStartDate] = useState("");
@@ -81,7 +67,6 @@ const PaymentReportModal = ({
 
   const tabRefs = useRef({});
 
-  // --- Scroll Active Tab into View ---
   useEffect(() => {
     const activeTabRef = tabRefs.current[activeTab];
     if (activeTabRef) {
@@ -160,21 +145,21 @@ const PaymentReportModal = ({
 
   const getInfoMessage = () => {
     if (activeTab === "date") {
-      return "Generates a report of all payments within the selected date range.";
+      return "Generates a report of all payouts within the selected date range.";
     } else if (activeTab === "chit") {
       const name =
         chits.find((c) => c.id.toString() === selectedChit)?.name ||
         "the selected chit";
       return selectedChit
-        ? `Generates the complete payment history for "${name}".`
-        : "Select a chit group to view its history.";
+        ? `Generates the complete payout history for "${name}".`
+        : "Select a chit group to view its payouts.";
     } else if (activeTab === "member") {
       const name =
         members.find((m) => m.id.toString() === selectedMember)?.full_name ||
         "the selected member";
       return selectedMember
-        ? `Generates the complete payment history for "${name}".`
-        : "Select a member to view their history.";
+        ? `Generates the complete payout history for "${name}".`
+        : "Select a member to view their payouts.";
     }
   };
 
@@ -182,13 +167,11 @@ const PaymentReportModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -197,33 +180,29 @@ const PaymentReportModal = ({
         className="relative bg-background-primary rounded-md shadow-lg p-8 w-full max-w-md overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-transform duration-300 hover:rotate-90 cursor-pointer"
         >
-          <FiX className="w-6 h-6" />
+          <X className="w-6 h-6" />
         </button>
 
-        {/* Header */}
         <h2 className="text-3xl font-bold text-center text-text-primary">
-          Generate Report
+          Generate Payout Report
         </h2>
         <hr className="my-4 border-border" />
 
-        {/* --- Info Message --- */}
         <div className="min-h-[3rem] flex items-center justify-center mb-4 px-2">
           <p className="text-sm text-center text-text-secondary">
             {getInfoMessage()}
           </p>
         </div>
 
-        {/* --- TABS --- */}
         <div className="flex items-center border-b border-border mb-6 w-full overflow-x-auto whitespace-nowrap no-scrollbar">
           <TabButton
             ref={(el) => (tabRefs.current["date"] = el)}
             name="date"
-            icon={FiCalendar}
+            icon={Calendar}
             label="Date"
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -231,7 +210,7 @@ const PaymentReportModal = ({
           <TabButton
             ref={(el) => (tabRefs.current["chit"] = el)}
             name="chit"
-            icon={FiLayers}
+            icon={Layers}
             label="Chit"
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -239,17 +218,15 @@ const PaymentReportModal = ({
           <TabButton
             ref={(el) => (tabRefs.current["member"] = el)}
             name="member"
-            icon={FiUser}
+            icon={User}
             label="Member"
             activeTab={activeTab}
             setActiveTab={setActiveTab}
           />
         </div>
 
-        {/* Content Body */}
         <div className="flex-grow mb-8">
           <AnimatePresence mode="wait">
-            {/* --- DATE TAB --- */}
             {activeTab === "date" && (
               <motion.div
                 key="date"
@@ -259,7 +236,6 @@ const PaymentReportModal = ({
                 transition={{ duration: 0.2 }}
                 className="space-y-5"
               >
-                {/* Quick Select Pills */}
                 <div className="flex justify-center gap-3">
                   {["thisMonth", "lastMonth", "thisYear"].map((range) => {
                     const isActive = isRangeActive(range);
@@ -282,7 +258,6 @@ const PaymentReportModal = ({
                   })}
                 </div>
 
-                {/* --- Vertical Stack --- */}
                 <div className="flex flex-col gap-4">
                   <div>
                     <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-2 ml-1">
@@ -310,7 +285,6 @@ const PaymentReportModal = ({
               </motion.div>
             )}
 
-            {/* --- CHIT TAB --- */}
             {activeTab === "chit" && (
               <motion.div
                 key="chit"
@@ -342,13 +316,12 @@ const PaymentReportModal = ({
                     ))}
                   </select>
                   <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-text-secondary">
-                    <FiChevronDown className="w-5 h-5" />
+                    <ChevronDown className="w-5 h-5" />
                   </span>
                 </div>
               </motion.div>
             )}
 
-            {/* --- MEMBER TAB --- */}
             {activeTab === "member" && (
               <motion.div
                 key="member"
@@ -363,7 +336,7 @@ const PaymentReportModal = ({
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <FiUser className="w-5 h-5 text-text-secondary" />
+                    <User className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
                   <select
@@ -380,7 +353,7 @@ const PaymentReportModal = ({
                     ))}
                   </select>
                   <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-text-secondary">
-                    <FiChevronDown className="w-5 h-5" />
+                    <ChevronDown className="w-5 h-5" />
                   </span>
                 </div>
               </motion.div>
@@ -388,7 +361,6 @@ const PaymentReportModal = ({
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
         <Button
           variant="primary"
           onClick={handleSubmit}
@@ -396,7 +368,7 @@ const PaymentReportModal = ({
           className="w-full shadow-lg"
         >
           {loading ? (
-            <FiLoader className="animate-spin mx-auto" />
+            <Loader2 className="animate-spin mx-auto w-5 h-5" />
           ) : (
             "Download Report"
           )}
@@ -406,4 +378,4 @@ const PaymentReportModal = ({
   );
 };
 
-export default PaymentReportModal;
+export default PayoutReportModal;

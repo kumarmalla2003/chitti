@@ -62,5 +62,3 @@ async def delete_member_by_id(session: AsyncSession, db_member: Member):
     """Deletes a member from the database."""
     await session.delete(db_member)
     await session.commit()
-
-# --- THE UNMATCHED '}' HAS BEEN REMOVED FROM HERE ---

@@ -3,15 +3,16 @@
 import { useRef, useEffect } from "react";
 import Message from "../ui/Message";
 import CustomMonthInput from "../ui/CustomMonthInput";
-import { RupeeIcon } from "../ui/Icons";
 import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
 import {
-  FiTag,
-  FiUsers,
-  FiClock,
-  FiArrowDownLeft,
-  FiArrowUpRight,
-} from "react-icons/fi";
+  Layers,
+  Users,
+  Clock,
+  WalletMinimal,
+  TrendingUp,
+  IndianRupee,
+  Layers2Icon,
+} from "lucide-react";
 
 const ChitDetailsForm = ({
   mode,
@@ -123,7 +124,7 @@ const ChitDetailsForm = ({
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <FiTag className="w-5 h-5 text-text-secondary" />
+              <Layers className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
@@ -153,7 +154,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <RupeeIcon className="w-5 h-5 text-text-secondary" />
+                <IndianRupee className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -183,7 +184,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiUsers className="w-5 h-5 text-text-secondary" />
+                <Users className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -212,7 +213,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <RupeeIcon className="w-5 h-5 text-text-secondary" />
+                <IndianRupee className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -242,7 +243,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiClock className="w-5 h-5 text-text-secondary" />
+                <Clock className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -302,7 +303,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiArrowDownLeft className="w-5 h-5 text-text-secondary" />
+                <WalletMinimal className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
@@ -328,7 +329,7 @@ const ChitDetailsForm = ({
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <FiArrowUpRight className="w-5 h-5 text-text-secondary" />
+                <TrendingUp className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input

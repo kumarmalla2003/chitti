@@ -20,7 +20,7 @@ const Hero = forwardRef(({ onLoginClick }, ref) => {
         </h1>
         <p className="text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mb-8">
           The all-in-one platform for foremen. Structure pre-approved payout
-          schedules, track payments, and manage your groups with complete
+          schedules, track collections, and manage your groups with complete
           transparency and control.
         </p>
 

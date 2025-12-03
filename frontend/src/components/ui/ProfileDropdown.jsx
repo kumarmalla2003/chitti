@@ -2,7 +2,7 @@
 
 import { useDispatch } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
-import { FiLogOut } from "react-icons/fi";
+import { LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
 const dropdownVariants = {
@@ -36,7 +36,7 @@ const ProfileDropdown = ({ onClose }) => {
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm rounded-md text-error-accent bg-background-secondary hover:bg-error-bg transition-colors cursor-pointer"
         >
-          <FiLogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5" />
           <span>Logout</span>
         </button>
       </div>

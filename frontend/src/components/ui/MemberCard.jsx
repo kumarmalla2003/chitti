@@ -1,13 +1,13 @@
 // frontend/src/components/ui/MemberCard.jsx
 
 import {
-  FiEdit,
-  FiTrash2,
-  FiPhone,
-  FiBox,
-  FiPrinter,
-  FiLoader,
-} from "react-icons/fi";
+  SquarePen,
+  Trash2,
+  Phone,
+  Layers,
+  Printer,
+  Loader2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 
@@ -60,9 +60,9 @@ const MemberCard = ({
             title="Download PDF"
           >
             {isPrinting ? (
-              <FiLoader className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <FiPrinter className="w-5 h-5" />
+              <Printer className="w-5 h-5" />
             )}
           </button>
 
@@ -74,7 +74,7 @@ const MemberCard = ({
             className="p-2 rounded-full text-warning-accent hover:bg-warning-bg transition-colors duration-200"
             title="Edit Member"
           >
-            <FiEdit className="w-5 h-5" />
+            <SquarePen className="w-5 h-5" />
           </button>
 
           <button
@@ -85,7 +85,7 @@ const MemberCard = ({
             className="p-2 rounded-full text-error-accent hover:bg-error-bg transition-colors duration-200"
             title="Delete Member"
           >
-            <FiTrash2 className="w-5 h-5" />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -96,11 +96,11 @@ const MemberCard = ({
       {/* --- Bottom Row --- */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
-          <FiPhone className="w-4 h-4" />
+          <Phone className="w-4 h-4" />
           <span>{member.phone_number}</span>
         </div>
         <div className="flex items-center gap-2">
-          <FiBox className="w-4 h-4" />
+          <Layers className="w-4 h-4" />
           <span>Active: {activeChitsCount}</span>
         </div>
       </div>

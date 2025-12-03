@@ -13,14 +13,13 @@ import PayoutsSection from "../sections/PayoutsSection";
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import {
-  FiSave,
-  FiCalendar,
-  FiCheck,
-  FiLoader,
-  FiArrowRight,
-  FiEdit,
-  FiInfo,
-} from "react-icons/fi";
+  Save,
+  Calendar,
+  Check,
+  Loader2,
+  ArrowRight,
+  SquarePen,
+} from "lucide-react";
 import { createChit, patchChit } from "../../services/chitsService";
 import { getUnassignedMonths } from "../../services/assignmentsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
@@ -353,18 +352,18 @@ const AssignNewChitForm = forwardRef(
             onFormChange={handleFormChange}
             onEnterKeyOnLastInput={handleSaveChit}
           />
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="mt-6">
             <Button
               type="button"
               onClick={handleSaveChit}
               disabled={!isFormValid || loading}
-              className="flex items-center justify-center"
+              className="w-full flex items-center justify-center" // Centered & Full Width
             >
               {loading ? (
-                <FiLoader className="animate-spin" />
+                <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  <FiSave className="mr-2" /> Save Chit
+                  <Save className="mr-2 w-5 h-5" /> Save Chit
                 </>
               )}
             </Button>
@@ -390,19 +389,19 @@ const AssignNewChitForm = forwardRef(
             isPostCreation={true}
             onEnterKeyOnLastInput={handleUpdateChit}
           />
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="mt-6">
             <Button
               type="button"
               variant="warning"
               onClick={handleUpdateChit}
               disabled={loading}
-              className="flex items-center justify-center"
+              className="w-full flex items-center justify-center" // Centered & Full Width
             >
               {loading ? (
-                <FiLoader className="animate-spin" />
+                <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  <FiEdit className="mr-2" /> Update & Continue
+                  <SquarePen className="mr-2 w-5 h-5" /> Update & Continue
                 </>
               )}
             </Button>
@@ -434,19 +433,19 @@ const AssignNewChitForm = forwardRef(
             />
           </div>
 
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="mt-6">
             <Button
               type="button"
               variant="primary"
               onClick={handleProceedToMonth}
               disabled={loading}
-              className="flex items-center justify-center"
+              className="w-full flex items-center justify-center" // Centered & Full Width
             >
               {loading ? (
-                <FiLoader className="animate-spin" />
+                <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  Skip & Assign Month <FiArrowRight className="ml-2" />
+                  Skip & Assign Month <ArrowRight className="ml-2 w-5 h-5" />
                 </>
               )}
             </Button>
@@ -471,7 +470,7 @@ const AssignNewChitForm = forwardRef(
 
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <FiCalendar className="w-5 h-5 text-text-secondary" />
+              <Calendar className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <select
@@ -494,19 +493,19 @@ const AssignNewChitForm = forwardRef(
               ))}
             </select>
           </div>
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="mt-6">
             <Button
               type="button"
               variant="success"
               onClick={handleConfirmAssignment}
               disabled={!selectedMonth || loading}
-              className="flex items-center justify-center"
+              className="w-full flex items-center justify-center" // Centered & Full Width
             >
               {loading ? (
-                <FiLoader className="animate-spin" />
+                <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  <FiCheck className="mr-2" /> Confirm Assignment
+                  <Check className="mr-2 w-5 h-5" /> Confirm Assignment
                 </>
               )}
             </Button>

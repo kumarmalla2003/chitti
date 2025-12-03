@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 
-import { useState } from "react";
+import { useState } from "react"; // <-- CORRECTED IMPORT
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -14,11 +14,12 @@ import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
 
-// --- IMPORTS FOR NEW PAGES (to be created in 2.3 & 2.4) ---
-// We add these now to set up the routes.
-import PaymentsPage from "./pages/PaymentsPage";
-import PaymentDetailPage from "./pages/PaymentDetailPage";
-// --- END IMPORTS ---
+// Ensure these files exist or rename them back to PaymentsPage/PaymentDetailPage if needed
+import CollectionsPage from "./pages/CollectionsPage";
+import CollectionDetailPage from "./pages/CollectionDetailPage";
+
+import PayoutsPage from "./pages/PayoutsPage";
+import PayoutDetailPage from "./pages/PayoutDetailPage";
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -157,13 +158,13 @@ const App = () => {
               }
             />
 
-            {/* --- NEW: PAYMENTS ROUTES --- */}
+            {/* --- COLLECTIONS ROUTES --- */}
             <Route
-              path="/payments"
+              path="/collections"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <PaymentsPage />
+                    <CollectionsPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -171,11 +172,11 @@ const App = () => {
               }
             />
             <Route
-              path="/payments/create"
+              path="/collections/create"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <PaymentDetailPage />
+                    <CollectionDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -183,11 +184,11 @@ const App = () => {
               }
             />
             <Route
-              path="/payments/view/:id"
+              path="/collections/view/:id"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <PaymentDetailPage />
+                    <CollectionDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
@@ -195,18 +196,68 @@ const App = () => {
               }
             />
             <Route
-              path="/payments/edit/:id"
+              path="/collections/edit/:id"
               element={
                 isLoggedIn ? (
                   <AnimatedPage>
-                    <PaymentDetailPage />
+                    <CollectionDetailPage />
                   </AnimatedPage>
                 ) : (
                   <Navigate to="/" replace />
                 )
               }
             />
-            {/* --- END: PAYMENTS ROUTES --- */}
+
+            {/* --- PAYOUTS ROUTES --- */}
+            <Route
+              path="/payouts"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PayoutsPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payouts/create"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PayoutDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payouts/view/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PayoutDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/payouts/edit/:id"
+              element={
+                isLoggedIn ? (
+                  <AnimatedPage>
+                    <PayoutDetailPage />
+                  </AnimatedPage>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            {/* --- END: PAYOUTS ROUTES --- */}
           </Routes>
         </AnimatePresence>
       </div>

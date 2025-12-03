@@ -1,4 +1,4 @@
-// frontend/src/components/reports/PaymentReportPDF.jsx
+// frontend/src/components/reports/CollectionReportPDF.jsx
 
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
@@ -144,16 +144,16 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("en-IN");
 };
 
-const PaymentReportPDF = ({ payments, filters }) => {
-  const totalAmount = payments.reduce((sum, p) => sum + p.amount_paid, 0);
-  const totalCount = payments.length;
+const CollectionReportPDF = ({ collections, filters }) => {
+  const totalAmount = collections.reduce((sum, p) => sum + p.amount_paid, 0);
+  const totalCount = collections.length;
 
-  const data = payments.map((p, i) => ({
+  const data = collections.map((p, i) => ({
     s_no: i + 1,
-    date: formatDate(p.payment_date),
+    date: formatDate(p.collection_date),
     member: p.member?.full_name || "Unknown",
     chit: p.chit?.name || "Unknown",
-    method: p.payment_method,
+    method: p.collection_method,
     amount: formatCurrency(p.amount_paid),
   }));
 
@@ -186,11 +186,11 @@ const PaymentReportPDF = ({ payments, filters }) => {
   ];
 
   // --- Dynamic Title & Subtitle Logic ---
-  let title = "PAYMENTS REPORT";
+  let title = "COLLECTIONS REPORT";
   let subtitle = "";
 
   if (filters.chitId) {
-    title = "PAYMENTS REPORT";
+    title = "COLLECTIONS REPORT";
     let chitName = filters.chitName || "";
     // Append 'Chit' if not present
     if (!chitName.toLowerCase().endsWith("chit")) {
@@ -198,10 +198,10 @@ const PaymentReportPDF = ({ payments, filters }) => {
     }
     subtitle = chitName;
   } else if (filters.memberId) {
-    title = "PAYMENTS REPORT";
+    title = "COLLECTIONS REPORT";
     subtitle = filters.memberName || "";
   } else if (filters.startDate) {
-    title = "PAYMENTS REPORT";
+    title = "COLLECTIONS REPORT";
     subtitle = `Period: ${formatDate(filters.startDate)} to ${formatDate(
       filters.endDate
     )}`;
@@ -260,4 +260,4 @@ const PaymentReportPDF = ({ payments, filters }) => {
   );
 };
 
-export default PaymentReportPDF;
+export default CollectionReportPDF;

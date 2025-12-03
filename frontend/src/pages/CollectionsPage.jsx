@@ -1,9 +1,12 @@
-// frontend/src/pages/PaymentsPage.jsx
+// frontend/src/pages/CollectionsPage.jsx
 
 import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getAllPayments, deletePayment } from "../services/paymentsService";
+import {
+  getAllCollections,
+  deleteCollection,
+} from "../services/collectionsService";
 import { useSelector } from "react-redux";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -13,36 +16,34 @@ import Message from "../components/ui/Message";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
-import PaymentCard from "../components/ui/PaymentCard";
+import CollectionCard from "../components/ui/CollectionCard";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import {
-  FiPlus,
-  FiLoader,
-  FiSearch,
-  FiEdit,
-  FiTrash2,
-  FiPrinter,
-  FiGrid, // <-- Added
-  FiList, // <-- Added
-} from "react-icons/fi";
+  Plus,
+  Loader2,
+  Search,
+  SquarePen,
+  Trash2,
+  Printer,
+  LayoutGrid,
+  List,
+} from "lucide-react";
 
-// --- REPORT IMPORTS ---
+import CollectionReportPDF from "../components/reports/CollectionReportPDF";
+import CollectionReportModal from "../components/reports/CollectionReportModal";
 import { pdf } from "@react-pdf/renderer";
-import PaymentReportPDF from "../components/reports/PaymentReportPDF";
-import PaymentReportModal from "../components/reports/PaymentReportModal";
 
-const PaymentsPage = () => {
+const CollectionsPage = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const [payments, setPayments] = useState([]);
+  const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { token } = useSelector((state) => state.auth);
 
-  // --- View Mode State ---
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
   );
@@ -51,17 +52,14 @@ const PaymentsPage = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // --- REPORT STATE ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
 
   useScrollToTop(success || error);
 
-  // Handle Resize for View Mode
   useEffect(() => {
     const handleResize = () => {
       // Optional: Auto-switch view on resize if desired
-      // if (window.innerWidth < 768) setViewMode("card");
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -71,8 +69,8 @@ const PaymentsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllPayments(token);
-      setPayments(data.payments);
+      const data = await getAllCollections(token);
+      setCollections(data.collections);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -100,8 +98,8 @@ const PaymentsPage = () => {
     }
   }, [success]);
 
-  const handleDeleteClick = (payment) => {
-    setItemToDelete(payment);
+  const handleDeleteClick = (collection) => {
+    setItemToDelete(collection);
     setIsModalOpen(true);
   };
 
@@ -110,11 +108,11 @@ const PaymentsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deletePayment(itemToDelete.id, token);
-      setPayments((prevPayments) =>
-        prevPayments.filter((p) => p.id !== itemToDelete.id)
+      await deleteCollection(itemToDelete.id, token);
+      setCollections((prevCollections) =>
+        prevCollections.filter((p) => p.id !== itemToDelete.id)
       );
-      setSuccess(`Payment record has been deleted.`);
+      setSuccess(`Collection record has been deleted.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -124,42 +122,33 @@ const PaymentsPage = () => {
     }
   };
 
-  // --- REPORT GENERATION HANDLER ---
   const handleGenerateReport = async (filters) => {
     setReportLoading(true);
     setError(null);
     try {
-      // 1. Fetch filtered data.
-      const data = await getAllPayments(token, filters);
+      const data = await getAllCollections(token, filters);
 
-      if (!data.payments || data.payments.length === 0) {
-        setError("No payments found for the selected criteria.");
+      if (!data.collections || data.collections.length === 0) {
+        setError("No collections found for the selected criteria.");
         setReportLoading(false);
-        // We keep the modal open so they can try again
         return;
       }
 
-      // 2. Generate PDF
       const blob = await pdf(
-        <PaymentReportPDF payments={data.payments} filters={filters} />
+        <CollectionReportPDF collections={data.collections} filters={filters} />
       ).toBlob();
 
-      // 3. Trigger Download
-      let filename = "Payment_Report.pdf";
+      let filename = "Collection_Report.pdf";
 
       if (filters.chitName) {
         let name = filters.chitName;
-        // Append "Chit" logic
         if (!name.toLowerCase().endsWith("chit")) {
           name += " Chit";
         }
-        // Format: "Chit Name Payments Report.pdf" (Spaces preserved)
-        filename = `${filters.chitName} Payments Report.pdf`;
+        filename = `${filters.chitName} Collections Report.pdf`;
       } else if (filters.memberName) {
-        // Format: "Member Name Payments Report.pdf" (Spaces preserved)
-        filename = `${filters.memberName} Payments Report.pdf`;
+        filename = `${filters.memberName} Collections Report.pdf`;
       } else if (filters.startDate) {
-        // Format dates as DD-MM-YYYY
         const formatDateForFilename = (dateStr) => {
           if (!dateStr) return "";
           const [y, m, d] = dateStr.split("-");
@@ -167,9 +156,7 @@ const PaymentsPage = () => {
         };
         const startStr = formatDateForFilename(filters.startDate);
         const endStr = formatDateForFilename(filters.endDate);
-
-        // Format: "DD-MM-YYYY to DD-MM-YYYY Payments Report.pdf" (Spaces preserved)
-        filename = `${startStr} to ${endStr} Payments Report.pdf`;
+        filename = `${startStr} to ${endStr} Collections Report.pdf`;
       }
 
       const url = URL.createObjectURL(blob);
@@ -190,16 +177,16 @@ const PaymentsPage = () => {
     }
   };
 
-  const filteredPayments = useMemo(() => {
-    if (!searchQuery) return payments;
+  const filteredCollections = useMemo(() => {
+    if (!searchQuery) return collections;
     const lowercasedQuery = searchQuery.toLowerCase();
-    return payments.filter(
+    return collections.filter(
       (p) =>
         p.member.full_name.toLowerCase().includes(lowercasedQuery) ||
         p.chit.name.toLowerCase().includes(lowercasedQuery) ||
         p.amount_paid.toString().includes(lowercasedQuery)
     );
-  }, [payments, searchQuery]);
+  }, [collections, searchQuery]);
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -211,8 +198,8 @@ const PaymentsPage = () => {
   const columns = [
     {
       header: "Date",
-      accessor: "payment_date",
-      cell: (row) => formatDate(row.payment_date),
+      accessor: "collection_date",
+      cell: (row) => formatDate(row.collection_date),
       className: "text-center",
     },
     {
@@ -233,7 +220,7 @@ const PaymentsPage = () => {
     },
     {
       header: "Method",
-      accessor: "payment_method",
+      accessor: "collection_method",
       className: "text-center",
     },
     {
@@ -242,16 +229,15 @@ const PaymentsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          {/* View Button Removed */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/payments/edit/${row.id}`);
+              navigate(`/collections/edit/${row.id}`);
             }}
             className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Edit Payment"
+            title="Edit Collection"
           >
-            <FiEdit />
+            <SquarePen className="w-5 h-5" />
           </button>
           <button
             onClick={(e) => {
@@ -259,9 +245,9 @@ const PaymentsPage = () => {
               handleDeleteClick(row);
             }}
             className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Delete Payment"
+            title="Delete Collection"
           >
-            <FiTrash2 />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       ),
@@ -275,7 +261,7 @@ const PaymentsPage = () => {
       >
         <Header
           onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection="payments"
+          activeSection="collections"
         />
         <div className="pb-16 md:pb-0">
           <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
@@ -283,18 +269,18 @@ const PaymentsPage = () => {
               {/* --- HEADER ROW WITH PRINT BUTTON --- */}
               <div className="relative flex justify-center items-center mb-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
-                  All Payments
+                  All Collections
                 </h1>
 
                 {/* Print Button */}
-                {payments.length > 0 && (
+                {collections.length > 0 && (
                   <div className="absolute right-0 flex items-center">
                     <button
                       onClick={() => setIsReportModalOpen(true)}
                       className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 cursor-pointer"
                       title="Generate Report"
                     >
-                      <FiPrinter className="w-6 h-6" />
+                      <Printer className="w-6 h-6" />
                     </button>
                   </div>
                 )}
@@ -313,7 +299,7 @@ const PaymentsPage = () => {
               <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
                 <div className="relative flex-grow md:max-w-md flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiSearch className="w-5 h-5 text-text-secondary" />
+                    <Search className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
@@ -340,9 +326,9 @@ const PaymentsPage = () => {
                     }
                   >
                     {viewMode === "table" ? (
-                      <FiGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-5 h-5" />
                     ) : (
-                      <FiList className="w-5 h-5" />
+                      <List className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -350,47 +336,49 @@ const PaymentsPage = () => {
 
               {loading && (
                 <div className="flex justify-center items-center h-64">
-                  <FiLoader className="w-10 h-10 animate-spin text-accent" />
+                  <Loader2 className="w-10 h-10 animate-spin text-accent" />
                 </div>
               )}
 
-              {!loading && !error && filteredPayments.length === 0 && (
+              {!loading && !error && filteredCollections.length === 0 && (
                 <Card className="text-center p-8">
                   <h2 className="text-2xl font-bold text-text-primary mb-2">
-                    {searchQuery ? "No Matching Payments" : "No Payments Found"}
+                    {searchQuery
+                      ? "No Matching Collections"
+                      : "No Collections Found"}
                   </h2>
                   <p className="text-text-secondary">
                     {searchQuery
                       ? "Try a different search term."
-                      : "You haven't logged any payments yet. Click the button below to start!"}
+                      : "You haven't logged any collections yet. Click the button below to start!"}
                   </p>
                 </Card>
               )}
 
-              {!loading && !error && filteredPayments.length > 0 && (
+              {!loading && !error && filteredCollections.length > 0 && (
                 <>
                   {/* --- CONDITIONAL RENDERING BASED ON VIEW MODE --- */}
                   {viewMode === "table" ? (
                     <div className="overflow-x-auto rounded-lg shadow-sm">
                       <Table
                         columns={columns}
-                        data={filteredPayments}
+                        data={filteredCollections}
                         onRowClick={(row) =>
-                          navigate(`/payments/view/${row.id}`)
+                          navigate(`/collections/view/${row.id}`)
                         }
                       />
                     </div>
                   ) : (
                     // Card View
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredPayments.map((payment) => (
-                        <PaymentCard
-                          key={payment.id}
-                          payment={payment}
+                      {filteredCollections.map((collection) => (
+                        <CollectionCard
+                          key={collection.id}
+                          collection={collection}
                           onEdit={() =>
-                            navigate(`/payments/edit/${payment.id}`)
+                            navigate(`/collections/edit/${collection.id}`)
                           }
-                          onDelete={() => handleDeleteClick(payment)}
+                          onDelete={() => handleDeleteClick(collection)}
                         />
                       ))}
                     </div>
@@ -405,17 +393,17 @@ const PaymentsPage = () => {
       <MobileNav
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        activeSection="payments"
+        activeSection="collections"
       />
       <BottomNav />
-      <Link to="/payments/create" className="group">
+      <Link to="/collections/create" className="group">
         <Button variant="fab" className="group-hover:scale-110">
-          <FiPlus className="w-6 h-6" />
+          <Plus className="w-6 h-6" />
         </Button>
       </Link>
 
       {/* --- REPORT MODAL --- */}
-      <PaymentReportModal
+      <CollectionReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onGenerate={handleGenerateReport}
@@ -427,12 +415,12 @@ const PaymentsPage = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Delete Payment?"
-        message={`Are you sure you want to permanently delete this payment record? This action cannot be undone.`}
+        title="Delete Collection?"
+        message={`Are you sure you want to permanently delete this collection record? This action cannot be undone.`}
         loading={deleteLoading}
       />
     </>
   );
 };
 
-export default PaymentsPage;
+export default CollectionsPage;

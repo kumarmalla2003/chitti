@@ -1,10 +1,9 @@
 // frontend/src/components/ui/AssignedChitCard.jsx
 
-import { FiTrash2, FiCalendar } from "react-icons/fi";
-import { RupeeIcon } from "./Icons";
+import { Trash2, Calendar, IndianRupee } from "lucide-react";
 // import { useNavigate } from "react-router-dom"; // <-- REMOVED
 
-const AssignedChitCard = ({ assignment, onDelete, onLogPayment }) => {
+const AssignedChitCard = ({ assignment, onDelete, onLogCollection }) => {
   // <-- Prop added
   // const navigate = useNavigate(); // <-- REMOVED
 
@@ -17,9 +16,9 @@ const AssignedChitCard = ({ assignment, onDelete, onLogPayment }) => {
   const dueAmount = assignment.due_amount;
 
   // --- MODIFIED ---
-  const handleLogPayment = (e) => {
+  const handleLogCollection = (e) => {
     e.stopPropagation();
-    onLogPayment(assignment); // <-- Use prop
+    onLogCollection(assignment); // <-- Use prop
   };
   // --- END MODIFICATION ---
 
@@ -39,18 +38,18 @@ const AssignedChitCard = ({ assignment, onDelete, onLogPayment }) => {
         </div>
         <div className="flex items-center flex-shrink-0">
           <button
-            onClick={handleLogPayment} // <-- Use handler
+            onClick={handleLogCollection} // <-- Use handler
             className="p-2 rounded-full text-success-accent hover://bg-success-bg transition-colors duration-200"
-            title="Log Payment"
+            title="Log Collection"
           >
-            <RupeeIcon className="w-5 h-5" />
+            <IndianRupee className="w-5 h-5" />
           </button>
           <button
             onClick={handleDelete}
             className="p-2 rounded-full text-error-accent hover:bg-error-bg transition-colors duration-200"
             title="Unassign Member"
           >
-            <FiTrash2 className="w-5 h-5" />
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -61,11 +60,11 @@ const AssignedChitCard = ({ assignment, onDelete, onLogPayment }) => {
       {/* Bottom Row: Stats (Assigned Month & Due Amount) */}
       <div className="flex justify-between items-center text-text-secondary text-sm">
         <div className="flex items-center gap-2">
-          <FiCalendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4" />
           <span>{formatDate(assignment.chit_month)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <RupeeIcon className="w-4 h-4" />
+          <IndianRupee className="w-4 h-4" />
           <span>
             Due:{" "}
             <span

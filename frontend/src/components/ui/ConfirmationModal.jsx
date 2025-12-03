@@ -1,7 +1,7 @@
 // frontend/src/components/ui/ConfirmationModal.jsx
 
 import Button from "./Button";
-import { FiAlertTriangle, FiX, FiLoader } from "react-icons/fi";
+import { TriangleAlert, X, Loader2 } from "lucide-react";
 
 const ConfirmationModal = ({
   isOpen,
@@ -40,14 +40,14 @@ const ConfirmationModal = ({
           aria-label="Close modal"
           disabled={loading}
         >
-          <FiX className="w-6 h-6" />
+          <X className="w-6 h-6" />
         </button>
 
         {/* Content */}
         <div className="flex flex-col items-center text-center">
           {/* Alert Icon */}
           <div className="mb-4">
-            <FiAlertTriangle className="w-12 h-12 text-error-accent" />
+            <TriangleAlert className="w-12 h-12 text-error-accent" />
           </div>
 
           {/* Title */}
@@ -74,7 +74,7 @@ const ConfirmationModal = ({
             className="flex-1"
           >
             {loading ? (
-              <FiLoader className="animate-spin mx-auto" />
+              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
             ) : (
               confirmText
             )}

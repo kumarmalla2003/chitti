@@ -12,7 +12,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
-import PaymentHistoryList from "../components/sections/PaymentHistoryList";
+import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import Message from "../components/ui/Message";
 import StepperButtons from "../components/ui/StepperButtons";
 import {
@@ -21,23 +21,23 @@ import {
   patchMember,
 } from "../services/membersService";
 import { getAssignmentsForMember } from "../services/assignmentsService";
-import { getPaymentsByMemberId } from "../services/paymentsService";
+import { getCollectionsByMemberId } from "../services/collectionsService";
 
 import MemberReportPDF from "../components/reports/MemberReportPDF";
 import { pdf } from "@react-pdf/renderer";
 
 import MemberViewDashboard from "./MemberViewDashboard";
 
-import { RupeeIcon } from "../components/ui/Icons";
 import {
-  FiLoader,
-  FiUser,
-  FiBox,
-  FiArrowLeft,
-  FiPlus,
-  FiEdit,
-  FiPrinter,
-} from "react-icons/fi";
+  Loader2,
+  User,
+  Layers,
+  ArrowLeft,
+  Plus,
+  SquarePen,
+  Printer,
+  IndianRupee,
+} from "lucide-react";
 
 const DetailsSection = ({
   mode,
@@ -48,7 +48,7 @@ const DetailsSection = ({
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <FiUser /> Member Details
+      <User className="w-6 h-6" /> Member Details
     </h2>
     <hr className="border-border mb-4" />
     <MemberDetailsForm
@@ -69,16 +69,16 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
   if (mode === "create") {
     if (isPostCreation) {
       buttonText = "Update Member";
-      Icon = FiEdit;
+      Icon = SquarePen;
       buttonVariant = "warning";
     } else {
       buttonText = "Create Member";
-      Icon = FiPlus;
+      Icon = Plus;
       buttonVariant = "success";
     }
   } else {
     buttonText = "Update Member";
-    Icon = FiEdit;
+    Icon = SquarePen;
     buttonVariant = "warning";
   }
 
@@ -92,10 +92,10 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
         className="w-full md:w-auto"
       >
         {loading ? (
-          <FiLoader className="animate-spin mx-auto" />
+          <Loader2 className="animate-spin mx-auto w-5 h-5" />
         ) : (
           <>
-            <Icon className="inline-block mr-2" />
+            <Icon className="inline-block mr-2 w-5 h-5" />
             {buttonText}
           </>
         )}
@@ -105,7 +105,7 @@ const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
 };
 
 const TabButton = React.forwardRef(
-  ({ name, icon, label, activeTab, setActiveTab, disabled }, ref) => {
+  ({ name, icon: Icon, label, activeTab, setActiveTab, disabled }, ref) => {
     const isActive = activeTab === name;
     return (
       <button
@@ -119,7 +119,7 @@ const TabButton = React.forwardRef(
             : "text-text-secondary hover:bg-background-tertiary"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        {icon}
+        <Icon className="w-4 h-4" />
         <span>{label}</span>
       </button>
     );
@@ -141,9 +141,9 @@ const MobileContent = ({
   handleMiddle,
   handleMobileFormSubmit,
   isPostCreation,
-  onLogPaymentClick,
-  paymentDefaults,
-  setPaymentDefaults,
+  onLogCollectionClick,
+  collectionDefaults,
+  setCollectionDefaults,
 }) => {
   const tabRefs = useRef({});
 
@@ -164,7 +164,7 @@ const MobileContent = ({
         <TabButton
           ref={(el) => (tabRefs.current["details"] = el)}
           name="details"
-          icon={<FiUser />}
+          icon={User}
           label="Details"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -172,17 +172,17 @@ const MobileContent = ({
         <TabButton
           ref={(el) => (tabRefs.current["chits"] = el)}
           name="chits"
-          icon={<FiBox />}
+          icon={Layers}
           label="Chits"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           disabled={mode === "create" && !createdMemberId}
         />
         <TabButton
-          ref={(el) => (tabRefs.current["payments"] = el)}
-          name="payments"
-          icon={<RupeeIcon className="w-4 h-4" />}
-          label="Payments"
+          ref={(el) => (tabRefs.current["collections"] = el)}
+          name="collections"
+          icon={IndianRupee}
+          label="Collections"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           disabled={mode === "create" && !createdMemberId}
@@ -219,7 +219,7 @@ const MobileContent = ({
           <MemberChitsManager
             mode={mode}
             memberId={createdMemberId}
-            onLogPaymentClick={onLogPaymentClick}
+            onLogCollectionClick={onLogCollectionClick}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -237,13 +237,13 @@ const MobileContent = ({
         </>
       )}
 
-      {activeTab === "payments" && (
+      {activeTab === "collections" && (
         <>
-          <PaymentHistoryList
+          <CollectionHistoryList
             memberId={createdMemberId}
             mode={mode}
-            paymentDefaults={paymentDefaults}
-            setPaymentDefaults={setPaymentDefaults}
+            collectionDefaults={collectionDefaults}
+            setCollectionDefaults={setCollectionDefaults}
           />
           {mode !== "view" && (
             <StepperButtons
@@ -284,12 +284,12 @@ const MemberDetailPage = () => {
   const [createdMemberId, setCreatedMemberId] = useState(null);
   const [createdMemberName, setCreatedMemberName] = useState(null);
 
-  const [paymentDefaults, setPaymentDefaults] = useState(null);
+  const [collectionDefaults, setCollectionDefaults] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   useScrollToTop(success || error);
 
-  const TABS = ["details", "chits", "payments"];
+  const TABS = ["details", "chits", "collections"];
   const activeTabIndex = TABS.indexOf(activeTab);
 
   const isDetailsFormValid = useMemo(
@@ -522,16 +522,15 @@ const MemberDetailPage = () => {
     });
   };
 
-  const handleLogPaymentClick = (assignment) => {
-    setPaymentDefaults({
+  const handleLogCollectionClick = (assignment) => {
+    setCollectionDefaults({
       assignmentId: assignment.id,
       chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
-    setActiveTab("payments");
+    setActiveTab("collections");
   };
 
-  // --- FIX: Correct Data Passing for PDF Report ---
   const handlePrint = async () => {
     const targetId = mode === "create" ? createdMemberId : id;
     if (!targetId) return;
@@ -546,16 +545,15 @@ const MemberDetailPage = () => {
         phone_number: formData.phone_number,
       };
 
-      const [assignmentsData, paymentsData] = await Promise.all([
+      const [assignmentsData, collectionsData] = await Promise.all([
         getAssignmentsForMember(targetId, token),
-        getPaymentsByMemberId(targetId, token),
+        getCollectionsByMemberId(targetId, token),
       ]);
 
       const reportProps = {
         member: memberObj,
-        // --- FIX IS HERE: assignmentsData is the array, not an object containing it ---
         assignments: assignmentsData,
-        payments: paymentsData.payments,
+        collections: collectionsData.collections,
       };
 
       const reportName = `${memberObj.full_name} Report`;
@@ -579,19 +577,18 @@ const MemberDetailPage = () => {
     }
   };
 
-  // --- Handlers for Dashboard "Manage" buttons ---
   const handleManageChits = () => {
     navigate(`/members/edit/${id}`, { state: { initialTab: "chits" } });
   };
 
-  const handleManagePayments = () => {
-    navigate(`/members/edit/${id}`, { state: { initialTab: "payments" } });
+  const handleManageCollections = () => {
+    navigate(`/members/edit/${id}`, { state: { initialTab: "collections" } });
   };
 
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <FiLoader className="w-10 h-10 animate-spin text-accent" />
+        <Loader2 className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
@@ -615,7 +612,7 @@ const MemberDetailPage = () => {
                   onClick={handleBackNavigation}
                   className="absolute left-0 text-text-primary hover:text-accent transition-colors"
                 >
-                  <FiArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-6 h-6" />
                 </button>
                 <h1
                   ref={titleRef}
@@ -626,7 +623,6 @@ const MemberDetailPage = () => {
                 </h1>
 
                 {/* --- Header Actions (Edit, Print) --- */}
-                {/* Visible ONLY in View Mode */}
                 {mode === "view" && (
                   <div className="absolute right-0 flex items-center">
                     {/* Edit Button */}
@@ -635,7 +631,7 @@ const MemberDetailPage = () => {
                       className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
                       title="Edit Member"
                     >
-                      <FiEdit className="w-6 h-6" />
+                      <SquarePen className="w-6 h-6" />
                     </button>
                     {/* Print Button */}
                     <button
@@ -645,9 +641,9 @@ const MemberDetailPage = () => {
                       title="Print Member Report"
                     >
                       {isPrinting ? (
-                        <FiLoader className="w-6 h-6 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
-                        <FiPrinter className="w-6 h-6" />
+                        <Printer className="w-6 h-6" />
                       )}
                     </button>
                   </div>
@@ -678,12 +674,12 @@ const MemberDetailPage = () => {
                   <MemberViewDashboard
                     memberData={formData}
                     memberId={id}
-                    onLogPaymentClick={handleLogPaymentClick}
-                    paymentDefaults={paymentDefaults}
-                    setPaymentDefaults={setPaymentDefaults}
+                    onLogCollectionClick={handleLogCollectionClick}
+                    collectionDefaults={collectionDefaults}
+                    setCollectionDefaults={setCollectionDefaults}
                     // --- Pass Manage Handlers ---
                     onManageChits={handleManageChits}
-                    onManagePayments={handleManagePayments}
+                    onManageCollections={handleManageCollections}
                   />
                 </div>
               ) : (
@@ -705,9 +701,9 @@ const MemberDetailPage = () => {
                       handleMiddle={handleMiddle}
                       handleMobileFormSubmit={handleMobileFormSubmit}
                       isPostCreation={isPostCreation}
-                      onLogPaymentClick={handleLogPaymentClick}
-                      paymentDefaults={paymentDefaults}
-                      setPaymentDefaults={setPaymentDefaults}
+                      onLogCollectionClick={handleLogCollectionClick}
+                      collectionDefaults={collectionDefaults}
+                      setCollectionDefaults={setCollectionDefaults}
                     />
                   </div>
 
@@ -734,18 +730,18 @@ const MemberDetailPage = () => {
                             <MemberChitsManager
                               mode={mode}
                               memberId={createdMemberId || id}
-                              onLogPaymentClick={handleLogPaymentClick}
+                              onLogCollectionClick={handleLogCollectionClick}
                             />
                           </div>
                         )}
 
-                        {activeTab === "payments" && (
+                        {activeTab === "collections" && (
                           <div className="md:col-span-2 flex flex-col gap-8">
-                            <PaymentHistoryList
+                            <CollectionHistoryList
                               memberId={createdMemberId || id}
                               mode={mode}
-                              paymentDefaults={paymentDefaults}
-                              setPaymentDefaults={setPaymentDefaults}
+                              collectionDefaults={collectionDefaults}
+                              setCollectionDefaults={setCollectionDefaults}
                             />
                           </div>
                         )}
@@ -755,13 +751,13 @@ const MemberDetailPage = () => {
                             <MemberChitsManager
                               mode={mode}
                               memberId={createdMemberId || id}
-                              onLogPaymentClick={handleLogPaymentClick}
+                              onLogCollectionClick={handleLogCollectionClick}
                             />
-                            <PaymentHistoryList
+                            <CollectionHistoryList
                               memberId={createdMemberId || id}
                               mode={mode}
-                              paymentDefaults={paymentDefaults}
-                              setPaymentDefaults={setPaymentDefaults}
+                              collectionDefaults={collectionDefaults}
+                              setCollectionDefaults={setCollectionDefaults}
                             />
                           </div>
                         )}
@@ -769,23 +765,23 @@ const MemberDetailPage = () => {
                         <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
                           <TabButton
                             name="details"
-                            icon={<FiUser />}
+                            icon={User}
                             label="Details"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                           />
                           <TabButton
                             name="chits"
-                            icon={<FiBox />}
+                            icon={Layers}
                             label="Chits"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                             disabled={mode === "create" && !createdMemberId}
                           />
                           <TabButton
-                            name="payments"
-                            icon={<RupeeIcon className="w-4 h-4" />}
-                            label="Payments"
+                            name="collections"
+                            icon={IndianRupee}
+                            label="Collections"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                             disabled={mode === "create" && !createdMemberId}

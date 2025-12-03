@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import Card from "../ui/Card";
-import { FiSlash, FiCheckCircle, FiUsers } from "react-icons/fi";
+import { Ban, CircleCheck, Users } from "lucide-react";
 
 const WhyUs = forwardRef((props, ref) => {
   return (
@@ -19,7 +19,7 @@ const WhyUs = forwardRef((props, ref) => {
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <FiSlash size={24} />
+              <Ban className="w-6 h-6" />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               No More Auctions
@@ -31,7 +31,7 @@ const WhyUs = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <FiCheckCircle size={24} />
+              <CircleCheck className="w-6 h-6" />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Increased Trust
@@ -43,14 +43,14 @@ const WhyUs = forwardRef((props, ref) => {
           </Card>
           <Card className="text-center hover:scale-105">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-accent text-white rounded-full">
-              <FiUsers size={24} />
+              <Users className="w-6 h-6" />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-accent">
               Reduced Workload
             </h3>
             <p className="text-text-secondary">
               Dramatically cut down on administrative tasks. With schedules and
-              payments automated, you can manage more groups in less time.
+              collections automated, you can manage more groups in less time.
             </p>
           </Card>
         </div>

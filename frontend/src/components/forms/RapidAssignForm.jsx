@@ -10,7 +10,7 @@ import {
 import Button from "../ui/Button";
 import Message from "../ui/Message";
 import Table from "../ui/Table";
-import { FiUser, FiCheck, FiLoader, FiAlertCircle } from "react-icons/fi";
+import { User, Check, Loader2, AlertCircle } from "lucide-react";
 import {
   getUnassignedMonths,
   createBulkAssignments,
@@ -138,7 +138,7 @@ const RapidAssignForm = forwardRef(
           cell: (row) => (
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <FiUser className="w-5 h-5 text-text-secondary" />
+                <User className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
               <select
@@ -170,7 +170,7 @@ const RapidAssignForm = forwardRef(
     if (loading) {
       return (
         <div className="flex justify-center p-8">
-          <FiLoader className="w-8 h-8 animate-spin text-accent" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       );
     }
@@ -186,7 +186,7 @@ const RapidAssignForm = forwardRef(
     if (availableMonths.length === 0) {
       return (
         <div className="text-center py-8">
-          <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
+          <AlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
           <p className="mt-2 text-sm text-text-secondary">
             No available months to assign in this chit.
           </p>
@@ -197,7 +197,7 @@ const RapidAssignForm = forwardRef(
     if (allMembers.length === 0) {
       return (
         <div className="text-center py-8">
-          <FiAlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
+          <AlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
           <p className="mt-2 text-sm text-text-secondary">
             No members exist in the system. Please add members first.
           </p>
@@ -209,18 +209,20 @@ const RapidAssignForm = forwardRef(
       <form className="my-4" onSubmit={handleConfirmAssignments}>
         <Table columns={columns} data={tableData} variant="secondary" />
 
-        <div className="flex justify-end mt-6">
+        <div className="mt-6">
+          {" "}
+          {/* Removed flex justify-end */}
           <Button
             type="submit"
             variant="success"
             disabled={isSubmitting}
-            className="flex items-center justify-center"
+            className="w-full flex items-center justify-center" // Centered & Full Width
           >
             {isSubmitting ? (
-              <FiLoader className="animate-spin" />
+              <Loader2 className="animate-spin w-5 h-5" />
             ) : (
               <>
-                <FiCheck className="mr-2" /> Save All Assignments
+                <Check className="mr-2 w-5 h-5" /> Save All Assignments
               </>
             )}
           </Button>

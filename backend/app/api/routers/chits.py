@@ -3,25 +3,24 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated, List
 from datetime import date
-import calendar
 from dateutil.relativedelta import relativedelta
-
-
-from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from app.schemas.chits import (
-    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
-    ChitPatch, PayoutResponse, PayoutListResponse, PayoutUpdate
-)
-from app.schemas.assignments import ChitAssignmentPublic, ChitAssignmentListResponse
-from app.schemas.members import MemberPublic
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
+
+from app.db.session import get_session
 from app.models.chits import Chit
 from app.models.auth import AuthorizedPhone
 from app.security.dependencies import get_current_user
-from app.crud import crud_chits, crud_assignments, crud_payments
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
+from app.crud import crud_chits, crud_assignments, crud_collections, crud_payouts
+from app.schemas.chits import (
+    ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
+    ChitPatch
+)
+from app.schemas.assignments import ChitAssignmentListResponse, ChitAssignmentPublic
+from app.schemas.members import MemberPublic
+from app.schemas.payouts import PayoutListResponse
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
@@ -31,10 +30,6 @@ async def create_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Creates a new chit for the authenticated user.
-    """
-    
     trimmed_name = chit.name.strip()
     existing_chit = await session.execute(
         select(Chit).where(func.lower(Chit.name) == func.lower(trimmed_name))
@@ -63,12 +58,9 @@ async def create_chit(
     try:
         await session.commit()
         await session.refresh(db_chit)
-        # --- Create initial payouts ---
-        await crud_chits.create_payouts_for_chit(
-            session, 
-            chit_id=db_chit.id,
-            duration_months=db_chit.duration_months
-        )
+        # Create Schedule
+        await crud_payouts.payouts.create_schedule_for_chit(session, db_chit.id, db_chit.duration_months)
+        await session.commit()
     except IntegrityError:
         await session.rollback()
         raise HTTPException(
@@ -79,21 +71,14 @@ async def create_chit(
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
-
 @router.get("/", response_model=ChitListResponse)
 async def read_chits(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves a list of all chits, calculates their status and cycle,
-    and sorts them.
-    """
     statement = select(Chit)
     result = await session.execute(statement)
     chits = result.scalars().all()
-    
-    today = date.today()
     
     response_chits = []
     for chit in chits:
@@ -101,9 +86,7 @@ async def read_chits(
         response_chits.append(response_details)
 
     response_chits.sort(key=lambda c: (c.status != 'Active', c.start_date), reverse=False)
-
     return {"chits": response_chits}
-
 
 @router.get("/{chit_id}/assignments", response_model=ChitAssignmentListResponse)
 async def get_chit_assignments(
@@ -111,9 +94,6 @@ async def get_chit_assignments(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves all member assignments for a specific chit.
-    """
     db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
@@ -123,26 +103,22 @@ async def get_chit_assignments(
     response_assignments = []
     for assignment in assignments:
         chit_with_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=assignment.chit_id)
-        
         member_public = MemberPublic(
             id=assignment.member.id,
             full_name=assignment.member.full_name,
             phone_number=assignment.member.phone_number,
         )
-
-        # --- PAYMENT CALCULATION LOGIC ---
         monthly_installment = assignment.chit.monthly_installment
-        payments = await crud_payments.get_payments_for_assignment(session, assignment.id)
-        total_paid = sum(p.amount_paid for p in payments)
+        
+        # --- FIXED CALL HERE ---
+        collections = await crud_collections.collections.get_by_assignment(session, assignment.id)
+        
+        total_paid = sum(p.amount_paid for p in collections)
         due_amount = monthly_installment - total_paid
 
-        if total_paid == 0:
-            payment_status = "Unpaid"
-        elif due_amount > 0:
-            payment_status = "Partial"
-        else:
-            payment_status = "Paid"
-        # --- END OF CALCULATION ---
+        if total_paid == 0: collection_status = "Unpaid"
+        elif due_amount > 0: collection_status = "Partial"
+        else: collection_status = "Paid"
 
         assignment_public = ChitAssignmentPublic(
             id=assignment.id,
@@ -151,7 +127,7 @@ async def get_chit_assignments(
             chit=chit_with_details,
             total_paid=total_paid,
             due_amount=due_amount,
-            payment_status=payment_status
+            collection_status=collection_status
         )
         response_assignments.append(assignment_public)
         
@@ -163,14 +139,10 @@ async def read_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Retrieves a single chit by its ID.
-    """
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=chit_id)
     if not response_details:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     return response_details
-
 
 @router.put("/{chit_id}", response_model=ChitResponse)
 async def update_chit(
@@ -179,9 +151,6 @@ async def update_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Updates an existing chit.
-    """
     db_chit = await session.get(Chit, chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
@@ -195,9 +164,7 @@ async def update_chit(
     session.add(db_chit)
     await session.commit()
     await session.refresh(db_chit)
-
-    # --- NEW: Sync payouts ---
-    await crud_chits.sync_payouts(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
+    await crud_payouts.payouts.sync_schedule(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
 
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
@@ -209,9 +176,6 @@ async def patch_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Partially updates an existing chit. Only updates the fields provided.
-    """
     db_chit = await session.get(Chit, chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
@@ -222,16 +186,10 @@ async def patch_chit(
     if "name" in chit_data:
         trimmed_name = chit_data["name"].strip()
         existing_chit = await session.execute(
-            select(Chit).where(
-                func.lower(Chit.name) == func.lower(trimmed_name),
-                Chit.id != chit_id
-            )
+            select(Chit).where(func.lower(Chit.name) == func.lower(trimmed_name), Chit.id != chit_id)
         )
         if existing_chit.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A chit with this name already exists. Please choose a different name."
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A chit with this name already exists.")
         chit_data["name"] = trimmed_name
 
     for key, value in chit_data.items():
@@ -241,21 +199,14 @@ async def patch_chit(
         db_chit.end_date = db_chit.start_date + relativedelta(months=db_chit.duration_months - 1)
 
     session.add(db_chit)
-    
     try:
         await session.commit()
         await session.refresh(db_chit)
-        
-        # --- NEW: Sync payouts if duration changed ---
         if "duration_months" in chit_data:
-             await crud_chits.sync_payouts(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
-
+             await crud_payouts.payouts.sync_schedule(session, chit_id=db_chit.id, new_duration=db_chit.duration_months)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A chit with this name already exists. Please choose a different name."
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A chit with this name already exists.")
 
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
@@ -266,52 +217,29 @@ async def delete_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """
-    Deletes a chit, only if it has no members assigned to it.
-    """
     db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
 
     assignments = await crud_assignments.get_assignments_by_chit_id(session, chit_id=chit_id)
     if assignments:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete chit: Members are still assigned to it."
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot delete chit: Members are still assigned to it.")
 
     await crud_chits.delete_chit_by_id(session=session, db_chit=db_chit)
     return
 
-# --- Payout Endpoints ---
-
 @router.get("/{chit_id}/payouts", response_model=PayoutListResponse)
-async def get_payouts_for_chit(
+async def get_payouts_for_chit_redirect(
     chit_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """
-    Retrieves all payouts for a specific chit.
+    Redirects to the payouts router logic.
     """
     db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     
-    payouts = await crud_chits.get_payouts_by_chit_id(session, chit_id=chit_id)
+    payouts = await crud_payouts.payouts.get_by_chit(session, chit_id=chit_id)
     return {"payouts": payouts}
-
-@router.put("/payouts/{payout_id}", response_model=PayoutResponse)
-async def update_payout_amount(
-    payout_id: int,
-    payout: PayoutUpdate,
-    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-):
-    """
-    Updates the amount for a specific payout.
-    """
-    updated_payout = await crud_chits.update_payout(session, payout_id=payout_id, payout_data=payout)
-    if not updated_payout:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
-    return updated_payout

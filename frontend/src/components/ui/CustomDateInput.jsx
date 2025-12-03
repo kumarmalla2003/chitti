@@ -1,7 +1,7 @@
 // frontend/src/components/ui/CustomDateInput.jsx
 
 import { useRef, useLayoutEffect } from "react";
-import { FiCalendar } from "react-icons/fi";
+import { Calendar } from "lucide-react";
 
 // Helper to format YYYY-MM-DD to DD/MM/YYYY
 const toDisplayFormat = (isoDate) => {
@@ -125,7 +125,7 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
   return (
     <div className="relative flex items-center">
       <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <FiCalendar className="w-5 h-5 text-text-secondary" />
+        <Calendar className="w-5 h-5 text-text-secondary" />
       </span>
       <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
 
@@ -153,7 +153,7 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
           }`}
           onClick={() => !disabled && handleIconClick()}
         >
-          <FiCalendar className="w-5 h-5" />
+          <Calendar className="w-5 h-5" />
         </div>
       </span>
 
