@@ -11,6 +11,7 @@ import {
   FileText,
   Clock,
   IndianRupee,
+  SquarePen,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 
@@ -38,15 +39,16 @@ const formatMonthYear = (dateString) => {
 
 const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
   <div
-    className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
+    className={`flex items-start py-3 border-b border-border/50 last:border-0 ${className}`}
   >
-    <div className="flex items-center gap-3 w-48 flex-shrink-0">
+    <div className="flex items-center gap-3 w-48 flex-shrink-0 pt-1">
       <div className="p-2 bg-background-secondary rounded-full text-text-secondary">
         <Icon className="w-4 h-4" />
       </div>
       <span className="text-sm font-bold text-text-primary">{label}</span>
     </div>
-    <span className="text-sm font-medium text-text-secondary text-left break-words flex-1">
+    {/* Added whitespace-pre-wrap to preserve line breaks in notes */}
+    <span className="text-sm font-medium text-text-secondary text-left break-words flex-1 whitespace-pre-wrap pt-2">
       {value || "-"}
     </span>
   </div>
@@ -70,6 +72,10 @@ const MetricCard = ({ label, value, icon: Icon }) => (
 const PayoutViewDashboard = ({ payoutData, payoutId }) => {
   const navigate = useNavigate();
 
+  const handleEditDetails = () => {
+    navigate(`/payouts/edit/${payoutId}`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="grid grid-cols-1">
@@ -79,6 +85,13 @@ const PayoutViewDashboard = ({ payoutData, payoutId }) => {
               <Info className="w-6 h-6" />
               Details
             </h2>
+            <button
+              onClick={handleEditDetails}
+              className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
+              title="Edit Details"
+            >
+              <SquarePen className="w-5 h-5" />
+            </button>
           </div>
 
           <hr className="border-border mb-6" />
@@ -112,10 +125,11 @@ const PayoutViewDashboard = ({ payoutData, payoutId }) => {
                 label="Winning Month"
                 value={formatMonthYear(payoutData.assignment?.chit_month)}
               />
+              {/* FIXED: Changed from payout_date to paid_date */}
               <DetailRow
                 icon={Calendar}
                 label="Payout Date"
-                value={formatDateFull(payoutData.payout_date)}
+                value={formatDateFull(payoutData.paid_date)}
               />
               <DetailRow
                 icon={CreditCard}

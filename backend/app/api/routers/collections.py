@@ -24,7 +24,7 @@ async def _get_collection_response(session: AsyncSession, collection: Collection
     member_response = MemberPublic.model_validate(member) if member else None
     
     if not collection.assignment:
-        # Try to reload assignment if missing
+        # Try to reload assignment if missing (Safe here if called from create/get-by-id which use eager load)
         collection.assignment = await session.get(ChitAssignment, collection.chit_assignment_id)
         if not collection.assignment:
              raise HTTPException(status_code=500, detail="Collection is missing assignment link.")
@@ -113,8 +113,10 @@ async def get_all_collections(
         if c.chit_id not in chit_responses_cache:
             chit_responses_cache[c.chit_id] = await crud_chits.get_chit_by_id_with_details(session, chit_id=c.chit_id)
         
-        assignment = await session.get(ChitAssignment, c.chit_assignment_id)
-        if not assignment:
+        # REMOVED: Redundant manual fetch which caused Greenlet error.
+        # Now we rely on crud_collections.get_multi eager loading 'assignment'.
+        
+        if not c.assignment:
             continue 
 
         response_collections.append(
@@ -125,7 +127,7 @@ async def get_all_collections(
                 collection_method=c.collection_method,
                 notes=c.notes,
                 chit_assignment_id=c.chit_assignment_id,
-                chit_month=assignment.chit_month,
+                chit_month=c.assignment.chit_month,
                 member=MemberPublic.model_validate(c.member),
                 chit=chit_responses_cache.get(c.chit_id)
             )
@@ -150,8 +152,7 @@ async def get_collections_by_chit(
         if c.chit_id not in chit_responses_cache:
             chit_responses_cache[c.chit_id] = await crud_chits.get_chit_by_id_with_details(session, chit_id=c.chit_id)
         
-        if not c.assignment:
-             c.assignment = await session.get(ChitAssignment, c.chit_assignment_id)
+        # REMOVED: Redundant manual fetch
 
         if not c.assignment:
             continue
@@ -188,8 +189,7 @@ async def get_collections_by_member(
         if c.chit_id not in chit_responses_cache:
             chit_responses_cache[c.chit_id] = await crud_chits.get_chit_by_id_with_details(session, chit_id=c.chit_id)
             
-        if not c.assignment:
-             c.assignment = await session.get(ChitAssignment, c.chit_assignment_id)
+        # REMOVED: Redundant manual fetch
 
         if not c.assignment:
             continue

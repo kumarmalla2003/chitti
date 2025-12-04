@@ -4,27 +4,30 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List
 from app.schemas.members import MemberPublic
-from app.schemas.chits import ChitResponse # <-- IMPORT RENAMED
+from app.schemas.chits import ChitResponse
 
 class ChitAssignmentBase(BaseModel):
     member_id: int
-    chit_id: int # <-- RENAMED from chit_group_id
+    chit_id: int
     chit_month: date
 
 class ChitAssignmentCreate(ChitAssignmentBase):
     pass
 
+class ChitAssignmentSimple(BaseModel):
+    """Minimal assignment info for nesting."""
+    id: int
+    chit_month: date
+    model_config = ConfigDict(from_attributes=True)
+
 class ChitAssignmentPublic(BaseModel):
     id: int
     chit_month: date
     member: MemberPublic
-    chit: ChitResponse # <-- RENAMED from chit_group
-
-    # --- ADD THESE NEW FIELDS ---
+    chit: ChitResponse
     total_paid: float
     due_amount: float
-    collection_status: str # "Paid", "Partial", "Unpaid"
-    # --- END OF ADDITIONS ---
+    collection_status: str 
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,13 +37,9 @@ class ChitAssignmentListResponse(BaseModel):
 class UnassignedMonthResponse(BaseModel):
     available_months: List[date]
 
-# --- ADD NEW SCHEMAS FOR BULK ASSIGNMENT ---
-
 class ChitAssignmentBulkItem(BaseModel):
-    """Schema for a single item in a bulk assignment request."""
     member_id: int
     chit_month: date
 
 class ChitAssignmentBulkCreate(BaseModel):
-    """Schema for the bulk assignment request body."""
     assignments: List[ChitAssignmentBulkItem]

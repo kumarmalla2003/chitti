@@ -14,10 +14,9 @@ import {
 } from "lucide-react";
 import { IndianRupee } from "lucide-react";
 import Card from "../components/ui/Card";
-import PayoutsSection from "../components/sections/PayoutsSection";
+import PayoutsSection from "../components/sections/PayoutsSection"; // <-- Re-imported
 import ChitMembersManager from "../components/sections/ChitMembersManager";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
-import PayoutHistoryList from "../components/sections/PayoutHistoryList";
 
 const formatCurrency = (val) => {
   if (!val) return "0";
@@ -40,7 +39,6 @@ const formatDateShort = (dateString) => {
   return dateString;
 };
 
-// --- Left Aligned, Bold Headings, Medium Text ---
 const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
   <div
     className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
@@ -98,114 +96,102 @@ const ChitViewDashboard = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* --- Row 1: Details & Payouts Schedule Grid --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Details */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          <Card className="h-full">
-            {/* --- HEADER: Centered Title, Right-Aligned Icon --- */}
-            <div className="relative flex justify-center items-center mb-2">
-              <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                <Info className="w-6 h-6" /> Details
-              </h2>
-              <button
-                onClick={handleEditDetails}
-                className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
-                title="Edit Details"
-              >
-                <SquarePen className="w-5 h-5" />
-              </button>
+      {/* Row 1: Details */}
+      <div className="grid grid-cols-1">
+        <Card className="h-full">
+          <div className="relative flex justify-center items-center mb-2">
+            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+              <Info className="w-6 h-6" /> Details
+            </h2>
+            <button
+              onClick={handleEditDetails}
+              className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
+              title="Edit Details"
+            >
+              <SquarePen className="w-5 h-5" />
+            </button>
+          </div>
+
+          <hr className="border-border mb-4" />
+
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Grid Metrics */}
+            <div className="grid grid-cols-2 gap-3 md:w-1/3">
+              <MetricCard
+                label="Chit Value"
+                value={formatCurrency(chitData.chit_value)}
+                icon={IndianRupee}
+              />
+              <MetricCard
+                label="Installment"
+                value={formatCurrency(chitData.monthly_installment)}
+                icon={PieChart}
+              />
             </div>
 
-            <hr className="border-border mb-4" />
-
-            <div className="flex flex-col h-full gap-4">
-              {/* --- Grid View for Key Metrics --- */}
-              <div className="grid grid-cols-2 gap-3">
-                <MetricCard
-                  label="Chit Value"
-                  value={formatCurrency(chitData.chit_value)}
-                  icon={IndianRupee}
-                />
-                <MetricCard
-                  label="Installment"
-                  value={formatCurrency(chitData.monthly_installment)}
-                  icon={PieChart}
-                />
-              </div>
-
-              {/* --- List View for Other Details --- */}
-              <div className="flex-grow">
-                <DetailRow
-                  icon={Users}
-                  label="Group Size"
-                  value={`${chitData.size} Members`}
-                />
-                <DetailRow
-                  icon={Clock}
-                  label="Duration"
-                  value={`${chitData.duration_months} Months`}
-                />
-                <DetailRow
-                  icon={Calendar}
-                  label="Start Date"
-                  value={formatDateShort(chitData.start_date)}
-                />
-                <DetailRow
-                  icon={Calendar}
-                  label="End Date"
-                  value={formatDateShort(chitData.end_date)}
-                />
-                <DetailRow
-                  icon={ArrowDownLeft}
-                  label="Collection Day"
-                  value={`Day ${chitData.collection_day}`}
-                />
-                <DetailRow
-                  icon={ArrowUpRight}
-                  label="Payout Day"
-                  value={`Day ${chitData.payout_day}`}
-                />
-              </div>
+            {/* List Details */}
+            <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+              <DetailRow
+                icon={Users}
+                label="Group Size"
+                value={`${chitData.size} Members`}
+              />
+              <DetailRow
+                icon={Clock}
+                label="Duration"
+                value={`${chitData.duration_months} Months`}
+              />
+              <DetailRow
+                icon={Calendar}
+                label="Start Date"
+                value={formatDateShort(chitData.start_date)}
+              />
+              <DetailRow
+                icon={Calendar}
+                label="End Date"
+                value={formatDateShort(chitData.end_date)}
+              />
+              <DetailRow
+                icon={ArrowDownLeft}
+                label="Collection Day"
+                value={`Day ${chitData.collection_day}`}
+              />
+              <DetailRow
+                icon={ArrowUpRight}
+                label="Payout Day"
+                value={`Day ${chitData.payout_day}`}
+              />
             </div>
-          </Card>
-        </div>
-
-        {/* Right Column: Payout Schedule (Target per month) */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            {/* This PayoutsSection manages the schedule/plan */}
-            <PayoutsSection chitId={chitId} mode="view" showTitle={true} />
-          </Card>
-        </div>
+          </div>
+        </Card>
       </div>
 
-      {/* --- Row 2: Members --- */}
+      {/* Row 2: Payout Schedule (Restored) */}
+      <div className="grid grid-cols-1">
+        <Card>
+          <PayoutsSection chitId={chitId} mode="view" showTitle={true} />
+        </Card>
+      </div>
+
+      {/* Row 3: Members (Merged with Status) */}
       <div className="grid grid-cols-1">
         <Card>
           <ChitMembersManager
             chitId={chitId}
             mode="view"
-            onLogPaymentClick={handleLogCollection}
-            forceTable={true}
+            onLogCollectionClick={handleLogCollection}
           />
         </Card>
       </div>
 
-      {/* --- Row 3: Collections (Formerly Payments) --- */}
+      {/* Row 4: Transactions (Collections + Payouts) */}
       <div ref={collectionsRef} className="grid grid-cols-1">
         <CollectionHistoryList
           chitId={chitId}
           mode="view"
           collectionDefaults={paymentDefaults}
           setCollectionDefaults={setPaymentDefaults}
-          forceTable={true}
         />
-      </div>
-
-      {/* --- Row 4: Payout Transactions (NEW) --- */}
-      <div className="grid grid-cols-1">
-        <PayoutHistoryList chitId={chitId} mode="view" forceTable={true} />
       </div>
     </div>
   );

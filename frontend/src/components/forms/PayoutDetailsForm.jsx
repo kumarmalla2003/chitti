@@ -33,10 +33,20 @@ const PayoutDetailsForm = ({
   const isFormDisabled = mode === "view";
 
   const amountInputRef = useRef(null);
+
+  // Helper to format value for display
+  const getFormattedValue = (val) => {
+    if (!val) return "";
+    const num = parseInt(val.toString().replace(/,/g, ""));
+    return isNaN(num) ? "" : num.toLocaleString("en-IN");
+  };
+
+  const formattedAmount = getFormattedValue(formData.amount);
+
   const trackAmountCursor = useCursorTracking(
     amountInputRef,
-    formData.amount,
-    /[\d.]/
+    formattedAmount,
+    /\d/
   );
 
   const [allChits, setAllChits] = useState([]);
@@ -103,7 +113,7 @@ const PayoutDetailsForm = ({
   const handleChitChange = async (e) => {
     const newChitId = e.target.value;
     setSelectedChitId(newChitId);
-    onFormChange(e);
+    onFormChange(e); // Propagate chit_id change
     onFormChange({ target: { name: "chit_assignment_id", value: "" } });
     setFilteredAssignments([]);
 
@@ -128,6 +138,7 @@ const PayoutDetailsForm = ({
   const handleMemberChange = (e) => {
     const newMemberId = e.target.value;
     setSelectedMemberId(newMemberId);
+    onFormChange(e); // <--- FIXED: Propagate member_id change to parent
     onFormChange({ target: { name: "chit_assignment_id", value: "" } });
   };
 
@@ -162,7 +173,6 @@ const PayoutDetailsForm = ({
   }, [filteredAssignments]);
 
   if (mode === "view" && payoutData) {
-    const assignmentLabel = payoutData.chit_assignment_id ? "Linked" : "-";
     return (
       <fieldset disabled={isFormDisabled} className="space-y-6">
         <ViewOnlyField
@@ -176,13 +186,17 @@ const PayoutDetailsForm = ({
           icon={Layers}
         />
         <ViewOnlyField
-          label="Month"
-          value={`Month ${payoutData.month}`}
+          label="Winning Month"
+          value={
+            payoutData.assignment
+              ? formatMonthYear(payoutData.assignment.chit_month)
+              : "-"
+          }
           icon={Calendar}
         />
         <div className="grid sm:grid-cols-2 gap-6">
           <ViewOnlyField
-            label="Payout Amount"
+            label="Amount Disbursed"
             value={`₹${(payoutData.amount || 0).toLocaleString("en-IN")}`}
             icon={IndianRupee}
           />
@@ -217,8 +231,7 @@ const PayoutDetailsForm = ({
         </label>
         <div className="relative flex items-center">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <Layers className="w-5 h-5 text-text-secondary" />{" "}
-            {/* Fixed size */}
+            <Layers className="w-5 h-5 text-text-secondary" />
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
@@ -318,8 +331,7 @@ const PayoutDetailsForm = ({
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <IndianRupee className="w-5 h-5 text-text-secondary" />{" "}
-              {/* Fixed size */}
+              <IndianRupee className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
@@ -327,9 +339,10 @@ const PayoutDetailsForm = ({
               type="text"
               id="amount"
               name="amount"
-              value={formData.amount}
+              value={formattedAmount}
               onChange={(e) => {
                 trackAmountCursor(e);
+                // Standardize input update for parent
                 let value = e.target.value.replace(/[^0-9.]/g, "");
                 const parts = value.split(".");
                 if (parts.length > 2) {
@@ -339,7 +352,7 @@ const PayoutDetailsForm = ({
               }}
               className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
               required
-              placeholder="50000"
+              placeholder="50,000"
               inputMode="decimal"
             />
           </div>

@@ -1,6 +1,6 @@
 // frontend/src/components/sections/PayoutsSection.jsx
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,20 +8,22 @@ import {
   getPayoutsByChitId,
 } from "../../services/payoutsService";
 import { getChitById } from "../../services/chitsService";
+import { getAssignmentsForChit } from "../../services/assignmentsService";
 import useScrollToTop from "../../hooks/useScrollToTop";
 import {
   Loader2,
-  SquarePen,
   Save,
   AlertCircle,
   ArrowLeft,
   ArrowRight,
   TrendingUp,
   IndianRupee,
+  Search,
 } from "lucide-react";
 import Message from "../ui/Message";
 import Button from "../ui/Button";
 import Table from "../ui/Table";
+import StatusBadge from "../ui/StatusBadge";
 import useCursorTracking from "../../hooks/useCursorTracking";
 
 const ITEMS_PER_PAGE = 10;
@@ -45,6 +47,16 @@ const unformatAmount = (value) => {
   return value.toString().replace(/,/g, "");
 };
 
+// Helper for Paid Date: DD/MM/YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const calculatePayoutDate = (startDateStr, monthIndex) => {
   if (!startDateStr) return `Month ${monthIndex}`;
   const d = new Date(startDateStr);
@@ -52,6 +64,12 @@ const calculatePayoutDate = (startDateStr, monthIndex) => {
   const month = (d.getMonth() + 1).toString().padStart(2, "0");
   const year = d.getFullYear();
   return `${month}/${year}`;
+};
+
+const isSameMonthYear = (d1, d2) => {
+  return (
+    d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth()
+  );
 };
 
 const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
@@ -90,6 +108,7 @@ const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
 
 const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const [payouts, setPayouts] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [chitStartDate, setChitStartDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -98,6 +117,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const [editAmounts, setEditAmounts] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -112,13 +132,18 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     try {
       setLoading(true);
       setError(null);
-      const [payoutsData, chitData] = await Promise.all([
+      const [payoutsData, chitData, assignmentsData] = await Promise.all([
         getPayoutsByChitId(chitId, token),
         getChitById(chitId, token),
+        getAssignmentsForChit(chitId, token),
       ]);
 
-      payoutsData.payouts.sort((a, b) => a.month - b.month);
-      setPayouts(payoutsData.payouts);
+      const sortedPayouts = Array.isArray(payoutsData.payouts)
+        ? payoutsData.payouts.sort((a, b) => a.month - b.month)
+        : [];
+
+      setPayouts(sortedPayouts);
+      setAssignments(assignmentsData.assignments || []);
       setChitStartDate(chitData.start_date);
       setCurrentPage(1);
     } catch (err) {
@@ -139,9 +164,47 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     }
   }, [success]);
 
+  const mergedPayouts = useMemo(() => {
+    if (!chitStartDate) return payouts;
+
+    return payouts.map((payout) => {
+      if (payout.member) {
+        return { ...payout, displayMember: payout.member.full_name };
+      }
+
+      const payoutDateObj = new Date(chitStartDate);
+      payoutDateObj.setMonth(payoutDateObj.getMonth() + (payout.month - 1));
+
+      const foundAssignment = assignments.find((a) => {
+        const assignmentDate = new Date(a.chit_month);
+        return isSameMonthYear(assignmentDate, payoutDateObj);
+      });
+
+      return {
+        ...payout,
+        displayMember: foundAssignment ? foundAssignment.member.full_name : "-",
+      };
+    });
+  }, [payouts, assignments, chitStartDate]);
+
+  const filteredPayouts = useMemo(() => {
+    if (!searchQuery) return mergedPayouts;
+    const lowerQuery = searchQuery.toLowerCase();
+    return mergedPayouts.filter(
+      (p) =>
+        p.displayMember.toLowerCase().includes(lowerQuery) ||
+        p.month.toString().includes(lowerQuery)
+    );
+  }, [mergedPayouts, searchQuery]);
+
   const handleEditClick = () => {
     if (mode === "view") {
-      navigate(`/chits/edit/${chitId}`, { state: { initialTab: "payouts" } });
+      setIsEditing(true);
+      const initialAmounts = payouts.reduce((acc, payout) => {
+        acc[payout.id] = formatAmount(payout.planned_amount);
+        return acc;
+      }, {});
+      setEditAmounts(initialAmounts);
       return;
     }
 
@@ -190,9 +253,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     try {
       await Promise.all(updatePromises);
       setIsEditing(false);
-      const payoutsData = await getPayoutsByChitId(chitId, token);
-      payoutsData.payouts.sort((a, b) => a.month - b.month);
-      setPayouts(payoutsData.payouts);
+      await fetchData();
       setSuccess("Payouts updated successfully!");
     } catch (err) {
       setError(err.message);
@@ -208,8 +269,8 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     }
   };
 
-  const columns = [
-    {
+  const columns = useMemo(() => {
+    const indexColumn = {
       header: "S.No",
       cell: (row, index) => {
         const offset =
@@ -219,60 +280,131 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
         return offset + index + 1;
       },
       className: "text-center text-text-secondary text-sm",
-      headerClassName: "w-[20%] !pr-1 text-xs md:text-sm",
-      cellClassName: "text-center w-[20%] !pr-1",
-    },
-    {
+      headerClassName: "w-[10%] text-xs md:text-sm text-center",
+      cellClassName: "text-center w-[10%]",
+    };
+
+    const monthColumn = {
       header: "Month",
       accessor: "month",
       className: "text-center font-medium text-sm",
-      headerClassName: "w-[30%] !px-1 text-xs md:text-sm",
-      cellClassName: "w-[30%] !px-1",
-      cell: (row) => (
-        <div className="text-center w-full">
-          {calculatePayoutDate(chitStartDate, row.month)}
-        </div>
-      ),
-    },
-    {
-      header: "Payout Amount", // <--- CHANGED from "Plan"
-      accessor: "planned_amount",
-      className: "text-center",
-      headerClassName: "w-[50%] !pl-1 text-xs md:text-sm",
-      cellClassName: "w-[50%] !pl-1",
-      cell: (row, index) => {
-        const isLastInput = index === payouts.length - 1;
-        return isEditing ? (
-          <EditablePayoutInput
-            value={editAmounts[row.id]}
-            onChange={(val) => handleAmountChange(row.id, val)}
-            onKeyDown={handleInputKeyDown}
-            isLastInput={isLastInput}
-          />
-        ) : (
-          <span className="text-text-secondary flex items-center justify-center text-sm">
-            {row.planned_amount === 0 ? (
-              "-"
-            ) : (
-              <>
-                <IndianRupee className="w-3.5 h-3.5 mr-1" />
-                {formatAmount(row.planned_amount)}
-              </>
-            )}
-          </span>
-        );
-      },
-    },
-  ];
+      headerClassName: "w-[15%] text-xs md:text-sm text-center",
+      cellClassName: "w-[15%]",
+      cell: (row) => calculatePayoutDate(chitStartDate, row.month),
+    };
 
-  const totalPages = Math.ceil(payouts.length / ITEMS_PER_PAGE);
+    if (mode === "view" && !isEditing) {
+      return [
+        indexColumn,
+        monthColumn,
+        {
+          header: "Payout Amount", // RENAMED from "Payout"
+          accessor: "planned_amount",
+          className: "text-center font-medium",
+          headerClassName: "text-center",
+          cell: (row) => (
+            <span className="text-text-primary">
+              ₹{formatAmount(row.planned_amount)}
+            </span>
+          ),
+        },
+        {
+          header: "Amount Paid",
+          accessor: "amount",
+          className: "text-center font-medium",
+          headerClassName: "text-center",
+          cell: (row) => (
+            <span
+              className={
+                row.amount > 0 ? "text-success-accent" : "text-text-secondary"
+              }
+            >
+              {row.amount > 0 ? `₹${formatAmount(row.amount)}` : "-"}
+            </span>
+          ),
+        },
+        {
+          header: "Paid Date",
+          accessor: "paid_date",
+          className: "text-center text-sm text-text-secondary",
+          headerClassName: "text-center",
+          cell: (row) => formatDate(row.paid_date),
+        },
+        {
+          header: "Status",
+          accessor: "status",
+          className: "text-center",
+          headerClassName: "text-center",
+          cell: (row) => (
+            <div className="flex justify-center">
+              {row.paid_date ? (
+                <StatusBadge status="Paid" />
+              ) : (
+                // UPDATED: Standard Warning Color for Pending
+                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-warning-bg text-warning-accent">
+                  Pending
+                </span>
+              )}
+            </div>
+          ),
+        },
+      ];
+    }
+
+    // EDIT/CREATE MODE
+    return [
+      indexColumn,
+      monthColumn,
+      {
+        header: "Payout Amount",
+        accessor: "planned_amount",
+        className: "text-center",
+        headerClassName: "w-[50%] !pl-1 text-xs md:text-sm",
+        cellClassName: "w-[50%] !pl-1",
+        cell: (row, index) => {
+          const isLastInput = index === payouts.length - 1;
+          return isEditing ? (
+            <EditablePayoutInput
+              value={editAmounts[row.id]}
+              onChange={(val) => handleAmountChange(row.id, val)}
+              onKeyDown={handleInputKeyDown}
+              isLastInput={isLastInput}
+            />
+          ) : (
+            <span className="text-text-secondary flex items-center justify-center text-sm">
+              {row.planned_amount === 0 ? (
+                "-"
+              ) : (
+                <>
+                  <IndianRupee className="w-3.5 h-3.5 mr-1" />
+                  {formatAmount(row.planned_amount)}
+                </>
+              )}
+            </span>
+          );
+        },
+      },
+    ];
+  }, [
+    mode,
+    isEditing,
+    payouts,
+    currentPage,
+    editAmounts,
+    chitStartDate,
+    mergedPayouts,
+  ]);
+
+  const totalPages = Math.ceil(filteredPayouts.length / ITEMS_PER_PAGE);
   const paginatedPayouts =
     mode === "view" && !isEditing
-      ? payouts.slice(
+      ? filteredPayouts.slice(
           (currentPage - 1) * ITEMS_PER_PAGE,
           currentPage * ITEMS_PER_PAGE
         )
-      : payouts;
+      : filteredPayouts;
+
+  const displayData = isEditing && mode !== "view" ? payouts : paginatedPayouts;
 
   if (loading)
     return (
@@ -304,19 +436,28 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
               <TrendingUp className="w-6 h-6" />{" "}
               {isEditing ? "Edit Payouts" : "Payout Schedule"}
             </h2>
-            {mode === "view" && (
-              <button
-                onClick={handleEditClick}
-                className="absolute right-0 p-1 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
-                title="Edit Payouts"
-              >
-                <SquarePen className="w-5 h-5" />
-              </button>
-            )}
           </div>
           <hr className="border-border mb-4" />
         </>
       )}
+
+      {/* Search Bar - View Mode Only */}
+      {mode === "view" && !isEditing && (
+        <div className="relative flex items-center mb-4">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+            <Search className="w-5 h-5 text-text-secondary" />
+          </span>
+          <div className="absolute left-10 h-6 w-px bg-border"></div>
+          <input
+            type="text"
+            placeholder="Search by member..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
+          />
+        </div>
+      )}
+
       {success && (
         <Message type="success" title="Success">
           {success}
@@ -327,6 +468,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
           {error}
         </Message>
       )}
+
       {!isEditing && mode !== "view" && payouts.length > 0 && (
         <div className="mb-4">
           <Button
@@ -339,13 +481,10 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
           </Button>
         </div>
       )}
+
       {payouts.length > 0 ? (
         <>
-          <Table
-            columns={columns}
-            data={paginatedPayouts}
-            variant="secondary"
-          />
+          <Table columns={columns} data={displayData} variant="secondary" />
           {mode === "view" && !isEditing && totalPages > 1 && (
             <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
               <button

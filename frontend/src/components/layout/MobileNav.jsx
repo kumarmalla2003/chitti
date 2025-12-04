@@ -52,7 +52,6 @@ const MobileNav = ({
       return location.pathname.startsWith("/collections");
     }
     if (path === "/payouts") {
-      // <-- ADDED
       return location.pathname.startsWith("/payouts");
     }
     return location.pathname.startsWith(path);
@@ -66,13 +65,13 @@ const MobileNav = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
+  // UPDATED: Reordered links
   const loggedInNavLinks = [
-    { href: "/", text: "Home" },
-    { href: "/dashboard", text: "Dashboard" },
     { href: "/chits", text: "Chits" },
+    { href: "/payouts", text: "Payouts" },
+    { href: "/dashboard", text: "Dashboard" },
     { href: "/members", text: "Members" },
     { href: "/collections", text: "Collections" },
-    { href: "/payouts", text: "Payouts" }, // <-- ADDED
   ];
 
   const BrandLogo = () => {

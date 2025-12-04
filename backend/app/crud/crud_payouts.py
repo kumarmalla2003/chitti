@@ -10,7 +10,6 @@ from app.schemas.payouts import PayoutUpdate
 
 class CRUDPayout:
     async def create_schedule_for_chit(self, db: AsyncSession, chit_id: int, duration_months: int):
-        """Creates initial payout schedule rows for a new chit."""
         payouts = [
             Payout(chit_id=chit_id, month=month, planned_amount=0.0)
             for month in range(1, duration_months + 1)
@@ -21,7 +20,11 @@ class CRUDPayout:
         result = await db.execute(
             select(Payout)
             .where(Payout.id == id)
-            .options(selectinload(Payout.member), selectinload(Payout.chit))
+            .options(
+                selectinload(Payout.member), 
+                selectinload(Payout.chit),
+                selectinload(Payout.assignment) # <-- ADDED
+            )
         )
         return result.scalar_one_or_none()
 
@@ -33,11 +36,14 @@ class CRUDPayout:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None
     ) -> List[Payout]:
-        """Get all payouts that have been paid, with optional filters."""
         statement = (
             select(Payout)
             .where(Payout.paid_date.is_not(None))
-            .options(selectinload(Payout.member), selectinload(Payout.chit))
+            .options(
+                selectinload(Payout.member), 
+                selectinload(Payout.chit),
+                selectinload(Payout.assignment) # <-- ADDED
+            )
             .order_by(Payout.paid_date.desc())
         )
 
@@ -54,26 +60,26 @@ class CRUDPayout:
         return result.scalars().all()
     
     async def get_by_chit(self, db: AsyncSession, chit_id: int) -> List[Payout]:
-        """Retrieves all payouts (schedule + history) for a specific chit."""
         result = await db.execute(
             select(Payout)
             .where(Payout.chit_id == chit_id)
             .options(
                 selectinload(Payout.member),
-                selectinload(Payout.chit)  # <--- FIXED: Added this
+                selectinload(Payout.chit),
+                selectinload(Payout.assignment) # <-- ADDED
             )
             .order_by(Payout.month)
         )
         return result.scalars().all()
         
     async def get_by_member(self, db: AsyncSession, member_id: int) -> List[Payout]:
-        """Retrieves only paid payouts for a specific member."""
         result = await db.execute(
             select(Payout)
             .where(Payout.member_id == member_id)
             .options(
                 selectinload(Payout.chit),
-                selectinload(Payout.member) # <--- FIXED: Added this
+                selectinload(Payout.member),
+                selectinload(Payout.assignment) # <-- ADDED
             )
             .order_by(Payout.paid_date.desc())
         )
@@ -89,7 +95,6 @@ class CRUDPayout:
         return db_obj
 
     async def reset_transaction(self, db: AsyncSession, *, db_obj: Payout) -> Payout:
-        """Clears transaction data but keeps the schedule row."""
         db_obj.amount = None
         db_obj.paid_date = None
         db_obj.method = None
@@ -103,7 +108,6 @@ class CRUDPayout:
         return db_obj
 
     async def sync_schedule(self, db: AsyncSession, chit_id: int, new_duration: int):
-        """Synchronizes Payout rows when Chit duration changes."""
         result = await db.execute(
             select(Payout).where(Payout.chit_id == chit_id).order_by(Payout.month)
         )

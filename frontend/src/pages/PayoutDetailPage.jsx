@@ -14,7 +14,13 @@ import PayoutDetailsForm from "../components/forms/PayoutDetailsForm";
 import PayoutViewDashboard from "./PayoutViewDashboard";
 import Message from "../components/ui/Message";
 import { Loader2, ArrowLeft, Plus, Save, Info, SquarePen } from "lucide-react";
-import { getPayoutById, updatePayout } from "../services/payoutsService";
+import {
+  getPayoutById,
+  updatePayout,
+  getPayoutsByChitId,
+} from "../services/payoutsService";
+import { getChitById } from "../services/chitsService";
+import { getAssignmentsForChit } from "../services/assignmentsService";
 
 const PayoutDetailPage = () => {
   const navigate = useNavigate();
@@ -29,7 +35,10 @@ const PayoutDetailPage = () => {
   const [mode, setMode] = useState("view");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Initialize form data with safe defaults
   const [formData, setFormData] = useState({
+    chit_id: "",
+    member_id: "",
     chit_assignment_id: defaultAssignmentId || "",
     amount: "",
     paid_date: new Date().toISOString().split("T")[0],
@@ -56,6 +65,8 @@ const PayoutDetailPage = () => {
       try {
         const payout = await getPayoutById(id, token);
         const fetchedData = {
+          chit_id: payout.chit_id,
+          member_id: payout.member_id,
           chit_assignment_id: payout.chit_assignment_id,
           amount: payout.amount ? payout.amount.toString() : "",
           paid_date: payout.paid_date || new Date().toISOString().split("T")[0],
@@ -99,14 +110,65 @@ const PayoutDetailPage = () => {
     setSuccess(null);
 
     try {
+      // Ensure numeric fields are correctly parsed
       const dataToSend = {
         ...formData,
         amount: parseFloat(formData.amount.replace(/,/g, "")),
         chit_assignment_id: parseInt(formData.chit_assignment_id),
+        // Ensure IDs are integers if they exist
+        member_id: formData.member_id ? parseInt(formData.member_id) : null,
+        chit_id: formData.chit_id ? parseInt(formData.chit_id) : null,
       };
 
       if (mode === "create") {
-        // Create logic if needed
+        if (!formData.chit_id || !formData.chit_assignment_id) {
+          throw new Error("Please select a Chit and a Winning Month.");
+        }
+
+        // 1. Fetch Chit Assignment to get the Winning Month Date
+        const assignmentsData = await getAssignmentsForChit(
+          formData.chit_id,
+          token
+        );
+        const assignment = assignmentsData.assignments.find(
+          (a) => a.id === parseInt(formData.chit_assignment_id)
+        );
+
+        if (!assignment) {
+          throw new Error("Selected assignment not found.");
+        }
+
+        // 2. Fetch Chit details to get Start Date
+        const chit = await getChitById(formData.chit_id, token);
+
+        // 3. Calculate Month Index (1-based) to identify the correct schedule row
+        const startDate = new Date(chit.start_date);
+        const assignDate = new Date(assignment.chit_month);
+        const monthIndex =
+          (assignDate.getFullYear() - startDate.getFullYear()) * 12 +
+          (assignDate.getMonth() - startDate.getMonth()) +
+          1;
+
+        // 4. Find the corresponding pre-created Payout row
+        const payoutsData = await getPayoutsByChitId(formData.chit_id, token);
+        const targetPayout = payoutsData.payouts.find(
+          (p) => p.month === monthIndex
+        );
+
+        if (!targetPayout) {
+          throw new Error(
+            `No scheduled payout found for Month ${monthIndex}. Check chit duration.`
+          );
+        }
+
+        // 5. Update the existing schedule row with transaction details
+        await updatePayout(targetPayout.id, dataToSend, token);
+
+        setSuccess("Payout recorded successfully!");
+        // Navigate to view mode for the updated payout
+        navigate(`/payouts/view/${targetPayout.id}`, {
+          state: { success: "Payout recorded successfully!" },
+        });
       } else if (mode === "edit") {
         const changes = {};
         for (const key in dataToSend) {

@@ -22,7 +22,6 @@ async def read_all_payouts(
     start_date: Optional[date] = Query(default=None),
     end_date: Optional[date] = Query(default=None),
 ):
-    """Retrieves all paid payouts (global history) with optional filters."""
     payouts_list = await crud_payouts.payouts.get_all_paid(
         session,
         chit_id=chit_id,
@@ -38,8 +37,7 @@ async def read_payouts_by_chit(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Retrieves all payouts (schedule + history) for a specific chit."""
-    db_chit = await crud_chits.get_chit_by_id(session, chit_id)
+    db_chit = await crud_chits.get_chit_by_id(session, chit_id=chit_id)
     if not db_chit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
     
@@ -52,7 +50,6 @@ async def read_payouts_by_member(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Retrieves payouts received by a specific member."""
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
@@ -83,8 +80,14 @@ async def update_payout(
     if not db_payout:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
     
-    # FIXED: Changed 'session=session' to 'db=session' to match CRUD definition
-    return await crud_payouts.payouts.update(db=session, db_obj=db_payout, obj_in=payout_in)
+    # 1. Update the record
+    await crud_payouts.payouts.update(db=session, db_obj=db_payout, obj_in=payout_in)
+    
+    # 2. Re-fetch the record to ensure all relationships (Member, Chit, Assignment) are loaded
+    # This fixes the issue of details missing in the immediate response
+    updated_payout_with_relations = await crud_payouts.payouts.get(session, payout_id)
+    
+    return updated_payout_with_relations
 
 @router.delete("/{payout_id}", response_model=PayoutResponse)
 async def reset_payout(
@@ -97,5 +100,7 @@ async def reset_payout(
     if not db_payout:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
     
-    # FIXED: Changed 'session=session' to 'db=session' to match CRUD definition
-    return await crud_payouts.payouts.reset_transaction(db=session, db_obj=db_payout)
+    await crud_payouts.payouts.reset_transaction(db=session, db_obj=db_payout)
+    
+    # Re-fetch to return clean state with relationships
+    return await crud_payouts.payouts.get(session, payout_id)

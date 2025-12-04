@@ -34,7 +34,7 @@ const Header = ({
     chits: useRef(null),
     members: useRef(null),
     collections: useRef(null),
-    payouts: useRef(null), // <-- ADDED
+    payouts: useRef(null),
   };
 
   const loggedOutNavLinks = [
@@ -45,13 +45,13 @@ const Header = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
+  // UPDATED: Reordered links
   const loggedInNavLinks = [
-    { href: "/", text: "Home", id: "home" },
-    { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/chits", text: "Chits", id: "chits" },
+    { href: "/payouts", text: "Payouts", id: "payouts" },
+    { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/members", text: "Members", id: "members" },
     { href: "/collections", text: "Collections", id: "collections" },
-    { href: "/payouts", text: "Payouts", id: "payouts" }, // <-- ADDED
   ];
 
   const getActiveId = () => {
@@ -60,7 +60,7 @@ const Header = ({
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
     if (location.pathname.startsWith("/collections")) return "collections";
-    if (location.pathname.startsWith("/payouts")) return "payouts"; // <-- ADDED
+    if (location.pathname.startsWith("/payouts")) return "payouts";
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -97,7 +97,7 @@ const Header = ({
       );
     if (path === "/collections")
       return location.pathname.startsWith("/collections");
-    if (path === "/payouts") return location.pathname.startsWith("/payouts"); // <-- ADDED
+    if (path === "/payouts") return location.pathname.startsWith("/payouts");
     return location.pathname.startsWith(path);
   };
 
@@ -153,7 +153,6 @@ const Header = ({
   };
 
   return (
-    // UPDATED: Restored opacity-overlay and backdrop-blur-overlay
     <header className="sticky top-0 z-sticky bg-background-secondary/80 backdrop-blur-overlay shadow-card">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">

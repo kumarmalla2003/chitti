@@ -38,7 +38,8 @@ class CRUDCollection:
     ) -> List[Collection]:
         statement = select(Collection).options(
             selectinload(Collection.member),
-            selectinload(Collection.chit)
+            selectinload(Collection.chit),
+            selectinload(Collection.assignment) # <-- ADDED: Fixes MissingGreenlet error
         ).order_by(Collection.collection_date.desc())
         
         if chit_id:
