@@ -16,18 +16,18 @@ import { getUnassignedMonths } from "../../services/assignmentsService";
 const AssignExistingChitForm = forwardRef(
   (
     {
-      token,
+      // token, // Removed
       memberId,
       onAssignment,
       formatDate,
-      existingAssignments, // This prop is now only used for the info message
-      onChitNameChange, // Kept to clear header on back
+      existingAssignments,
+      onChitNameChange,
       onBackToList,
     },
     ref
   ) => {
     const [allChits, setAllChits] = useState([]);
-    const [loading, setLoading] = useState(true); // Initial page load
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,7 +51,7 @@ const AssignExistingChitForm = forwardRef(
         setLoading(true);
         setError(null);
         try {
-          const data = await getAllChits(token);
+          const data = await getAllChits(); // No token
           // Filter only for "Active" (which includes upcoming)
           const availableChits = data.chits.filter(
             (c) => c.status === "Active"
@@ -64,7 +64,7 @@ const AssignExistingChitForm = forwardRef(
         }
       };
       fetchAllChits();
-    }, [token]);
+    }, []); // Removed token dependency
 
     // Cascading logic: Fetch months when a chit is selected
     const handleChitChange = async (e) => {
@@ -80,7 +80,7 @@ const AssignExistingChitForm = forwardRef(
       setIsMonthLoading(true);
       setError(null);
       try {
-        const data = await getUnassignedMonths(newChitId, token);
+        const data = await getUnassignedMonths(newChitId); // No token
         setAvailableMonths(data.available_months);
       } catch (err) {
         setError(err.message);

@@ -1,8 +1,8 @@
 // frontend/src/App.jsx
 
-import { useState } from "react"; // <-- CORRECTED IMPORT
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
@@ -13,6 +13,8 @@ import MemberDetailPage from "./pages/MemberDetailPage";
 import LoginModal from "./components/auth/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
+import { checkSession } from "./redux/slices/authSlice";
+import { Loader2 } from "lucide-react";
 
 // Ensure these files exist or rename them back to PaymentsPage/PaymentDetailPage if needed
 import CollectionsPage from "./pages/CollectionsPage";
@@ -23,11 +25,24 @@ import PayoutDetailPage from "./pages/PayoutDetailPage";
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isLoggedIn } = useSelector((state) => state.auth);
+  const { isLoggedIn, loading } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const location = useLocation();
+
+  useEffect(() => {
+    dispatch(checkSession());
+  }, [dispatch]);
 
   const handleLoginModalOpen = () => setIsModalOpen(true);
   const handleLoginModalClose = () => setIsModalOpen(false);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-background-primary">
+        <Loader2 className="w-12 h-12 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>

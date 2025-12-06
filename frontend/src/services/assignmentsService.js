@@ -4,11 +4,6 @@ const API_URL = `${import.meta.env.VITE_API_BASE_URL}/assignments`;
 const MEMBERS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
 const CHITS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`;
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
 // --- ADDED: Helper to extract specific error messages from the backend ---
 const handleError = async (response, defaultMessage) => {
   try {
@@ -21,11 +16,19 @@ const handleError = async (response, defaultMessage) => {
   }
 };
 
-export const createAssignment = async (assignmentData, token) => {
+/**
+ * Creates an assignment.
+ * @param {Object} assignmentData
+ * @returns {Promise<Object>}
+ */
+export const createAssignment = async (assignmentData) => {
   const response = await fetch(API_URL, {
     method: "POST",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(assignmentData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -34,12 +37,20 @@ export const createAssignment = async (assignmentData, token) => {
   return response.json();
 };
 
-// --- ADD NEW BULK ASSIGNMENT FUNCTION ---
-export const createBulkAssignments = async (chitId, assignments, token) => {
+/**
+ * Creates bulk assignments.
+ * @param {string} chitId
+ * @param {Array} assignments
+ * @returns {Promise<Object>}
+ */
+export const createBulkAssignments = async (chitId, assignments) => {
   const response = await fetch(`${API_URL}/chit/${chitId}/bulk-assign`, {
     method: "POST",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ assignments: assignments }), // Wrap in 'assignments' key
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -48,10 +59,15 @@ export const createBulkAssignments = async (chitId, assignments, token) => {
   return response.json();
 };
 
-export const getUnassignedMonths = async (chitId, token) => {
+/**
+ * Gets unassigned months for a chit.
+ * @param {string} chitId
+ * @returns {Promise<Array>}
+ */
+export const getUnassignedMonths = async (chitId) => {
   const response = await fetch(`${API_URL}/unassigned-months/${chitId}`, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -63,10 +79,15 @@ export const getUnassignedMonths = async (chitId, token) => {
   return response.json();
 };
 
-export const getAssignmentsForMember = async (memberId, token) => {
+/**
+ * Gets assignments for a member.
+ * @param {string} memberId
+ * @returns {Promise<Array>}
+ */
+export const getAssignmentsForMember = async (memberId) => {
   const response = await fetch(`${MEMBERS_API_URL}/${memberId}/assignments`, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -75,10 +96,15 @@ export const getAssignmentsForMember = async (memberId, token) => {
   return response.json();
 };
 
-export const getAssignmentsForChit = async (chitId, token) => {
+/**
+ * Gets assignments for a chit.
+ * @param {string} chitId
+ * @returns {Promise<Array>}
+ */
+export const getAssignmentsForChit = async (chitId) => {
   const response = await fetch(`${CHITS_API_URL}/${chitId}/assignments`, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -87,10 +113,15 @@ export const getAssignmentsForChit = async (chitId, token) => {
   return response.json();
 };
 
-export const deleteAssignment = async (assignmentId, token) => {
+/**
+ * Deletes an assignment.
+ * @param {string} assignmentId
+ * @returns {Promise<void>}
+ */
+export const deleteAssignment = async (assignmentId) => {
   const response = await fetch(`${API_URL}/${assignmentId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {

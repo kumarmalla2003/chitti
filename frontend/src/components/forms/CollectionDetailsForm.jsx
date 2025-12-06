@@ -29,7 +29,8 @@ const CollectionDetailsForm = ({
   defaultChitId = null,
   defaultMemberId = null,
 }) => {
-  const { token } = useSelector((state) => state.auth);
+  // Removed token from useSelector
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
 
   const amountInputRef = useRef(null);
@@ -75,17 +76,16 @@ const CollectionDetailsForm = ({
         setIsLoading(true);
         try {
           const [chitsData, membersData] = await Promise.all([
-            getAllChits(token),
-            getAllMembers(token),
+            getAllChits(), // No token
+            getAllMembers(), // No token
           ]);
           setAllChits(chitsData.chits);
           setAllMembers(membersData.members);
 
           if (defaultMemberId) {
             const memberAssignments = await getAssignmentsForMember(
-              defaultMemberId,
-              token
-            );
+              defaultMemberId
+            ); // No token
             const validChitIds = new Set(
               memberAssignments.map((a) => a.chit.id)
             );
@@ -99,9 +99,8 @@ const CollectionDetailsForm = ({
             );
           } else if (defaultChitId) {
             const chitAssignments = await getAssignmentsForChit(
-              defaultChitId,
-              token
-            );
+              defaultChitId
+            ); // No token
             const validMemberIds = new Set(
               chitAssignments.assignments.map((a) => a.member.id)
             );
@@ -122,8 +121,10 @@ const CollectionDetailsForm = ({
         }
       }
     };
-    fetchInitialData();
-  }, [mode, token, defaultChitId, defaultMemberId]);
+    if (isLoggedIn) {
+        fetchInitialData();
+    }
+  }, [mode, isLoggedIn, defaultChitId, defaultMemberId]);
 
   useEffect(() => {
     if (paymentData && (mode === "edit" || mode === "view")) {
@@ -143,9 +144,8 @@ const CollectionDetailsForm = ({
       setIsLoading(true);
       try {
         const memberAssignments = await getAssignmentsForMember(
-          newMemberId,
-          token
-        );
+          newMemberId
+        ); // No token
         const validChitIds = new Set(memberAssignments.map((a) => a.chit.id));
         if (!defaultChitId) {
           setFilteredChits(allChits.filter((c) => validChitIds.has(c.id)));
@@ -170,7 +170,7 @@ const CollectionDetailsForm = ({
     if (newChitId) {
       setIsLoading(true);
       try {
-        const chitAssignments = await getAssignmentsForChit(newChitId, token);
+        const chitAssignments = await getAssignmentsForChit(newChitId); // No token
         const validMemberIds = new Set(
           chitAssignments.assignments.map((a) => a.member.id)
         );
@@ -195,9 +195,8 @@ const CollectionDetailsForm = ({
         setIsAssignmentsLoading(true);
         try {
           const assignments = await getAssignmentsForMember(
-            selectedMemberId,
-            token
-          );
+            selectedMemberId
+          ); // No token
           const finalAssignments = assignments.filter(
             (a) => a.chit.id === parseInt(selectedChitId)
           );
@@ -221,7 +220,7 @@ const CollectionDetailsForm = ({
       };
       fetchAssignments();
     }
-  }, [selectedChitId, selectedMemberId, mode, token, defaultAssignmentId]);
+  }, [selectedChitId, selectedMemberId, mode, isLoggedIn, defaultAssignmentId]);
 
   const assignmentOptions = useMemo(() => {
     return filteredAssignments.map((a) => ({

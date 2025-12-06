@@ -1,8 +1,13 @@
 // frontend/src/services/authService.js
 
-// const API_URL = "http://127.0.0.1:8000/auth"; // Your FastAPI server URL  <- REMOVE THIS LINE
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth`; //  <- ADD THIS LINE
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth`;
 
+/**
+ * Verifies if a phone number is authorized.
+ * @param {string} phoneNumber - The phone number to verify.
+ * @returns {Promise<Object>} The response data.
+ * @throws {Error} If the phone number is not authorized or an error occurs.
+ */
 export const verifyPhone = async (phoneNumber) => {
   const response = await fetch(`${API_URL}/verify-phone`, {
     method: "POST",
@@ -20,6 +25,14 @@ export const verifyPhone = async (phoneNumber) => {
   return response.json();
 };
 
+/**
+ * Logs in the user with phone number and PIN.
+ * Sets the access token in an HttpOnly cookie.
+ * @param {string} phoneNumber - The user's phone number.
+ * @param {string} pin - The user's PIN.
+ * @returns {Promise<boolean>} True if login is successful.
+ * @throws {Error} If login fails.
+ */
 export const login = async (phoneNumber, pin) => {
   // The backend expects 'application/x-www-form-urlencoded' for OAuth2PasswordRequestForm
   const formData = new URLSearchParams();
@@ -30,6 +43,7 @@ export const login = async (phoneNumber, pin) => {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData,
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -42,6 +56,36 @@ export const login = async (phoneNumber, pin) => {
     throw new Error("Login failed. Please try again.");
   }
 
-  const data = await response.json();
-  return data.access_token;
+  // We don't need to return the token anymore as it's in a cookie
+  return true;
+};
+
+/**
+ * Logs out the user.
+ * Clears the access token cookie.
+ * @returns {Promise<boolean>} True if logout is successful.
+ */
+export const logout = async () => {
+  const response = await fetch(`${API_URL}/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  return response.ok;
+};
+
+/**
+ * Fetches the current authenticated user.
+ * @returns {Promise<Object>} The user object.
+ * @throws {Error} If fetch fails.
+ */
+export const getCurrentUser = async () => {
+  const response = await fetch(`${API_URL}/me`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch current user.");
+  }
+  return response.json();
 };

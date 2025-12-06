@@ -2,15 +2,15 @@
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`;
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
-export const getAllChits = async (token) => {
+/**
+ * Fetches all chits.
+ * @returns {Promise<Array>} List of chits.
+ * @throws {Error} If fetch fails.
+ */
+export const getAllChits = async () => {
   const response = await fetch(API_URL, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
   if (!response.ok) {
     if (response.status === 401) throw new Error("Authentication failed.");
@@ -19,11 +19,20 @@ export const getAllChits = async (token) => {
   return response.json();
 };
 
-export const createChit = async (chitData, token) => {
+/**
+ * Creates a new chit.
+ * @param {Object} chitData - The chit data.
+ * @returns {Promise<Object>} The created chit.
+ * @throws {Error} If creation fails.
+ */
+export const createChit = async (chitData) => {
   const response = await fetch(API_URL, {
     method: "POST",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(chitData),
+    credentials: "include",
   });
   if (!response.ok) {
     const errorData = await response.json();
@@ -32,39 +41,71 @@ export const createChit = async (chitData, token) => {
   return response.json();
 };
 
-export const getChitById = async (chitId, token) => {
+/**
+ * Gets a chit by ID.
+ * @param {string} chitId - The chit ID.
+ * @returns {Promise<Object>} The chit details.
+ * @throws {Error} If fetch fails.
+ */
+export const getChitById = async (chitId) => {
   const response = await fetch(`${API_URL}/${chitId}`, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to fetch chit details.");
   return response.json();
 };
 
-export const updateChit = async (chitId, chitData, token) => {
+/**
+ * Updates a chit.
+ * @param {string} chitId - The chit ID.
+ * @param {Object} chitData - The updated chit data.
+ * @returns {Promise<Object>} The updated chit.
+ * @throws {Error} If update fails.
+ */
+export const updateChit = async (chitId, chitData) => {
   const response = await fetch(`${API_URL}/${chitId}`, {
     method: "PUT",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(chitData),
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to update chit.");
   return response.json();
 };
 
-export const patchChit = async (chitId, chitData, token) => {
+/**
+ * Patches a chit.
+ * @param {string} chitId - The chit ID.
+ * @param {Object} chitData - The partial chit data.
+ * @returns {Promise<Object>} The updated chit.
+ * @throws {Error} If update fails.
+ */
+export const patchChit = async (chitId, chitData) => {
   const response = await fetch(`${API_URL}/${chitId}`, {
     method: "PATCH",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(chitData),
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to update chit.");
   return response.json();
 };
 
-export const deleteChit = async (chitId, token) => {
+/**
+ * Deletes a chit.
+ * @param {string} chitId - The chit ID.
+ * @returns {Promise<void>}
+ * @throws {Error} If deletion fails.
+ */
+export const deleteChit = async (chitId) => {
   const response = await fetch(`${API_URL}/${chitId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
   if (!response.ok) throw new Error("Failed to delete chit.");
   return;

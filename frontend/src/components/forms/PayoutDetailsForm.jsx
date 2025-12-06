@@ -29,7 +29,8 @@ const PayoutDetailsForm = ({
   defaultChitId = null,
   defaultMemberId = null,
 }) => {
-  const { token } = useSelector((state) => state.auth);
+  // Removed token from useSelector
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
 
   const amountInputRef = useRef(null);
@@ -85,8 +86,8 @@ const PayoutDetailsForm = ({
         setIsLoading(true);
         try {
           const [chitsData, membersData] = await Promise.all([
-            getAllChits(token),
-            getAllMembers(token),
+            getAllChits(), // No token
+            getAllMembers(), // No token
           ]);
           setAllChits(chitsData.chits);
           setAllMembers(membersData.members);
@@ -100,8 +101,10 @@ const PayoutDetailsForm = ({
         }
       }
     };
-    fetchInitialData();
-  }, [mode, token]);
+    if (isLoggedIn) {
+        fetchInitialData();
+    }
+  }, [mode, isLoggedIn]);
 
   useEffect(() => {
     if (payoutData && (mode === "edit" || mode === "view")) {
@@ -120,7 +123,7 @@ const PayoutDetailsForm = ({
     if (newChitId) {
       setIsLoading(true);
       try {
-        const chitAssignments = await getAssignmentsForChit(newChitId, token);
+        const chitAssignments = await getAssignmentsForChit(newChitId); // No token
         const validMemberIds = new Set(
           chitAssignments.assignments.map((a) => a.member.id)
         );
@@ -148,9 +151,8 @@ const PayoutDetailsForm = ({
         setIsAssignmentsLoading(true);
         try {
           const assignments = await getAssignmentsForMember(
-            selectedMemberId,
-            token
-          );
+            selectedMemberId
+          ); // No token
           const finalAssignments = assignments.filter(
             (a) => a.chit.id === parseInt(selectedChitId)
           );
@@ -163,7 +165,7 @@ const PayoutDetailsForm = ({
       };
       fetchAssignments();
     }
-  }, [selectedChitId, selectedMemberId, mode, token]);
+  }, [selectedChitId, selectedMemberId, mode, isLoggedIn]);
 
   const assignmentOptions = useMemo(() => {
     return filteredAssignments.map((a) => ({

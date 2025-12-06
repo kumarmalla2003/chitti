@@ -2,17 +2,17 @@
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
-export const searchMembers = async (query, token) => {
+/**
+ * Searches for members.
+ * @param {string} query - Search query.
+ * @returns {Promise<Array>} List of members.
+ */
+export const searchMembers = async (query) => {
   const response = await fetch(
     `${API_URL}/search?query=${encodeURIComponent(query)}`,
     {
       method: "GET",
-      headers: getAuthHeaders(token),
+      credentials: "include",
     }
   );
 
@@ -22,11 +22,19 @@ export const searchMembers = async (query, token) => {
   return response.json();
 };
 
-export const createMember = async (memberData, token) => {
+/**
+ * Creates a new member.
+ * @param {Object} memberData - Member data.
+ * @returns {Promise<Object>} Created member.
+ */
+export const createMember = async (memberData) => {
   const response = await fetch(API_URL, {
     method: "POST",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(memberData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -41,11 +49,20 @@ export const createMember = async (memberData, token) => {
   return response.json();
 };
 
-export const updateMember = async (memberId, memberData, token) => {
+/**
+ * Updates a member.
+ * @param {string} memberId - Member ID.
+ * @param {Object} memberData - Member data.
+ * @returns {Promise<Object>} Updated member.
+ */
+export const updateMember = async (memberId, memberData) => {
   const response = await fetch(`${API_URL}/${memberId}`, {
     method: "PUT",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(memberData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -60,11 +77,20 @@ export const updateMember = async (memberId, memberData, token) => {
   return response.json();
 };
 
-export const patchMember = async (memberId, memberData, token) => {
+/**
+ * Patches a member.
+ * @param {string} memberId - Member ID.
+ * @param {Object} memberData - Member data.
+ * @returns {Promise<Object>} Updated member.
+ */
+export const patchMember = async (memberId, memberData) => {
   const response = await fetch(`${API_URL}/${memberId}`, {
     method: "PATCH",
-    headers: getAuthHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(memberData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -79,10 +105,14 @@ export const patchMember = async (memberId, memberData, token) => {
   return response.json();
 };
 
-export const getAllMembers = async (token) => {
+/**
+ * Fetches all members.
+ * @returns {Promise<Array>} List of members.
+ */
+export const getAllMembers = async () => {
   const response = await fetch(API_URL, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -91,10 +121,15 @@ export const getAllMembers = async (token) => {
   return response.json();
 };
 
-export const getMemberById = async (memberId, token) => {
+/**
+ * Gets a member by ID.
+ * @param {string} memberId - Member ID.
+ * @returns {Promise<Object>} Member details.
+ */
+export const getMemberById = async (memberId) => {
   const response = await fetch(`${API_URL}/${memberId}`, {
     method: "GET",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -103,10 +138,15 @@ export const getMemberById = async (memberId, token) => {
   return response.json();
 };
 
-export const deleteMember = async (memberId, token) => {
+/**
+ * Deletes a member.
+ * @param {string} memberId - Member ID.
+ * @returns {Promise<void>}
+ */
+export const deleteMember = async (memberId) => {
   const response = await fetch(`${API_URL}/${memberId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(token),
+    credentials: "include",
   });
 
   if (!response.ok) {

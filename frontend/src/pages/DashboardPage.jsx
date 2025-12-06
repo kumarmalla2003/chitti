@@ -29,18 +29,22 @@ import Card from "../components/ui/Card";
 import Table from "../components/ui/Table";
 
 // API calls
-const fetchDashboardData = async (token) => {
+const fetchDashboardData = async () => {
   const [chitsRes, membersRes, collectionsRes] = await Promise.all([
     fetch(`${import.meta.env.VITE_API_BASE_URL}/chits`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     }),
     fetch(`${import.meta.env.VITE_API_BASE_URL}/members`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     }),
     fetch(`${import.meta.env.VITE_API_BASE_URL}/collections`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     }),
   ]);
+
+  if (!chitsRes.ok || !membersRes.ok || !collectionsRes.ok) {
+     throw new Error("Failed to fetch dashboard data");
+  }
 
   const chits = await chitsRes.json();
   const members = await membersRes.json();
@@ -74,7 +78,8 @@ const TabButton = ({ name, icon: Icon, label, activeTab, setActiveTab }) => {
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  // Removed token from useSelector
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -88,7 +93,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const dashboardData = await fetchDashboardData(token);
+        const dashboardData = await fetchDashboardData(); // No token
         setData(dashboardData);
         calculateStats(dashboardData);
       } catch (error) {
@@ -97,8 +102,8 @@ const DashboardPage = () => {
         setLoading(false);
       }
     };
-    if (token) loadData();
-  }, [token]);
+    if (isLoggedIn) loadData();
+  }, [isLoggedIn]);
 
   const calculateStats = ({ chits, members, collections }) => {
     const today = new Date();
