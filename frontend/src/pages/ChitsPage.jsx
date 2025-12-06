@@ -43,7 +43,8 @@ const ChitsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { token } = useSelector((state) => state.auth);
+  // Removed token from useSelector as it is no longer needed
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [printingChitId, setPrintingChitId] = useState(null);
@@ -67,7 +68,7 @@ const ChitsPage = () => {
   useEffect(() => {
     const fetchChits = async () => {
       try {
-        const data = await getAllChits(token);
+        const data = await getAllChits(); // No token passed
         setChits(data.chits);
       } catch (err) {
         setError(err.message);
@@ -75,10 +76,10 @@ const ChitsPage = () => {
         setLoading(false);
       }
     };
-    if (token) {
+    if (isLoggedIn) {
       fetchChits();
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -104,7 +105,7 @@ const ChitsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteChit(itemToDelete.id, token);
+      await deleteChit(itemToDelete.id); // No token passed
       setChits((prevChits) =>
         prevChits.filter((c) => c.id !== itemToDelete.id)
       );
@@ -161,9 +162,9 @@ const ChitsPage = () => {
     try {
       const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
         [
-          getPayoutsByChitId(chit.id, token),
-          getAssignmentsForChit(chit.id, token),
-          getCollectionsByChitId(chit.id, token),
+          getPayoutsByChitId(chit.id), // No token passed
+          getAssignmentsForChit(chit.id), // No token passed
+          getCollectionsByChitId(chit.id), // No token passed
         ]
       );
 

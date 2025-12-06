@@ -10,11 +10,10 @@ import {
   Loader2,
   IndianRupee,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import PropTypes from 'prop-types';
 
-const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
-  const navigate = useNavigate();
-
+const ChitCard = ({ chit, onEdit, onDelete, onPrint, isPrinting }) => {
   const statusStyles = {
     Active: {
       dot: "bg-success-accent",
@@ -33,10 +32,15 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
     });
 
   return (
-    <div
-      className="rounded-lg p-4 shadow-md transition-all duration-300 cursor-pointer hover:scale-[1.02] bg-background-secondary"
-      onClick={() => navigate(`/chits/view/${chit.id}`)}
-    >
+    <article className="rounded-lg p-4 shadow-md bg-background-secondary relative group transition-all duration-300 hover:scale-[1.02]">
+      {/* Make the title a clickable link instead of the whole card */}
+      <Link
+        to={`/chits/view/${chit.id}`}
+        className="absolute inset-0 z-10 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg"
+      >
+        <span className="sr-only">View details for {chit.name}</span>
+      </Link>
+
       {/* Top Row: Name and Actions */}
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2 min-w-0">
@@ -45,8 +49,7 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             {chit.name}
           </h3>
         </div>
-        <div className="flex items-center flex-shrink-0">
-          {/* --- "VIEW" BUTTON REMOVED --- */}
+        <div className="flex items-center flex-shrink-0 relative z-20">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -93,14 +96,12 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             {chit.chit_value.toLocaleString("en-IN")}
           </span>
         </div>
-        {/* --- MODIFICATION: Removed all extra text --- */}
         <div className="flex items-center gap-2" title="Monthly Installment">
           <Repeat className="w-5 h-5" />
           <span className="font-semibold">
             ₹{chit.monthly_installment.toLocaleString("en-IN")}
           </span>
         </div>
-        {/* --- END MODIFICATION --- */}
       </div>
 
       {/* Bottom Separator */}
@@ -119,8 +120,25 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
           <span>Cycle {chit.chit_cycle}</span>
         </div>
       </div>
-    </div>
+    </article>
   );
+};
+
+ChitCard.propTypes = {
+  chit: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    name: PropTypes.string.isRequired,
+    status: PropTypes.string.isRequired,
+    chit_value: PropTypes.number.isRequired,
+    monthly_installment: PropTypes.number.isRequired,
+    start_date: PropTypes.string.isRequired,
+    end_date: PropTypes.string.isRequired,
+    chit_cycle: PropTypes.number.isRequired,
+  }).isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onPrint: PropTypes.func.isRequired,
+  isPrinting: PropTypes.bool,
 };
 
 export default ChitCard;

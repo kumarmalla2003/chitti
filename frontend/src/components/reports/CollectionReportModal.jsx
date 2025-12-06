@@ -1,12 +1,13 @@
 // frontend/src/components/reports/CollectionReportModal.jsx
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Calendar, Layers, User, ChevronDown, Loader2 } from "lucide-react";
+import { X, Calendar, Layers, User, ChevronDown, Loader2, Box } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "../ui/Button";
 import { getAllChits } from "../../services/chitsService";
 import { getAllMembers } from "../../services/membersService";
 import CustomDateInput from "../ui/CustomDateInput";
+import { useSelector } from "react-redux";
 
 // --- 1. TabButton Component ---
 const TabButton = React.forwardRef(
@@ -57,9 +58,9 @@ const CollectionReportModal = ({
   isOpen,
   onClose,
   onGenerate,
-  token,
   loading,
 }) => {
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState("date");
 
   const [startDate, setStartDate] = useState("");
@@ -86,13 +87,13 @@ const CollectionReportModal = ({
   }, [activeTab]);
 
   useEffect(() => {
-    if (isOpen && token) {
+    if (isOpen && isLoggedIn) {
       const fetchData = async () => {
         setDataLoading(true);
         try {
           const [chitsData, membersData] = await Promise.all([
-            getAllChits(token),
-            getAllMembers(token),
+            getAllChits(), // No token
+            getAllMembers(), // No token
           ]);
           setChits(chitsData.chits || []);
           setMembers(membersData.members || []);
@@ -108,7 +109,7 @@ const CollectionReportModal = ({
       setStartDate(dates.start);
       setEndDate(dates.end);
     }
-  }, [isOpen, token]);
+  }, [isOpen, isLoggedIn]);
 
   const handleQuickDateSelect = (type) => {
     const dates = getDates(type);
@@ -317,7 +318,7 @@ const CollectionReportModal = ({
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <FiBox className="w-5 h-5 text-text-secondary" />
+                    <Box className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border pointer-events-none"></div>
                   <select
