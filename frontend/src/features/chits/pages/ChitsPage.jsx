@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/cards/ChitCard";
+import ChitCardSkeleton from "../components/cards/ChitCardSkeleton";
+import Skeleton from "../../../components/ui/Skeleton";
+import EmptyState from "../../../components/ui/EmptyState";
 import { useChits, useDeleteChit } from "../hooks/useChits";
 import { getPayoutsByChitId } from "../../../services/payoutsService";
 import { getAssignmentsForChit } from "../../../services/assignmentsService";
@@ -17,13 +20,14 @@ import StatusBadge from "../../../components/ui/StatusBadge";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import {
   Plus,
-  Loader2,
   SquarePen,
   Search,
   Trash2,
   LayoutGrid,
   List,
   Printer,
+  Loader2,
+  FileStack,
 } from "lucide-react";
 
 import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
@@ -344,22 +348,27 @@ const ChitsPage = () => {
         </div>
 
         {loading && (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-10 h-10 animate-spin text-accent" />
-          </div>
+          viewMode === "table" ? (
+            <Skeleton.Table rows={5} columns={6} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <ChitCardSkeleton key={i} />
+              ))}
+            </div>
+          )
         )}
 
         {!loading && filteredChits.length === 0 && (
-          <Card className="text-center p-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">
-              {searchQuery ? "No Matching Chits" : "No Chits Found"}
-            </h2>
-            <p className="text-text-secondary">
-              {searchQuery
+          <EmptyState
+            icon={FileStack}
+            title={searchQuery ? "No Matching Chits" : "No Chits Found"}
+            description={
+              searchQuery
                 ? "Try a different search term."
-                : "You don't have any chits yet. Click the button below to create one!"}
-            </p>
-          </Card>
+                : "You don't have any chits yet. Click the + button to create one!"
+            }
+          />
         )}
 
         {!loading && filteredChits.length > 0 && (

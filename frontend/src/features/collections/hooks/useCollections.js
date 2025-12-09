@@ -39,6 +39,8 @@ export const useCollections = (filters = {}) => {
     return useQuery({
         queryKey: collectionKeys.list(filters),
         queryFn: () => getAllCollections(filters),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 
@@ -56,6 +58,8 @@ export const useCollectionsByChit = (chitId) => {
         queryKey: collectionKeys.byChit(chitId),
         queryFn: () => getCollectionsByChitId(chitId),
         enabled: Boolean(chitId),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 

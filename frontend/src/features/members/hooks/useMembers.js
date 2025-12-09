@@ -34,6 +34,8 @@ export const useMembers = () => {
     return useQuery({
         queryKey: memberKeys.lists(),
         queryFn: getAllMembers,
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 
@@ -50,6 +52,8 @@ export const useMemberDetails = (memberId) => {
         queryKey: memberKeys.detail(memberId),
         queryFn: () => getMemberById(memberId),
         enabled: Boolean(memberId),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 

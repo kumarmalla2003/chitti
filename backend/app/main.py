@@ -93,6 +93,16 @@ app.include_router(payouts_router.router)
 def read_root():
     return {"message": "Welcome to Chitti API"}
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and deployment verification."""
+    from datetime import datetime
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
+    }
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",

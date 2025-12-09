@@ -31,6 +31,8 @@ export const useChits = () => {
     return useQuery({
         queryKey: chitKeys.lists(),
         queryFn: getAllChits,
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 
@@ -47,6 +49,8 @@ export const useChitDetails = (chitId) => {
         queryKey: chitKeys.detail(chitId),
         queryFn: () => getChitById(chitId),
         enabled: Boolean(chitId),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 

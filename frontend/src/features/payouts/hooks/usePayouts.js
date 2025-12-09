@@ -36,6 +36,8 @@ export const usePayouts = (filters = {}) => {
     return useQuery({
         queryKey: payoutKeys.list(filters),
         queryFn: () => getAllPayouts(filters),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 
@@ -53,6 +55,8 @@ export const usePayoutsByChit = (chitId) => {
         queryKey: payoutKeys.byChit(chitId),
         queryFn: () => getPayoutsByChitId(chitId),
         enabled: Boolean(chitId),
+        staleTime: 1000 * 60 * 5,  // 5 minutes
+        gcTime: 1000 * 60 * 30,    // 30 minutes
     });
 };
 
