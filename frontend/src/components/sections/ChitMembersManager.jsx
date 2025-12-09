@@ -63,7 +63,6 @@ const calculateMonthDate = (startDateStr, monthIndex) => {
 };
 
 const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
-  const { token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
   const [view, setView] = useState("list");
@@ -110,11 +109,11 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
         payoutsData,
         collectionsData,
       ] = await Promise.all([
-        getAssignmentsForChit(chitId, token),
-        getUnassignedMonths(chitId, token),
-        getChitById(chitId, token),
-        getPayoutsByChitId(chitId, token),
-        getCollectionsByChitId(chitId, token),
+        getAssignmentsForChit(chitId),
+        getUnassignedMonths(chitId),
+        getChitById(chitId),
+        getPayoutsByChitId(chitId),
+        getCollectionsByChitId(chitId),
       ]);
 
       setAssignments(assignmentsData.assignments);
@@ -132,7 +131,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
 
   useEffect(() => {
     fetchData();
-  }, [chitId, token]);
+  }, [chitId]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -155,7 +154,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
     setLoading(true);
     setError(null);
     try {
-      await createAssignment(assignmentData, token);
+      await createAssignment(assignmentData);
       setSuccess("Member assigned successfully!");
       setView("list");
       setActiveMemberName("");
@@ -177,7 +176,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteAssignment(itemToDelete.id, token);
+      await deleteAssignment(itemToDelete.id);
       setSuccess(`"${itemToDelete.member.full_name}" has been unassigned.`);
       fetchData();
     } catch (err) {
@@ -275,9 +274,9 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
   const paginatedData =
     mode === "view"
       ? filteredData.slice(
-          (currentPage - 1) * ITEMS_PER_PAGE,
-          currentPage * ITEMS_PER_PAGE
-        )
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+      )
       : filteredData;
 
   const columns = [
@@ -387,46 +386,46 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
     },
     ...(mode !== "view"
       ? [
-          {
-            header: "Actions",
-            className: "text-center",
-            headerClassName: "text-center",
-            cell: (row) => (
-              <div className="flex items-center justify-center space-x-2">
-                {row.assignment && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => onLogCollectionClick(row.assignment)}
-                      className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
-                      title="Log Collection"
-                    >
-                      <IndianRupee className="w-5 h-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteClick(row.assignment)}
-                      className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
-                      title="Unassign"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
-                {row.payout && (
+        {
+          header: "Actions",
+          className: "text-center",
+          headerClassName: "text-center",
+          cell: (row) => (
+            <div className="flex items-center justify-center space-x-2">
+              {row.assignment && (
+                <>
                   <button
                     type="button"
-                    onClick={() => handlePayoutClick(row.payout.id)}
-                    className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
-                    title="View/Record Payout"
+                    onClick={() => onLogCollectionClick(row.assignment)}
+                    className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
+                    title="Log Collection"
                   >
-                    <HandCoins className="w-5 h-5" />
+                    <IndianRupee className="w-5 h-5" />
                   </button>
-                )}
-              </div>
-            ),
-          },
-        ]
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteClick(row.assignment)}
+                    className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
+                    title="Unassign"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+              {row.payout && (
+                <button
+                  type="button"
+                  onClick={() => handlePayoutClick(row.payout.id)}
+                  className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
+                  title="View/Record Payout"
+                >
+                  <HandCoins className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ),
+        },
+      ]
       : []),
   ];
 
@@ -435,7 +434,6 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       return (
         <AssignNewMemberForm
           ref={formRef}
-          token={token}
           chitId={chitId}
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
@@ -449,7 +447,6 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       return (
         <AssignExistingMemberForm
           ref={formRef}
-          token={token}
           chitId={chitId}
           availableMonths={availableMonths}
           onAssignment={handleAssignment}
@@ -464,7 +461,6 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       return (
         <RapidAssignForm
           ref={formRef}
-          token={token}
           chitId={chitId}
           formatDate={formatDate}
           onAssignmentSuccess={() => {

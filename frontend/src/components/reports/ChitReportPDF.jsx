@@ -3,28 +3,14 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import AtomicTable from "./components/Table";
-
-const theme = {
-  textPrimary: "#111827",
-  textSecondary: "#374151",
-  textLight: "#6B7280",
-  bgSecondary: "#F9FAFB",
-  bgCard: "#FFFFFF",
-  bgHighlight: "#EFF6FF",
-  borderHighlight: "#BFDBFE",
-  accent: "#3B82F6",
-  accentDark: "#1E40AF",
-  accentLight: "#DBEAFE",
-  accentVeryLight: "#EFF6FF",
-  success: "#10B981",
-  error: "#EF4444",
-  warning: "#F59E0B",
-  white: "#FFFFFF",
-  borderLight: "#E5E7EB",
-  border: "#D1D5DB",
-  bgHeader: "#3B82F6",
-  bgZebra: "#EFF6FF",
-};
+import { REPORT_THEME as theme } from "../../constants/colors";
+import {
+  formatCurrency,
+  formatDate,
+  formatMonthYear,
+  formatFullDate,
+} from "../../utils/formatters";
+import { calculatePayoutDate } from "../../utils/calculations";
 
 const styles = StyleSheet.create({
   page: {
@@ -193,51 +179,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   // --- UTILS ---
-  textSuccess: { color: theme.success, fontWeight: "bold" },
-  textError: { color: theme.error, fontWeight: "bold" },
   textWarning: { color: theme.warning, fontWeight: "bold" },
 });
-
-// --- Formatting Helpers ---
-const formatCurrency = (val) => {
-  if (val === undefined || val === null) return "";
-  const num = Number(val.toString().replace(/,/g, ""));
-  return isNaN(num) ? "Rs. 0" : `Rs. ${num.toLocaleString("en-IN")}`;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("en-IN", {
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const formatMonthYear = (dateString) => {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear();
-  return `${month}/${year}`;
-};
-
-const calculatePayoutDate = (startDateStr, monthIndex) => {
-  if (!startDateStr) return `Month ${monthIndex}`;
-  const d = new Date(startDateStr);
-  d.setMonth(d.getMonth() + (monthIndex - 1));
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  const year = d.getFullYear();
-  return `${month}/${year}`;
-};
-
-const formatFullDate = (dateString) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
 
 const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
   // 1. Prepare Payout Data
@@ -309,9 +252,9 @@ const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
   // 3. Process Assignments
   const processedAssignments = assignments
     ? assignments.map((item, index) => ({
-        ...item,
-        s_no: index + 1,
-      }))
+      ...item,
+      s_no: index + 1,
+    }))
     : [];
 
   const memberColumns = [
@@ -352,8 +295,8 @@ const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
             row.collection_status === "Paid"
               ? styles.textSuccess
               : row.collection_status === "Unpaid"
-              ? styles.textError
-              : styles.textWarning
+                ? styles.textError
+                : styles.textWarning
           }
         >
           {row.collection_status}

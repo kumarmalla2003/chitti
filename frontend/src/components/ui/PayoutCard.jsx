@@ -10,16 +10,10 @@ import {
   Trash2,
   IndianRupee,
 } from "lucide-react";
+import { formatDate } from "../../utils/formatters";
 
 const PayoutCard = ({ payout, onEdit, onDelete }) => {
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
+
 
   return (
     <div className="bg-background-secondary rounded-lg shadow-sm border border-border p-4 hover:shadow-md transition-shadow duration-200 flex flex-col justify-between h-full relative group">

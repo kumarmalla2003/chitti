@@ -394,7 +394,6 @@ const PayoutsPage = () => {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onGenerate={handleGenerateReport}
-        token={token}
         loading={reportLoading}
       />
 

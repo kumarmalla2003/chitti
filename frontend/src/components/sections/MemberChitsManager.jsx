@@ -34,8 +34,6 @@ const MemberChitsManager = ({
   forceTable = false,
   onManage, // <-- Prop
 }) => {
-  const { token } = useSelector((state) => state.auth);
-
   const [view, setView] = useState("list");
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +56,7 @@ const MemberChitsManager = ({
     setLoading(true);
     setError(null);
     try {
-      const assignmentsData = await getAssignmentsForMember(memberId, token);
+      const assignmentsData = await getAssignmentsForMember(memberId);
       setAssignments(assignmentsData);
     } catch (err) {
       setError(err.message);
@@ -73,7 +71,7 @@ const MemberChitsManager = ({
     } else {
       setLoading(false);
     }
-  }, [memberId, token]);
+  }, [memberId]);
 
   useEffect(() => {
     if (success) {
@@ -86,7 +84,7 @@ const MemberChitsManager = ({
     setLoading(true);
     setError(null);
     try {
-      await createAssignment(assignmentData, token);
+      await createAssignment(assignmentData);
       setSuccess("Member assigned successfully!");
       setView("list");
       setActiveChitName("");
@@ -108,7 +106,7 @@ const MemberChitsManager = ({
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteAssignment(itemToDelete.id, token);
+      await deleteAssignment(itemToDelete.id);
       setSuccess(
         `Assignment in "${itemToDelete.chit.name}" for ${formatDate(
           itemToDelete.chit_month
@@ -201,30 +199,30 @@ const MemberChitsManager = ({
     },
     ...(mode !== "view"
       ? [
-          {
-            header: "Actions",
-            className: "text-center",
-            cell: (row) => (
-              <div className="flex items-center justify-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => onLogCollectionClick(row)}
-                  className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
-                  title="Log Collection"
-                >
-                  <IndianRupee className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteClick(row)}
-                  className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            ),
-          },
-        ]
+        {
+          header: "Actions",
+          className: "text-center",
+          cell: (row) => (
+            <div className="flex items-center justify-center space-x-2">
+              <button
+                type="button"
+                onClick={() => onLogCollectionClick(row)}
+                className="p-2 text-lg rounded-md text-success-accent hover:bg-success-accent hover:text-white transition-colors duration-200"
+                title="Log Collection"
+              >
+                <IndianRupee className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteClick(row)}
+                className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ),
+        },
+      ]
       : []),
   ];
 
@@ -241,7 +239,6 @@ const MemberChitsManager = ({
       return (
         <AssignNewChitForm
           ref={formRef}
-          token={token}
           memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
@@ -254,7 +251,6 @@ const MemberChitsManager = ({
       return (
         <AssignExistingChitForm
           ref={formRef}
-          token={token}
           memberId={memberId}
           onAssignment={handleAssignment}
           formatDate={formatDate}
@@ -398,11 +394,9 @@ const MemberChitsManager = ({
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Remove Assignment?"
-        message={`Are you sure you want to remove this member from "${
-          itemToDelete?.chit.name
-        }" for ${
-          itemToDelete ? formatDate(itemToDelete.chit_month) : ""
-        }? This month will become available again.`}
+        message={`Are you sure you want to remove this member from "${itemToDelete?.chit.name
+          }" for ${itemToDelete ? formatDate(itemToDelete.chit_month) : ""
+          }? This month will become available again.`}
         confirmText="Remove"
         loading={deleteLoading}
       />
