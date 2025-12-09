@@ -2,35 +2,37 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { pdf } from "@react-pdf/renderer";
-import ChitReportPDF from "../components/reports/ChitReportPDF";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import Header from "../../../components/layout/Header";
 import Footer from "../../../components/layout/Footer";
 import MobileNav from "../../../components/layout/MobileNav";
 import BottomNav from "../../../components/layout/BottomNav";
+import Message from "../../../components/ui/Message";
 import Card from "../../../components/ui/Card";
-import Button from "../../../components/ui/Button";
+import TabButton from "../../../components/ui/TabButton";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
-import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
+import ChitMobileContent from "../components/sections/ChitMobileContent";
+import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
-import StepperButtons from "../../../components/ui/StepperButtons";
-import Message from "../../../components/ui/Message";
+import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
+import ChitReportPDF from "../components/reports/ChitReportPDF";
+import { pdf } from "@react-pdf/renderer";
 import {
   Info,
   Users,
   Loader2,
   ArrowLeft,
-  Plus,
   SquarePen,
   Printer,
   WalletMinimal,
   TrendingUp,
 } from "lucide-react";
 import { createChit, getChitById, patchChit } from "../../../services/chitsService";
+import { chitKeys } from "../hooks/useChits";
 import { getPayoutsByChitId } from "../../../services/payoutsService";
 import { getAssignmentsForChit } from "../../../services/assignmentsService";
 import { getCollectionsByChitId } from "../../../services/collectionsService";
@@ -41,8 +43,7 @@ import {
 } from "../../../utils/calculations";
 import { toYearMonth, getFirstDayOfMonth } from "../../../utils/formatters";
 
-
-// --- Helper Components ---
+// --- Helper Components for Desktop View ---
 const DetailsSectionComponent = ({
   mode,
   formData,
@@ -81,237 +82,12 @@ const MembersSectionComponent = ({ mode, chitId, onLogCollectionClick }) => (
   </Card>
 );
 
-const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
-  if (mode === "view") return null;
-  let buttonText, Icon, buttonVariant;
-
-  if (mode === "create") {
-    if (isPostCreation) {
-      buttonText = "Update Chit";
-      Icon = SquarePen;
-      buttonVariant = "warning";
-    } else {
-      buttonText = "Create Chit";
-      Icon = Plus;
-      buttonVariant = "success";
-    }
-  } else {
-    buttonText = "Update Chit";
-    Icon = SquarePen;
-    buttonVariant = "warning";
-  }
-
-  return (
-    <div className="md:col-start-2 md:flex md:justify-end">
-      <Button
-        type="submit"
-        form="chit-details-form-desktop"
-        variant={buttonVariant}
-        disabled={loading}
-        className="w-full md:w-auto"
-      >
-        {loading ? (
-          <Loader2 className="animate-spin mx-auto w-5 h-5" />
-        ) : (
-          <>
-            <Icon className="inline-block mr-2 w-5 h-5" />
-            {buttonText}
-          </>
-        )}
-      </Button>
-    </div>
-  );
-};
-
-const TabButton = React.forwardRef(
-  ({ name, icon: Icon, label, activeTab, setActiveTab, disabled }, ref) => {
-    const isActive = activeTab === name;
-    return (
-      <button
-        ref={ref}
-        type="button"
-        onClick={() => !disabled && setActiveTab(name)}
-        disabled={disabled}
-        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${isActive
-          ? "bg-background-secondary text-accent border-b-2 border-accent"
-          : "text-text-secondary hover:bg-background-tertiary"
-          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-      >
-        <Icon className="w-4 h-4" />
-        <span>{label}</span>
-      </button>
-    );
-  }
-);
-
-const MobileContent = ({
-  TABS,
-  activeTab,
-  setActiveTab,
-  mode,
-  chitId,
-  formData,
-  handleFormChange,
-  activeTabIndex,
-  isDetailsFormValid,
-  loading,
-  handleNext,
-  handleMiddle,
-  handleMobileFormSubmit,
-  isPostCreation,
-  onLogCollectionClick,
-  collectionDefaults,
-  setCollectionDefaults,
-}) => {
-  const tabRefs = useRef({});
-
-  useEffect(() => {
-    const activeTabRef = tabRefs.current[activeTab];
-    if (activeTabRef) {
-      activeTabRef.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
-  }, [activeTab]);
-
-  return (
-    <div className="w-full max-w-2xl mx-auto md:hidden">
-      <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-        <TabButton
-          ref={(el) => (tabRefs.current["details"] = el)}
-          name="details"
-          icon={Info}
-          label="Details"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-        <TabButton
-          ref={(el) => (tabRefs.current["payouts"] = el)}
-          name="payouts"
-          icon={TrendingUp}
-          label="Payouts"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          disabled={mode === "create" && !chitId}
-        />
-        <TabButton
-          ref={(el) => (tabRefs.current["members"] = el)}
-          name="members"
-          icon={Users}
-          label="Members"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          disabled={mode === "create" && !chitId}
-        />
-        <TabButton
-          ref={(el) => (tabRefs.current["collections"] = el)}
-          name="collections"
-          icon={WalletMinimal}
-          label="Collections"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          disabled={mode === "create" && !chitId}
-        />
-      </div>
-
-      {activeTab === "details" && (
-        <form onSubmit={handleMobileFormSubmit}>
-          <DetailsSectionComponent
-            mode={mode}
-            formData={formData}
-            handleFormChange={handleFormChange}
-            isPostCreation={isPostCreation}
-            onEnterKeyOnLastInput={handleNext}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-              loading={loading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </form>
-      )}
-
-      {activeTab === "payouts" && (
-        <>
-          <PayoutsSectionComponent mode={mode} chitId={chitId} />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={false}
-              loading={loading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </>
-      )}
-
-      {activeTab === "members" && (
-        <>
-          <MembersSectionComponent
-            mode={mode}
-            chitId={chitId}
-            onLogCollectionClick={onLogCollectionClick}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={false}
-              loading={loading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </>
-      )}
-
-      {activeTab === "collections" && (
-        <>
-          <CollectionHistoryList
-            chitId={chitId}
-            mode={mode}
-            collectionDefaults={collectionDefaults}
-            setCollectionDefaults={setCollectionDefaults}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={false}
-              loading={loading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </>
-      )}
-    </div>
-  );
-};
-
+/**
+ * ChitDetailPage component - handles create, edit, and view modes for chit details.
+ */
 const ChitDetailPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
@@ -534,6 +310,8 @@ const ChitDetailPage = () => {
         };
         delete dataToSend.end_date;
         const newChit = await createChit(dataToSend);
+        // Invalidate chits list cache so new chit appears in ChitsPage
+        queryClient.invalidateQueries({ queryKey: chitKeys.lists() });
         setCreatedChitId(newChit.id);
         setCreatedChitName(newChit.name);
         setOriginalData(newChit);
@@ -572,7 +350,6 @@ const ChitDetailPage = () => {
         setActiveTab("payouts");
         setSuccess("Chit details updated successfully!");
       } else if (mode === "edit") {
-        const changes = {};
         const patchData = {
           ...formData,
           start_date: getFirstDayOfMonth(formData.start_date),
@@ -596,12 +373,10 @@ const ChitDetailPage = () => {
       let errorMessage = err.message;
       if (err.response && err.response.data && err.response.data.detail) {
         if (Array.isArray(err.response.data.detail)) {
-          // Pydantic validation errors
           errorMessage = err.response.data.detail
             .map((e) => `${e.loc[1]}: ${e.msg}`)
             .join(", ");
         } else {
-          // Generic detail message
           errorMessage = err.response.data.detail;
         }
       }
@@ -839,7 +614,7 @@ const ChitDetailPage = () => {
                 /* --- CREATE/EDIT MODE --- */
                 <>
                   <div className="md:hidden">
-                    <MobileContent
+                    <ChitMobileContent
                       TABS={TABS}
                       activeTab={activeTab}
                       setActiveTab={setActiveTab}
@@ -960,7 +735,7 @@ const ChitDetailPage = () => {
 
                         {mode !== "view" && activeTab === "details" && (
                           <div className="md:col-span-2">
-                            <DesktopActionButton
+                            <ChitDesktopActionButton
                               mode={mode}
                               loading={loading}
                               isPostCreation={

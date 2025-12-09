@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
-import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "../../../components/layout/Header";
 import Footer from "../../../components/layout/Footer";
 import MobileNav from "../../../components/layout/MobileNav";
 import BottomNav from "../../../components/layout/BottomNav";
 import Card from "../../../components/ui/Card";
-import Button from "../../../components/ui/Button";
+import TabButton from "../../../components/ui/TabButton";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
+import MemberMobileContent from "../components/sections/MemberMobileContent";
+import MemberDesktopActionButton from "../components/ui/MemberDesktopActionButton";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import Message from "../../../components/ui/Message";
-import StepperButtons from "../../../components/ui/StepperButtons";
 import {
   getMemberById,
   createMember,
@@ -33,12 +34,12 @@ import {
   User,
   Layers,
   ArrowLeft,
-  Plus,
   SquarePen,
   Printer,
   IndianRupee,
 } from "lucide-react";
 
+// --- Helper Component for Desktop Details Section ---
 const DetailsSection = ({
   mode,
   formData,
@@ -61,208 +62,9 @@ const DetailsSection = ({
   </Card>
 );
 
-const DesktopActionButton = ({ mode, loading, isPostCreation }) => {
-  if (mode === "view") return null;
-
-  let buttonText, Icon, buttonVariant;
-
-  if (mode === "create") {
-    if (isPostCreation) {
-      buttonText = "Update Member";
-      Icon = SquarePen;
-      buttonVariant = "warning";
-    } else {
-      buttonText = "Create Member";
-      Icon = Plus;
-      buttonVariant = "success";
-    }
-  } else {
-    buttonText = "Update Member";
-    Icon = SquarePen;
-    buttonVariant = "warning";
-  }
-
-  return (
-    <div className="md:col-start-2 md:flex md:justify-end">
-      <Button
-        type="submit"
-        form="member-details-form-desktop"
-        variant={buttonVariant}
-        disabled={loading}
-        className="w-full md:w-auto"
-      >
-        {loading ? (
-          <Loader2 className="animate-spin mx-auto w-5 h-5" />
-        ) : (
-          <>
-            <Icon className="inline-block mr-2 w-5 h-5" />
-            {buttonText}
-          </>
-        )}
-      </Button>
-    </div>
-  );
-};
-
-const TabButton = React.forwardRef(
-  ({ name, icon: Icon, label, activeTab, setActiveTab, disabled }, ref) => {
-    const isActive = activeTab === name;
-    return (
-      <button
-        ref={ref}
-        type="button"
-        onClick={() => !disabled && setActiveTab(name)}
-        disabled={disabled}
-        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${isActive
-          ? "bg-background-secondary text-accent border-b-2 border-accent"
-          : "text-text-secondary hover:bg-background-tertiary"
-          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-      >
-        <Icon className="w-4 h-4" />
-        <span>{label}</span>
-      </button>
-    );
-  }
-);
-
-const MobileContent = ({
-  TABS,
-  activeTab,
-  setActiveTab,
-  mode,
-  createdMemberId,
-  formData,
-  onFormChange,
-  activeTabIndex,
-  isDetailsFormValid,
-  detailsLoading,
-  handleNext,
-  handleMiddle,
-  handleMobileFormSubmit,
-  isPostCreation,
-  onLogCollectionClick,
-  collectionDefaults,
-  setCollectionDefaults,
-}) => {
-  const tabRefs = useRef({});
-
-  useEffect(() => {
-    const activeTabRef = tabRefs.current[activeTab];
-    if (activeTabRef) {
-      activeTabRef.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
-  }, [activeTab]);
-
-  return (
-    <div className="w-full max-w-2xl mx-auto md:hidden">
-      <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-        <TabButton
-          ref={(el) => (tabRefs.current["details"] = el)}
-          name="details"
-          icon={User}
-          label="Details"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-        <TabButton
-          ref={(el) => (tabRefs.current["chits"] = el)}
-          name="chits"
-          icon={Layers}
-          label="Chits"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          disabled={mode === "create" && !createdMemberId}
-        />
-        <TabButton
-          ref={(el) => (tabRefs.current["collections"] = el)}
-          name="collections"
-          icon={IndianRupee}
-          label="Collections"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          disabled={mode === "create" && !createdMemberId}
-        />
-      </div>
-
-      {activeTab === "details" && (
-        <form onSubmit={handleMobileFormSubmit}>
-          <DetailsSection
-            mode={mode}
-            formData={formData}
-            onFormChange={onFormChange}
-            onEnterKeyOnLastInput={handleNext}
-            isPostCreation={isPostCreation}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
-              loading={detailsLoading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </form>
-      )}
-
-      {activeTab === "chits" && (
-        <>
-          <MemberChitsManager
-            mode={mode}
-            memberId={createdMemberId}
-            onLogCollectionClick={onLogCollectionClick}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={false}
-              loading={detailsLoading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </>
-      )}
-
-      {activeTab === "collections" && (
-        <>
-          <CollectionHistoryList
-            memberId={createdMemberId}
-            mode={mode}
-            collectionDefaults={collectionDefaults}
-            setCollectionDefaults={setCollectionDefaults}
-          />
-          {mode !== "view" && (
-            <StepperButtons
-              currentStep={activeTabIndex}
-              totalSteps={TABS.length}
-              onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-              onNext={handleNext}
-              onMiddle={handleMiddle}
-              isNextDisabled={false}
-              loading={detailsLoading}
-              mode={mode}
-              isPostCreation={isPostCreation}
-            />
-          )}
-        </>
-      )}
-    </div>
-  );
-};
-
+/**
+ * MemberDetailPage component - handles create, edit, and view modes for member details.
+ */
 const MemberDetailPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn } = useSelector((state) => state.auth);
@@ -684,7 +486,7 @@ const MemberDetailPage = () => {
                 /* --- EDIT / CREATE MODE --- */
                 <>
                   <div className="md:hidden">
-                    <MobileContent
+                    <MemberMobileContent
                       TABS={TABS}
                       activeTab={activeTab}
                       setActiveTab={setActiveTab}
@@ -788,7 +590,7 @@ const MemberDetailPage = () => {
 
                         {mode !== "view" && activeTab === "details" && (
                           <div className="md:col-span-2">
-                            <DesktopActionButton
+                            <MemberDesktopActionButton
                               mode={mode}
                               loading={detailsLoading}
                               isPostCreation={isPostCreation}
