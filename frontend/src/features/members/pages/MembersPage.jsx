@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getAllMembers, deleteMember } from "../../../services/membersService";
+import { useMembers, useDeleteMember } from "../hooks/useMembers";
 import { getAssignmentsForMember } from "../../../services/assignmentsService";
 import { getCollectionsByMemberId } from "../../../services/collectionsService";
 import { useSelector } from "react-redux";
@@ -32,14 +32,16 @@ import MembersListReportPDF from "../components/reports/MembersListReportPDF";
 import MemberReportPDF from "../components/reports/MemberReportPDF";
 import { pdf } from "@react-pdf/renderer";
 
+/**
+ * MembersPage component - displays a list of all members with search, view toggle, and CRUD operations.
+ * Uses React Query for data fetching and caching.
+ */
 const MembersPage = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -52,7 +54,21 @@ const MembersPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // React Query hooks
+  const {
+    data: membersData,
+    isLoading: loading,
+    error: queryError,
+  } = useMembers();
+
+  const deleteMemberMutation = useDeleteMember();
+
+  // Extract members from query data
+  const members = membersData?.members ?? [];
+
+  // Combine query error with local error
+  const error = localError || (queryError?.message ?? null);
 
   useScrollToTop(success || error);
 
@@ -64,22 +80,6 @@ const MembersPage = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode]);
-
-  useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const data = await getAllMembers();
-        setMembers(data.members);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (isLoggedIn) {
-      fetchMembers();
-    }
-  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -102,21 +102,20 @@ const MembersPage = () => {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    setDeleteLoading(true);
-    setError(null);
-    try {
-      await deleteMember(itemToDelete.id);
-      setMembers((prevMembers) =>
-        prevMembers.filter((m) => m.id !== itemToDelete.id)
-      );
-      setSuccess(`Member "${itemToDelete.full_name}" has been deleted.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteLoading(false);
-      setIsModalOpen(false);
-      setItemToDelete(null);
-    }
+    setLocalError(null);
+
+    deleteMemberMutation.mutate(itemToDelete.id, {
+      onSuccess: () => {
+        setSuccess(`Member "${itemToDelete.full_name}" has been deleted.`);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+      onError: (err) => {
+        setLocalError(err.message);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+    });
   };
 
   const filteredMembers = useMemo(() => {
@@ -147,7 +146,7 @@ const MembersPage = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Print failed", err);
-      setError("Failed to generate report.");
+      setLocalError("Failed to generate report.");
     } finally {
       setIsPrintingAll(false);
     }
@@ -155,7 +154,7 @@ const MembersPage = () => {
 
   const handlePrintMember = async (member) => {
     setPrintingMemberId(member.id);
-    setError(null);
+    setLocalError(null);
 
     try {
       const [assignmentsData, collectionsData] = await Promise.all([
@@ -182,7 +181,7 @@ const MembersPage = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Single member print failed", err);
-      setError("Failed to generate report for this member.");
+      setLocalError("Failed to generate report for this member.");
     } finally {
       setPrintingMemberId(null);
     }
@@ -290,7 +289,7 @@ const MembersPage = () => {
 
               {success && <Message type="success">{success}</Message>}
               {error && (
-                <Message type="error" onClose={() => setError(null)}>
+                <Message type="error" onClose={() => setLocalError(null)}>
                   {error}
                 </Message>
               )}
@@ -404,7 +403,7 @@ const MembersPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Member?"
         message={`Are you sure you want to permanently delete "${itemToDelete?.full_name}"? This action cannot be undone.`}
-        loading={deleteLoading}
+        loading={deleteMemberMutation.isPending}
       />
     </>
   );

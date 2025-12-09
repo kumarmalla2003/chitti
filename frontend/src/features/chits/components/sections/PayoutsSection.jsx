@@ -1,14 +1,10 @@
 // frontend/src/features/chits/components/sections/PayoutsSection.jsx
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {
-  updatePayout,
-  getPayoutsByChitId,
-} from "../../../../services/payoutsService";
-import { getChitById } from "../../../../services/chitsService";
-import { getAssignmentsForChit } from "../../../../services/assignmentsService";
+import { usePayoutsByChit, useUpdatePayout } from "../../../payouts/hooks/usePayouts";
+import { useChitDetails } from "../../hooks/useChits";
+import { useAssignmentsByChit } from "../../../assignments/hooks/useAssignments";
 import useScrollToTop from "../../../../hooks/useScrollToTop";
 import {
   Loader2,
@@ -26,6 +22,7 @@ import Button from "../../../../components/ui/Button";
 import Table from "../../../../components/ui/Table";
 import StatusBadge from "../../../../components/ui/StatusBadge";
 import useCursorTracking from "../../../../hooks/useCursorTracking";
+import { updatePayout } from "../../../../services/payoutsService";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -107,56 +104,52 @@ const EditablePayoutInput = ({ value, onChange, onKeyDown, isLastInput }) => {
   );
 };
 
+/**
+ * PayoutsSection component - displays and manages payout schedule for a chit.
+ * Uses React Query for data fetching and caching.
+ */
 const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
-  const [payouts, setPayouts] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [chitStartDate, setChitStartDate] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editAmounts, setEditAmounts] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [success, setSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
 
-  const { token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
+  // React Query hooks
+  const {
+    data: payoutsResponse,
+    isLoading: payoutsLoading,
+    error: payoutsError,
+    refetch: refetchPayouts,
+  } = usePayoutsByChit(chitId);
+
+  const {
+    data: chitData,
+    isLoading: chitLoading,
+  } = useChitDetails(chitId);
+
+  const {
+    data: assignmentsResponse,
+    isLoading: assignmentsLoading,
+  } = useAssignmentsByChit(chitId);
+
+  // Extract data from responses
+  const payouts = useMemo(() => {
+    const data = payoutsResponse?.payouts ?? [];
+    return [...data].sort((a, b) => a.month - b.month);
+  }, [payoutsResponse]);
+
+  const assignments = assignmentsResponse?.assignments ?? [];
+  const chitStartDate = chitData?.start_date ?? null;
+
+  const loading = payoutsLoading || chitLoading || assignmentsLoading;
+  const error = localError || (payoutsError?.message ?? null);
+
   useScrollToTop(success);
-
-  const fetchData = async () => {
-    if (!chitId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const [payoutsData, chitData, assignmentsData] = await Promise.all([
-        getPayoutsByChitId(chitId, token),
-        getChitById(chitId, token),
-        getAssignmentsForChit(chitId, token),
-      ]);
-
-      const sortedPayouts = Array.isArray(payoutsData.payouts)
-        ? payoutsData.payouts.sort((a, b) => a.month - b.month)
-        : [];
-
-      setPayouts(sortedPayouts);
-      setAssignments(assignmentsData.assignments || []);
-      setChitStartDate(chitData.start_date);
-      setCurrentPage(1);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [chitId, token]);
 
   useEffect(() => {
     if (success) {
@@ -215,7 +208,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     }, {});
     setEditAmounts(initialAmounts);
     setIsEditing(true);
-    setError(null);
+    setLocalError(null);
     setSuccess(null);
   };
 
@@ -228,7 +221,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
 
   const handleSaveClick = async () => {
     setIsSaving(true);
-    setError(null);
+    setLocalError(null);
     setSuccess(null);
 
     const updatePromises = payouts
@@ -241,11 +234,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
           throw new Error(`Invalid amount for Month ${payout.month}.`);
         }
         if (payout.planned_amount !== editedAmount) {
-          return updatePayout(
-            payout.id,
-            { planned_amount: editedAmount },
-            token
-          );
+          return updatePayout(payout.id, { planned_amount: editedAmount });
         }
         return null;
       })
@@ -254,10 +243,10 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
     try {
       await Promise.all(updatePromises);
       setIsEditing(false);
-      await fetchData();
+      await refetchPayouts();
       setSuccess("Payouts updated successfully!");
     } catch (err) {
-      setError(err.message);
+      setLocalError(err.message);
     } finally {
       setIsSaving(false);
     }
@@ -299,7 +288,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
         indexColumn,
         monthColumn,
         {
-          header: "Payout Amount", // RENAMED from "Payout"
+          header: "Payout Amount",
           accessor: "planned_amount",
           className: "text-center font-medium",
           headerClassName: "text-center",
@@ -341,7 +330,6 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
               {row.paid_date ? (
                 <StatusBadge status="Paid" />
               ) : (
-                // UPDATED: Standard Warning Color for Pending
                 <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-warning-bg text-warning-accent">
                   Pending
                 </span>
@@ -465,7 +453,7 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
         </Message>
       )}
       {error && (
-        <Message type="error" title="Error" onClose={() => setError(null)}>
+        <Message type="error" title="Error" onClose={() => setLocalError(null)}>
           {error}
         </Message>
       )}

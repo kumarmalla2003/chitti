@@ -1,8 +1,8 @@
 // frontend/src/features/chits/components/sections/ChitMembersManager.jsx
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import Button from "../../../../components/ui/Button";
 import Table from "../../../../components/ui/Table";
 import ConfirmationModal from "../../../../components/ui/ConfirmationModal";
@@ -27,14 +27,16 @@ import {
   HandCoins,
 } from "lucide-react";
 import {
-  getAssignmentsForChit,
-  getUnassignedMonths,
-  createAssignment,
-  deleteAssignment,
-} from "../../../../services/assignmentsService";
-import { getChitById } from "../../../../services/chitsService";
-import { getPayoutsByChitId } from "../../../../services/payoutsService";
-import { getCollectionsByChitId } from "../../../../services/collectionsService";
+  useAssignmentsByChit,
+  useUnassignedMonths,
+  useCreateAssignment,
+  useDeleteAssignment,
+  assignmentKeys,
+} from "../../../assignments/hooks/useAssignments";
+import { useChitDetails } from "../../hooks/useChits";
+import { usePayoutsByChit } from "../../../payouts/hooks/usePayouts";
+import { useCollectionsByChit, collectionKeys } from "../../../collections/hooks/useCollections";
+import { createAssignment } from "../../../../services/assignmentsService";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -62,76 +64,70 @@ const calculateMonthDate = (startDateStr, monthIndex) => {
   return `${month}/${year}`;
 };
 
+/**
+ * ChitMembersManager component - manages member assignments for a chit.
+ * Uses React Query for data fetching and caching.
+ */
 const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [view, setView] = useState("list");
   const [layoutMode, setLayoutMode] = useState("table");
-
-  // Data States
-  const [assignments, setAssignments] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
-  const [payouts, setPayouts] = useState([]);
-  const [collections, setCollections] = useState([]);
-  const [chitDetails, setChitDetails] = useState(null);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMemberName, setActiveMemberName] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [success, setSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const formRef = useRef(null);
+
+  // React Query hooks
+  const {
+    data: assignmentsResponse,
+    isLoading: assignmentsLoading,
+    error: assignmentsError,
+    refetch: refetchAssignments,
+  } = useAssignmentsByChit(chitId);
+
+  const {
+    data: monthsResponse,
+    refetch: refetchMonths,
+  } = useUnassignedMonths(chitId);
+
+  const {
+    data: chitData,
+    isLoading: chitLoading,
+  } = useChitDetails(chitId);
+
+  const {
+    data: payoutsResponse,
+    isLoading: payoutsLoading,
+  } = usePayoutsByChit(chitId);
+
+  const {
+    data: collectionsResponse,
+    isLoading: collectionsLoading,
+  } = useCollectionsByChit(chitId);
+
+  const deleteAssignmentMutation = useDeleteAssignment();
+
+  // Extract data from responses
+  const assignments = assignmentsResponse?.assignments ?? [];
+  const availableMonths = monthsResponse?.available_months ?? [];
+  const chitDetails = chitData ?? null;
+  const payouts = payoutsResponse?.payouts ?? [];
+  const collections = collectionsResponse?.collections ?? [];
+
+  const loading = assignmentsLoading || chitLoading || payoutsLoading || collectionsLoading;
+  const error = localError || (assignmentsError?.message ?? null);
 
   const assignedMemberIds = useMemo(
     () => assignments.map((a) => a.member.id),
     [assignments]
   );
-
-  const fetchData = async () => {
-    if (!chitId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const [
-        assignmentsData,
-        monthsData,
-        chitData,
-        payoutsData,
-        collectionsData,
-      ] = await Promise.all([
-        getAssignmentsForChit(chitId),
-        getUnassignedMonths(chitId),
-        getChitById(chitId),
-        getPayoutsByChitId(chitId),
-        getCollectionsByChitId(chitId),
-      ]);
-
-      setAssignments(assignmentsData.assignments);
-      setAvailableMonths(monthsData.available_months);
-      setChitDetails(chitData);
-      setPayouts(payoutsData.payouts || []);
-      setCollections(collectionsData.collections || []);
-      setCurrentPage(1);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [chitId]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -151,18 +147,20 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
   };
 
   const handleAssignment = async (assignmentData) => {
-    setLoading(true);
-    setError(null);
+    setLocalError(null);
     try {
       await createAssignment(assignmentData);
       setSuccess("Member assigned successfully!");
       setView("list");
       setActiveMemberName("");
-      fetchData();
+      // Invalidate and refetch
+      await Promise.all([
+        refetchAssignments(),
+        refetchMonths(),
+        queryClient.invalidateQueries({ queryKey: collectionKeys.byChit(chitId) }),
+      ]);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setLocalError(err.message);
     }
   };
 
@@ -173,19 +171,20 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    setDeleteLoading(true);
-    setError(null);
-    try {
-      await deleteAssignment(itemToDelete.id);
-      setSuccess(`"${itemToDelete.member.full_name}" has been unassigned.`);
-      fetchData();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteLoading(false);
-      setIsModalOpen(false);
-      setItemToDelete(null);
-    }
+    setLocalError(null);
+
+    deleteAssignmentMutation.mutate(itemToDelete.id, {
+      onSuccess: () => {
+        setSuccess(`"${itemToDelete.member.full_name}" has been unassigned.`);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+      onError: (err) => {
+        setLocalError(err.message);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+    });
   };
 
   const handleViewChange = (newView) => {
@@ -429,6 +428,17 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       : []),
   ];
 
+  const handleRapidAssignSuccess = async () => {
+    setSuccess("Members assigned successfully!");
+    setView("list");
+    setActiveMemberName("");
+    await Promise.all([
+      refetchAssignments(),
+      refetchMonths(),
+      queryClient.invalidateQueries({ queryKey: collectionKeys.byChit(chitId) }),
+    ]);
+  };
+
   const renderContent = () => {
     if (view === "new") {
       return (
@@ -463,12 +473,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
           ref={formRef}
           chitId={chitId}
           formatDate={formatDate}
-          onAssignmentSuccess={() => {
-            setSuccess("Members assigned successfully!");
-            setView("list");
-            setActiveMemberName("");
-            fetchData();
-          }}
+          onAssignmentSuccess={handleRapidAssignSuccess}
           onBackToList={() => handleViewChange("list")}
         />
       );
@@ -635,7 +640,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
 
       {success && <Message type="success">{success}</Message>}
       {error && (
-        <Message type="error" onClose={() => setError(null)}>
+        <Message type="error" onClose={() => setLocalError(null)}>
           {error}
         </Message>
       )}
@@ -649,7 +654,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
         title="Unassign Member?"
         message={`Are you sure you want to unassign "${itemToDelete?.member.full_name}"? Their assigned month will become available again.`}
         confirmText="Unassign"
-        loading={deleteLoading}
+        loading={deleteAssignmentMutation.isPending}
       />
     </div>
   );

@@ -1,8 +1,8 @@
 // frontend/src/features/members/components/sections/CollectionHistoryList.jsx
 
 import { useState, useEffect, useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import Table from "../../../../components/ui/Table";
 import Message from "../../../../components/ui/Message";
 import Button from "../../../../components/ui/Button";
@@ -22,19 +22,25 @@ import {
   ArrowDownLeft,
 } from "lucide-react";
 import {
-  getCollectionsByChitId,
-  getCollectionsByMemberId,
-  createCollection,
-} from "../../../../services/collectionsService";
+  useCollectionsByChit,
+  useCollectionsByMember,
+  useCreateCollection,
+  collectionKeys,
+} from "../../../collections/hooks/useCollections";
 import {
-  getPayoutsByChitId,
-  getPayoutsByMemberId,
-} from "../../../../services/payoutsService";
+  usePayoutsByChit,
+  usePayoutsByMember,
+} from "../../../payouts/hooks/usePayouts";
+import { createCollection } from "../../../../services/collectionsService";
 import CollectionHistoryCard from "../../../collections/components/cards/CollectionHistoryCard";
 import useScrollToTop from "../../../../hooks/useScrollToTop";
 
 const ITEMS_PER_PAGE = 10;
 
+/**
+ * CollectionHistoryList component - displays transaction history (collections and payouts).
+ * Uses React Query for data fetching and caching.
+ */
 const CollectionHistoryList = ({
   chitId,
   memberId,
@@ -43,16 +49,16 @@ const CollectionHistoryList = ({
   setCollectionDefaults,
   onManage,
 }) => {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { token } = useSelector((state) => state.auth);
-  const navigate = useNavigate();
-
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState("list");
   const [layoutMode, setLayoutMode] = useState("table");
   const [currentPage, setCurrentPage] = useState(1);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
+
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     chit_assignment_id: "",
@@ -61,66 +67,71 @@ const CollectionHistoryList = ({
     collection_method: "Cash",
     notes: "",
   });
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState(null);
-  const [formSuccess, setFormSuccess] = useState(null);
 
   useScrollToTop(formSuccess || formError);
 
   const viewType = chitId ? "chit" : "member";
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let collectionsData = { collections: [] };
-      let payoutsData = { payouts: [] };
+  // React Query hooks for collections
+  const {
+    data: collectionsDataByChit,
+    isLoading: collectionsChitLoading,
+    error: collectionsChitError,
+    refetch: refetchCollectionsByChit,
+  } = useCollectionsByChit(chitId);
 
-      // Fetch Collections
-      if (chitId) {
-        collectionsData = await getCollectionsByChitId(chitId, token);
-        payoutsData = await getPayoutsByChitId(chitId, token);
-      } else if (memberId) {
-        collectionsData = await getCollectionsByMemberId(memberId, token);
-        payoutsData = await getPayoutsByMemberId(memberId, token);
-      }
+  const {
+    data: collectionsDataByMember,
+    isLoading: collectionsMemberLoading,
+    error: collectionsMemberError,
+    refetch: refetchCollectionsByMember,
+  } = useCollectionsByMember(memberId);
 
-      const collections = (collectionsData.collections || []).map((c) => ({
-        ...c,
-        type: "Collection",
-        date: c.collection_date,
-        amount: c.amount_paid,
-        method: c.collection_method,
+  // React Query hooks for payouts
+  const {
+    data: payoutsDataByChit,
+    isLoading: payoutsChitLoading,
+  } = usePayoutsByChit(chitId);
+
+  const {
+    data: payoutsDataByMember,
+    isLoading: payoutsMemberLoading,
+  } = usePayoutsByMember(memberId);
+
+  // Determine which data to use based on chitId or memberId
+  const collectionsData = chitId ? collectionsDataByChit : collectionsDataByMember;
+  const payoutsData = chitId ? payoutsDataByChit : payoutsDataByMember;
+  const collectionsLoading = chitId ? collectionsChitLoading : collectionsMemberLoading;
+  const payoutsLoading = chitId ? payoutsChitLoading : payoutsMemberLoading;
+  const collectionsError = chitId ? collectionsChitError : collectionsMemberError;
+
+  const loading = collectionsLoading || payoutsLoading;
+  const error = collectionsError?.message ?? null;
+
+  // Process transactions
+  const transactions = useMemo(() => {
+    const collections = (collectionsData?.collections || []).map((c) => ({
+      ...c,
+      type: "Collection",
+      date: c.collection_date,
+      amount: c.amount_paid,
+      method: c.collection_method,
+    }));
+
+    const payouts = (payoutsData?.payouts || [])
+      .filter((p) => p.paid_date) // Only show paid
+      .map((p) => ({
+        ...p,
+        type: "Payout",
+        date: p.paid_date,
+        amount: p.amount,
+        method: p.method,
       }));
 
-      const payouts = (payoutsData.payouts || [])
-        .filter((p) => p.paid_date) // Only show paid
-        .map((p) => ({
-          ...p,
-          type: "Payout",
-          date: p.paid_date,
-          amount: p.amount,
-          method: p.method,
-        }));
-
-      const merged = [...collections, ...payouts].sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
-
-      setTransactions(merged);
-      setCurrentPage(1);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (token && (chitId || memberId)) {
-      fetchData();
-    }
-  }, [chitId, memberId, token]);
+    return [...collections, ...payouts].sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+  }, [collectionsData, payoutsData]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -294,7 +305,7 @@ const CollectionHistoryList = ({
         collection_method: formData.collection_method,
       };
 
-      await createCollection(dataToSend, token);
+      await createCollection(dataToSend);
       setFormSuccess("Collection logged successfully!");
       setFormData({
         chit_assignment_id: "",
@@ -304,7 +315,14 @@ const CollectionHistoryList = ({
         notes: "",
       });
       setView("list");
-      fetchData();
+
+      // Refetch data
+      if (chitId) {
+        await refetchCollectionsByChit();
+      } else if (memberId) {
+        await refetchCollectionsByMember();
+      }
+
       if (setCollectionDefaults) {
         setCollectionDefaults(null);
       }

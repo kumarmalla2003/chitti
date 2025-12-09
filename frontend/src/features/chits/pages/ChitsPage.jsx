@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/cards/ChitCard";
-import { getAllChits, deleteChit } from "../../../services/chitsService";
+import { useChits, useDeleteChit } from "../hooks/useChits";
 import { getPayoutsByChitId } from "../../../services/payoutsService";
 import { getAssignmentsForChit } from "../../../services/assignmentsService";
 import { getCollectionsByChitId } from "../../../services/collectionsService";
@@ -34,14 +34,16 @@ import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
 import ChitReportPDF from "../components/reports/ChitReportPDF";
 import { pdf } from "@react-pdf/renderer";
 
+/**
+ * ChitsPage component - displays a list of all chits with search, view toggle, and CRUD operations.
+ * Uses React Query for data fetching and caching.
+ */
 const ChitsPage = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const [chits, setChits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -54,7 +56,21 @@ const ChitsPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // React Query hooks
+  const {
+    data: chitsData,
+    isLoading: loading,
+    error: queryError,
+  } = useChits();
+
+  const deleteChitMutation = useDeleteChit();
+
+  // Extract chits from query data
+  const chits = chitsData?.chits ?? [];
+
+  // Combine query error with local error
+  const error = localError || (queryError?.message ?? null);
 
   useScrollToTop(success || error);
 
@@ -63,22 +79,6 @@ const ChitsPage = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode]);
-
-  useEffect(() => {
-    const fetchChits = async () => {
-      try {
-        const data = await getAllChits();
-        setChits(data.chits);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (isLoggedIn) {
-      fetchChits();
-    }
-  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -101,21 +101,20 @@ const ChitsPage = () => {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    setDeleteLoading(true);
-    setError(null);
-    try {
-      await deleteChit(itemToDelete.id);
-      setChits((prevChits) =>
-        prevChits.filter((c) => c.id !== itemToDelete.id)
-      );
-      setSuccess(`Chit "${itemToDelete.name}" has been deleted.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteLoading(false);
-      setIsModalOpen(false);
-      setItemToDelete(null);
-    }
+    setLocalError(null);
+
+    deleteChitMutation.mutate(itemToDelete.id, {
+      onSuccess: () => {
+        setSuccess(`Chit "${itemToDelete.name}" has been deleted.`);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+      onError: (err) => {
+        setLocalError(err.message);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+    });
   };
 
   const filteredChits = useMemo(() => {
@@ -148,7 +147,7 @@ const ChitsPage = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Print failed", err);
-      setError("Failed to generate report.");
+      setLocalError("Failed to generate report.");
     } finally {
       setIsPrintingAll(false);
     }
@@ -156,7 +155,7 @@ const ChitsPage = () => {
 
   const handlePrintChit = async (chit) => {
     setPrintingChitId(chit.id);
-    setError(null);
+    setLocalError(null);
 
     try {
       const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
@@ -193,7 +192,7 @@ const ChitsPage = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Single chit print failed", err);
-      setError("Failed to generate report for this chit.");
+      setLocalError("Failed to generate report for this chit.");
     } finally {
       setPrintingChitId(null);
     }
@@ -310,7 +309,7 @@ const ChitsPage = () => {
 
               {success && <Message type="success">{success}</Message>}
               {error && (
-                <Message type="error" onClose={() => setError(null)}>
+                <Message type="error" onClose={() => setLocalError(null)}>
                   {error}
                 </Message>
               )}
@@ -424,7 +423,7 @@ const ChitsPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Chit?"
         message={`Are you sure you want to permanently delete "${itemToDelete?.name}"? This action cannot be undone.`}
-        loading={deleteLoading}
+        loading={deleteChitMutation.isPending}
       />
     </>
   );
