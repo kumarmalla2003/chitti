@@ -14,7 +14,7 @@ from app.schemas.members import MemberPublic
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
-@router.post("/", response_model=assignments_schemas.ChitAssignmentPublic, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=assignments_schemas.ChitAssignmentPublic, status_code=status.HTTP_201_CREATED)
 async def create_assignment(
     assignment_in: assignments_schemas.ChitAssignmentCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],

@@ -1,101 +1,65 @@
-// src/services/assignmentsService.js
+import api from '../lib/api';
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/assignments`;
-const MEMBERS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
-const CHITS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`;
+const BASE_URL = '/assignments';
+const MEMBERS_URL = '/members';
+const CHITS_URL = '/chits';
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
+const handleError = (error, defaultMessage) => {
+  if (error.response && error.response.data && error.response.data.detail) {
+    throw new Error(error.response.data.detail);
+  }
+  throw new Error(defaultMessage);
+};
 
-// --- ADDED: Helper to extract specific error messages from the backend ---
-const handleError = async (response, defaultMessage) => {
+export const createAssignment = async (assignmentData) => {
   try {
-    const errorData = await response.json();
-    // Use the 'detail' field from the FastAPI error response
-    throw new Error(errorData.detail || defaultMessage);
-  } catch (e) {
-    // Handle cases where .json() fails or errorData.detail doesn't exist
-    throw new Error(e.message || defaultMessage);
+    const response = await api.post(BASE_URL, assignmentData);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to create chit assignment.");
   }
 };
 
-export const createAssignment = async (assignmentData, token) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(assignmentData),
-  });
-
-  if (!response.ok) {
-    await handleError(response, "Failed to create chit assignment.");
+export const createBulkAssignments = async (chitId, assignments) => {
+  try {
+    const response = await api.post(`${BASE_URL}/chit/${chitId}/bulk-assign`, { assignments });
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to save assignments.");
   }
-  return response.json();
 };
 
-// --- ADD NEW BULK ASSIGNMENT FUNCTION ---
-export const createBulkAssignments = async (chitId, assignments, token) => {
-  const response = await fetch(`${API_URL}/chit/${chitId}/bulk-assign`, {
-    method: "POST",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ assignments: assignments }), // Wrap in 'assignments' key
-  });
-
-  if (!response.ok) {
-    await handleError(response, "Failed to save assignments.");
+export const getUnassignedMonths = async (chitId) => {
+  try {
+    const response = await api.get(`${BASE_URL}/unassigned-months/${chitId}`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch available months for the chit.");
   }
-  return response.json();
 };
 
-export const getUnassignedMonths = async (chitId, token) => {
-  const response = await fetch(`${API_URL}/unassigned-months/${chitId}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
-    await handleError(
-      response,
-      "Failed to fetch available months for the chit."
-    );
+export const getAssignmentsForMember = async (memberId) => {
+  try {
+    const response = await api.get(`${MEMBERS_URL}/${memberId}/assignments`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to member's assignments.");
   }
-  return response.json();
 };
 
-export const getAssignmentsForMember = async (memberId, token) => {
-  const response = await fetch(`${MEMBERS_API_URL}/${memberId}/assignments`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
-    await handleError(response, "Failed to member's assignments.");
+export const getAssignmentsForChit = async (chitId) => {
+  try {
+    const response = await api.get(`${CHITS_URL}/${chitId}/assignments`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch assignments for the chit.");
   }
-  return response.json();
 };
 
-export const getAssignmentsForChit = async (chitId, token) => {
-  const response = await fetch(`${CHITS_API_URL}/${chitId}/assignments`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
-    await handleError(response, "Failed to fetch assignments for the chit.");
+export const deleteAssignment = async (assignmentId) => {
+  try {
+    await api.delete(`${BASE_URL}/${assignmentId}`);
+  } catch (error) {
+    handleError(error, "Failed to unassign member.");
   }
-  return response.json();
-};
-
-export const deleteAssignment = async (assignmentId, token) => {
-  const response = await fetch(`${API_URL}/${assignmentId}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
-    // This will now catch the 409 error and display the specific message
-    await handleError(response, "Failed to unassign member.");
-  }
-  return;
 };

@@ -17,7 +17,7 @@ from app.schemas.payouts import PayoutListResponse
 
 router = APIRouter(prefix="/members", tags=["members"])
 
-@router.post("/", response_model=members_schemas.MemberPublic, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=members_schemas.MemberPublic, status_code=status.HTTP_201_CREATED)
 async def create_member(
     member_in: members_schemas.MemberCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
@@ -170,7 +170,7 @@ async def get_member_payouts(
     payouts = await crud_payouts.payouts.get_by_member(session, member_id=member_id)
     return {"payouts": payouts}
 
-@router.get("/", response_model=members_schemas.MemberListResponse)
+@router.get("", response_model=members_schemas.MemberListResponse)
 async def read_all_members(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],

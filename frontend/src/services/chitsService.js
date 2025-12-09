@@ -1,71 +1,32 @@
-// frontend/src/services/chitsService.js
+import api from '../lib/api';
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/chits`;
+const BASE_URL = '/chits';
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
-export const getAllChits = async (token) => {
-  const response = await fetch(API_URL, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) {
-    if (response.status === 401) throw new Error("Authentication failed.");
-    throw new Error("Failed to fetch chits.");
-  }
-  return response.json();
+export const getAllChits = async () => {
+  const response = await api.get(BASE_URL);
+  return response.data;
 };
 
-export const createChit = async (chitData, token) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(chitData),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Failed to create chit.");
-  }
-  return response.json();
+export const createChit = async (chitData) => {
+  const response = await api.post(BASE_URL, chitData);
+  return response.data;
 };
 
-export const getChitById = async (chitId, token) => {
-  const response = await fetch(`${API_URL}/${chitId}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) throw new Error("Failed to fetch chit details.");
-  return response.json();
+export const getChitById = async (chitId) => {
+  const response = await api.get(`${BASE_URL}/${chitId}`);
+  return response.data;
 };
 
-export const updateChit = async (chitId, chitData, token) => {
-  const response = await fetch(`${API_URL}/${chitId}`, {
-    method: "PUT",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(chitData),
-  });
-  if (!response.ok) throw new Error("Failed to update chit.");
-  return response.json();
+export const updateChit = async (chitId, chitData) => {
+  const response = await api.put(`${BASE_URL}/${chitId}`, chitData);
+  return response.data;
 };
 
-export const patchChit = async (chitId, chitData, token) => {
-  const response = await fetch(`${API_URL}/${chitId}`, {
-    method: "PATCH",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(chitData),
-  });
-  if (!response.ok) throw new Error("Failed to update chit.");
-  return response.json();
+export const patchChit = async (chitId, chitData) => {
+  const response = await api.patch(`${BASE_URL}/${chitId}`, chitData);
+  return response.data;
 };
 
-export const deleteChit = async (chitId, token) => {
-  const response = await fetch(`${API_URL}/${chitId}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) throw new Error("Failed to delete chit.");
-  return;
+export const deleteChit = async (chitId) => {
+  await api.delete(`${BASE_URL}/${chitId}`);
 };

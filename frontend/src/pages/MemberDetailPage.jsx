@@ -113,11 +113,10 @@ const TabButton = React.forwardRef(
         type="button"
         onClick={() => !disabled && setActiveTab(name)}
         disabled={disabled}
-        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
-          isActive
+        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${isActive
             ? "bg-background-secondary text-accent border-b-2 border-accent"
             : "text-text-secondary hover:bg-background-tertiary"
-        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <Icon className="w-4 h-4" />
         <span>{label}</span>
@@ -266,7 +265,7 @@ const MobileContent = ({
 
 const MemberDetailPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
@@ -307,7 +306,7 @@ const MemberDetailPage = () => {
     const fetchMember = async () => {
       setPageLoading(true);
       try {
-        const memberData = await getMemberById(id, token);
+        const memberData = await getMemberById(id);
         const fetchedData = {
           full_name: memberData.full_name,
           phone_number: memberData.phone_number,
@@ -337,7 +336,7 @@ const MemberDetailPage = () => {
       setMode("view");
       fetchMember();
     }
-  }, [id, location.pathname, token, location.state]);
+  }, [id, location.pathname, isLoggedIn, location.state]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -403,7 +402,7 @@ const MemberDetailPage = () => {
     setDetailsLoading(true);
     try {
       if (mode === "create" && !createdMemberId) {
-        const newMember = await createMember(formData, token);
+        const newMember = await createMember(formData);
         setCreatedMemberId(newMember.id);
         setCreatedMemberName(newMember.full_name);
         setOriginalData(formData);
@@ -419,8 +418,7 @@ const MemberDetailPage = () => {
         if (Object.keys(changes).length > 0) {
           const updatedMember = await patchMember(
             createdMemberId,
-            changes,
-            token
+            changes
           );
           setCreatedMemberName(updatedMember.full_name);
           setOriginalData(formData);
@@ -435,7 +433,7 @@ const MemberDetailPage = () => {
           }
         }
         if (Object.keys(changes).length > 0) {
-          await patchMember(id, changes, token);
+          await patchMember(id, changes);
           setOriginalData(formData);
           setSuccess("Member details updated.");
         }
@@ -546,8 +544,8 @@ const MemberDetailPage = () => {
       };
 
       const [assignmentsData, collectionsData] = await Promise.all([
-        getAssignmentsForMember(targetId, token),
-        getCollectionsByMemberId(targetId, token),
+        getAssignmentsForMember(targetId),
+        getCollectionsByMemberId(targetId),
       ]);
 
       const reportProps = {

@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     
     # CORS
     CLIENT_ORIGIN: str | None = None
+    
+    # Cookie Security
+    COOKIE_SECURE: bool = False
 
     # Fixed validator - using mode='before' and proper type checking
     @field_validator("AUTHORIZED_PHONE_NUMBERS", mode='before')

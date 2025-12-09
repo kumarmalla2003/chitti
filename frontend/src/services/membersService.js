@@ -1,120 +1,83 @@
-// frontend/src/services/membersService.js
+import api from '../lib/api';
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/members`;
+const BASE_URL = '/members';
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
-export const searchMembers = async (query, token) => {
-  const response = await fetch(
-    `${API_URL}/search?query=${encodeURIComponent(query)}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    }
-  );
-
-  if (!response.ok) {
+export const searchMembers = async (query) => {
+  try {
+    const response = await api.get(`${BASE_URL}/search`, { params: { query } });
+    return response.data;
+  } catch (error) {
     throw new Error("Failed to search for members.");
   }
-  return response.json();
 };
 
-export const createMember = async (memberData, token) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(memberData),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
-      const errorData = await response.json();
+export const createMember = async (memberData) => {
+  try {
+    const response = await api.post(BASE_URL, memberData);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 409) {
       throw new Error(
-        errorData.detail || "A member with this phone number already exists."
+        error.response.data?.detail || "A member with this phone number already exists."
       );
     }
     throw new Error("Failed to create new member.");
   }
-  return response.json();
 };
 
-export const updateMember = async (memberId, memberData, token) => {
-  const response = await fetch(`${API_URL}/${memberId}`, {
-    method: "PUT",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(memberData),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
-      const errorData = await response.json();
+export const updateMember = async (memberId, memberData) => {
+  try {
+    const response = await api.put(`${BASE_URL}/${memberId}`, memberData);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 409) {
       throw new Error(
-        errorData.detail || "This phone number is already in use."
+        error.response.data?.detail || "This phone number is already in use."
       );
     }
     throw new Error("Failed to update member.");
   }
-  return response.json();
 };
 
-export const patchMember = async (memberId, memberData, token) => {
-  const response = await fetch(`${API_URL}/${memberId}`, {
-    method: "PATCH",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(memberData),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
-      const errorData = await response.json();
+export const patchMember = async (memberId, memberData) => {
+  try {
+    const response = await api.patch(`${BASE_URL}/${memberId}`, memberData);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 409) {
       throw new Error(
-        errorData.detail || "This phone number is already in use."
+        error.response.data?.detail || "This phone number is already in use."
       );
     }
     throw new Error("Failed to update member.");
   }
-  return response.json();
 };
 
-export const getAllMembers = async (token) => {
-  const response = await fetch(API_URL, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
+export const getAllMembers = async () => {
+  try {
+    const response = await api.get(BASE_URL);
+    return response.data;
+  } catch (error) {
     throw new Error("Failed to fetch members.");
   }
-  return response.json();
 };
 
-export const getMemberById = async (memberId, token) => {
-  const response = await fetch(`${API_URL}/${memberId}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
+export const getMemberById = async (memberId) => {
+  try {
+    const response = await api.get(`${BASE_URL}/${memberId}`);
+    return response.data;
+  } catch (error) {
     throw new Error("Failed to fetch member details.");
   }
-  return response.json();
 };
 
-export const deleteMember = async (memberId, token) => {
-  const response = await fetch(`${API_URL}/${memberId}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(token),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "This member cannot be deleted.");
+export const deleteMember = async (memberId) => {
+  try {
+    await api.delete(`${BASE_URL}/${memberId}`);
+  } catch (error) {
+    if (error.response?.status === 409) {
+      throw new Error(error.response.data?.detail || "This member cannot be deleted.");
     }
     throw new Error("Failed to delete member.");
   }
-  return;
 };

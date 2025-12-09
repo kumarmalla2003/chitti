@@ -1,6 +1,6 @@
 # backend/app/api/routers/auth.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from app.security.dependencies import get_current_user
@@ -9,6 +9,7 @@ from app.schemas import auth as auth_schemas
 from app.security import core as security
 from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -26,8 +27,9 @@ async def verify_phone_exists(
     return {"message": "Phone number is authorized"}
 
 
-@router.post("/token", response_model=auth_schemas.Token)
+@router.post("/token")
 async def login_for_access_token(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
@@ -47,4 +49,15 @@ async def login_for_access_token(
         )
     
     access_token = security.create_access_token(data={"sub": phone_number})
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Set HttpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE, 
+        path="/",
+        samesite="lax"
+    )
+    
+    return {"message": "Login successful"}

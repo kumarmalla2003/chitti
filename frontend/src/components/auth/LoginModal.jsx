@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../redux/slices/authSlice";
 import Button from "../ui/Button";
 import { Phone, Lock, X, Loader2 } from "lucide-react";
-import { verifyPhone, login } from "../../services/authService";
+import { verifyPhone, login } from "../../lib/api";
 import Message from "../ui/Message";
 import useCursorTracking from "../../hooks/useCursorTracking"; // <--- Import Hook
 
@@ -99,9 +99,9 @@ const LoginModal = ({ isOpen, onClose }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const token = await login(phoneNumber, enteredPin);
+      await login(phoneNumber, enteredPin);
       const userData = { phone: phoneNumber };
-      dispatch(loginSuccess({ user: userData, token }));
+      dispatch(loginSuccess({ user: userData }));
       onClose();
     } catch (err) {
       setError(err.message);
@@ -157,17 +157,15 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-30 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out ${
-        isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-      }`}
+      className={`fixed inset-0 z-30 flex justify-center items-center p-4 transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
       onClick={onClose}
     >
       <div
-        className={`relative bg-background-primary rounded-md shadow-lg p-8 w-full max-w-sm transition-all duration-300 ease-in-out ${
-          isOpen
+        className={`relative bg-background-primary rounded-md shadow-lg p-8 w-full max-w-sm transition-all duration-300 ease-in-out ${isOpen
             ? "opacity-100 scale-100"
             : "opacity-0 scale-95 pointer-events-none"
-        }`}
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -209,11 +207,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                 value={formattedPhoneNumber} // <--- Using the formatted value
                 onChange={handlePhoneChange}
                 required
-                className={`w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
-                  error
+                className={`w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${error
                     ? "border-error-border focus:ring-error-border"
                     : "border-border focus:ring-accent"
-                }`}
+                  }`}
                 disabled={isLoading}
                 maxLength="11" // 10 digits + 1 space
               />
@@ -253,11 +250,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                     onKeyDown={(e) => handlePinKeyDown(e, index)}
                     onFocus={handlePinFocus}
                     ref={(el) => (pinInputRefs.current[index] = el)}
-                    className={`w-8 h-8 text-center text-xl bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${
-                      error
+                    className={`w-8 h-8 text-center text-xl bg-background-secondary border rounded-md focus:outline-none focus:ring-2 ${error
                         ? "border-error-border focus:ring-error-border"
                         : "border-border focus:ring-accent"
-                    }`}
+                      }`}
                     disabled={isLoading}
                   />
                 ))}

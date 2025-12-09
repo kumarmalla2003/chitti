@@ -41,7 +41,7 @@ async def _get_collection_response(session: AsyncSession, collection: Collection
         chit=chit_response
     )
 
-@router.post("/", response_model=CollectionPublic, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CollectionPublic, status_code=status.HTTP_201_CREATED)
 async def create_collection(
     collection_in: CollectionCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
@@ -89,7 +89,7 @@ async def create_collection(
     db_collection_with_relations = await crud_collections.get(session, db_collection.id)
     return await _get_collection_response(session, db_collection_with_relations)
 
-@router.get("/", response_model=CollectionListResponse)
+@router.get("", response_model=CollectionListResponse)
 async def get_all_collections(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],

@@ -24,7 +24,7 @@ import { getAssignmentsForChit } from "../services/assignmentsService";
 
 const PayoutDetailPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
@@ -63,7 +63,7 @@ const PayoutDetailPage = () => {
     const fetchPayout = async () => {
       setPageLoading(true);
       try {
-        const payout = await getPayoutById(id, token);
+        const payout = await getPayoutById(id);
         const fetchedData = {
           chit_id: payout.chit_id,
           member_id: payout.member_id,
@@ -93,7 +93,7 @@ const PayoutDetailPage = () => {
       setMode("view");
       fetchPayout();
     }
-  }, [id, location.pathname, token]);
+  }, [id, location.pathname, isLoggedIn]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -127,8 +127,7 @@ const PayoutDetailPage = () => {
 
         // 1. Fetch Chit Assignment to get the Winning Month Date
         const assignmentsData = await getAssignmentsForChit(
-          formData.chit_id,
-          token
+          formData.chit_id
         );
         const assignment = assignmentsData.assignments.find(
           (a) => a.id === parseInt(formData.chit_assignment_id)
@@ -139,7 +138,7 @@ const PayoutDetailPage = () => {
         }
 
         // 2. Fetch Chit details to get Start Date
-        const chit = await getChitById(formData.chit_id, token);
+        const chit = await getChitById(formData.chit_id);
 
         // 3. Calculate Month Index (1-based) to identify the correct schedule row
         const startDate = new Date(chit.start_date);
@@ -150,7 +149,7 @@ const PayoutDetailPage = () => {
           1;
 
         // 4. Find the corresponding pre-created Payout row
-        const payoutsData = await getPayoutsByChitId(formData.chit_id, token);
+        const payoutsData = await getPayoutsByChitId(formData.chit_id);
         const targetPayout = payoutsData.payouts.find(
           (p) => p.month === monthIndex
         );
@@ -162,7 +161,7 @@ const PayoutDetailPage = () => {
         }
 
         // 5. Update the existing schedule row with transaction details
-        await updatePayout(targetPayout.id, dataToSend, token);
+        await updatePayout(targetPayout.id, dataToSend);
 
         setSuccess("Payout recorded successfully!");
         // Navigate to view mode for the updated payout
@@ -178,7 +177,7 @@ const PayoutDetailPage = () => {
         }
 
         if (Object.keys(changes).length > 0) {
-          const updatedPayout = await updatePayout(id, changes, token);
+          const updatedPayout = await updatePayout(id, changes);
           setOriginalData(formData);
           setSuccess("Payout updated successfully!");
           setPayoutDetails(updatedPayout);

@@ -30,7 +30,7 @@ import {
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
@@ -66,7 +66,7 @@ const CollectionDetailPage = () => {
     const fetchCollection = async () => {
       setPageLoading(true);
       try {
-        const collection = await getCollectionById(id, token);
+        const collection = await getCollectionById(id);
         const fetchedData = {
           chit_assignment_id: collection.chit_assignment_id,
           amount_paid: collection.amount_paid.toString(),
@@ -94,7 +94,7 @@ const CollectionDetailPage = () => {
       setMode("view");
       fetchCollection();
     }
-  }, [id, location.pathname, token]);
+  }, [id, location.pathname, isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -134,7 +134,7 @@ const CollectionDetailPage = () => {
       };
 
       if (mode === "create") {
-        const newCollection = await createCollection(dataToSend, token);
+        const newCollection = await createCollection(dataToSend);
         navigate(`/collections/view/${newCollection.id}`, {
           state: { success: "Collection logged successfully!" },
         });
@@ -147,7 +147,7 @@ const CollectionDetailPage = () => {
         }
 
         if (Object.keys(changes).length > 0) {
-          const updatedCollection = await patchCollection(id, changes, token);
+          const updatedCollection = await patchCollection(id, changes);
           setOriginalData(formData);
           setSuccess("Collection updated successfully!");
           setCollectionDetails(updatedCollection);

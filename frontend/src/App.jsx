@@ -1,8 +1,9 @@
 // frontend/src/App.jsx
 
-import { useState } from "react"; // <-- CORRECTED IMPORT
+import { useState, useEffect } from "react"; // <-- CORRECTED IMPORT
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "./redux/slices/authSlice";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
@@ -24,7 +25,20 @@ import PayoutDetailPage from "./pages/PayoutDetailPage";
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isLoggedIn } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      dispatch(logout());
+      setIsModalOpen(true); // Optionally open login modal
+    };
+
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    };
+  }, [dispatch]);
 
   const handleLoginModalOpen = () => setIsModalOpen(true);
   const handleLoginModalClose = () => setIsModalOpen(false);
@@ -33,9 +47,8 @@ const App = () => {
     <ThemeProvider>
       <LoginModal isOpen={isModalOpen} onClose={handleLoginModalClose} />
       <div
-        className={`transition-all duration-300 ${
-          isModalOpen ? "blur-sm pointer-events-none" : ""
-        }`}
+        className={`transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none" : ""
+          }`}
       >
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>

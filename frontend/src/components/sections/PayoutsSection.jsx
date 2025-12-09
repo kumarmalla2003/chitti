@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   ArrowRight,
   TrendingUp,
+  SquarePen,
   IndianRupee,
   Search,
 } from "lucide-react";
@@ -399,9 +400,9 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
   const paginatedPayouts =
     mode === "view" && !isEditing
       ? filteredPayouts.slice(
-          (currentPage - 1) * ITEMS_PER_PAGE,
-          currentPage * ITEMS_PER_PAGE
-        )
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+      )
       : filteredPayouts;
 
   const displayData = isEditing && mode !== "view" ? payouts : paginatedPayouts;

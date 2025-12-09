@@ -1,81 +1,70 @@
-// frontend/src/services/payoutsService.js
+import api from '../lib/api';
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/payouts`;
+const BASE_URL = '/payouts';
 
-const getAuthHeaders = (token) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
+const handleError = (error, defaultMessage) => {
+  if (error.response?.data?.detail) {
+    throw new Error(error.response.data.detail);
+  }
+  throw new Error(defaultMessage);
+};
 
-const handleError = async (response, defaultMessage) => {
+export const getAllPayouts = async (filters = {}) => {
+  const params = {};
+  if (filters.chitId) params.chit_id = filters.chitId;
+  if (filters.memberId) params.member_id = filters.memberId;
+  if (filters.startDate) params.start_date = filters.startDate;
+  if (filters.endDate) params.end_date = filters.endDate;
+
   try {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || defaultMessage);
-  } catch (e) {
-    throw new Error(e.message || defaultMessage);
+    const response = await api.get(`${BASE_URL}/all`, { params });
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch payouts.");
   }
 };
 
-export const getAllPayouts = async (token, filters = {}) => {
-  const queryParams = new URLSearchParams();
-  if (filters.chitId) queryParams.append("chit_id", filters.chitId);
-  if (filters.memberId) queryParams.append("member_id", filters.memberId);
-  if (filters.startDate) queryParams.append("start_date", filters.startDate);
-  if (filters.endDate) queryParams.append("end_date", filters.endDate);
-
-  const response = await fetch(`${API_URL}/all?${queryParams.toString()}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) await handleError(response, "Failed to fetch payouts.");
-  return response.json();
+export const getPayoutsByChitId = async (chitId) => {
+  try {
+    const response = await api.get(`${BASE_URL}/chit/${chitId}`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch payouts for this chit.");
+  }
 };
 
-export const getPayoutsByChitId = async (chitId, token) => {
-  const response = await fetch(`${API_URL}/chit/${chitId}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok)
-    await handleError(response, "Failed to fetch payouts for this chit.");
-  return response.json();
+export const getPayoutsByMemberId = async (memberId) => {
+  try {
+    const response = await api.get(`${BASE_URL}/member/${memberId}`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch payouts for this member.");
+  }
 };
 
-export const getPayoutsByMemberId = async (memberId, token) => {
-  const response = await fetch(`${API_URL}/member/${memberId}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok)
-    await handleError(response, "Failed to fetch payouts for this member.");
-  return response.json();
+export const getPayoutById = async (id) => {
+  try {
+    const response = await api.get(`${BASE_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to fetch payout details.");
+  }
 };
 
-export const getPayoutById = async (id, token) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "GET",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok)
-    await handleError(response, "Failed to fetch payout details.");
-  return response.json();
+export const updatePayout = async (id, payoutData) => {
+  try {
+    const response = await api.put(`${BASE_URL}/${id}`, payoutData);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to update payout.");
+  }
 };
 
-export const updatePayout = async (id, payoutData, token) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(payoutData),
-  });
-  if (!response.ok) await handleError(response, "Failed to update payout.");
-  return response.json();
-};
-
-export const deletePayout = async (id, token) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) await handleError(response, "Failed to delete payout.");
-  return response.json();
+export const deletePayout = async (id) => {
+  try {
+    const response = await api.delete(`${BASE_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    handleError(error, "Failed to delete payout.");
+  }
 };

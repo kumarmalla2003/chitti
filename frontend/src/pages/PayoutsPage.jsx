@@ -41,7 +41,7 @@ const PayoutsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
@@ -57,7 +57,7 @@ const PayoutsPage = () => {
   useScrollToTop(success || error);
 
   useEffect(() => {
-    const handleResize = () => {};
+    const handleResize = () => { };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode]);
@@ -66,7 +66,7 @@ const PayoutsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllPayouts(token);
+      const data = await getAllPayouts();
       setPayouts(Array.isArray(data) ? data : data.payouts || []);
     } catch (err) {
       setError(err.message);
@@ -76,10 +76,10 @@ const PayoutsPage = () => {
   };
 
   useEffect(() => {
-    if (token) {
+    if (isLoggedIn) {
       fetchData();
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -105,7 +105,7 @@ const PayoutsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deletePayout(itemToDelete.id, token);
+      await deletePayout(itemToDelete.id);
       fetchData();
       setSuccess(`Payout record has been deleted.`);
     } catch (err) {
@@ -121,7 +121,7 @@ const PayoutsPage = () => {
     setReportLoading(true);
     setError(null);
     try {
-      const data = await getAllPayouts(token, filters);
+      const data = await getAllPayouts(filters);
       const reportPayouts = Array.isArray(data) ? data : data.payouts || [];
 
       if (!reportPayouts || reportPayouts.length === 0) {

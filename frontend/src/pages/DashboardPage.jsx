@@ -28,23 +28,19 @@ import BottomNav from "../components/layout/BottomNav";
 import Card from "../components/ui/Card";
 import Table from "../components/ui/Table";
 
+import api from "../lib/api";
+
 // API calls
-const fetchDashboardData = async (token) => {
+const fetchDashboardData = async () => {
   const [chitsRes, membersRes, collectionsRes] = await Promise.all([
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/chits`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/members`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/collections`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+    api.get("/chits"),
+    api.get("/members"),
+    api.get("/collections"),
   ]);
 
-  const chits = await chitsRes.json();
-  const members = await membersRes.json();
-  const collections = await collectionsRes.json();
+  const chits = chitsRes.data;
+  const members = membersRes.data;
+  const collections = collectionsRes.data;
 
   return {
     chits: chits.chits || [],
@@ -60,11 +56,10 @@ const TabButton = ({ name, icon: Icon, label, activeTab, setActiveTab }) => {
     <button
       type="button"
       onClick={() => setActiveTab(name)}
-      className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none rounded-t-md border-b-2 whitespace-nowrap ${
-        isActive
+      className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none rounded-t-md border-b-2 whitespace-nowrap ${isActive
           ? "bg-background-secondary text-accent border-accent"
           : "text-text-secondary border-transparent hover:bg-background-tertiary"
-      }`}
+        }`}
     >
       <Icon className="w-4 h-4" />
       <span>{label}</span>
@@ -74,7 +69,7 @@ const TabButton = ({ name, icon: Icon, label, activeTab, setActiveTab }) => {
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -88,7 +83,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const dashboardData = await fetchDashboardData(token);
+        const dashboardData = await fetchDashboardData();
         setData(dashboardData);
         calculateStats(dashboardData);
       } catch (error) {
@@ -97,8 +92,8 @@ const DashboardPage = () => {
         setLoading(false);
       }
     };
-    if (token) loadData();
-  }, [token]);
+    if (isLoggedIn) loadData();
+  }, [isLoggedIn]);
 
   const calculateStats = ({ chits, members, collections }) => {
     const today = new Date();
@@ -316,11 +311,10 @@ const DashboardPage = () => {
   const MetricCard = ({ icon: Icon, label, value, subtext, onClick }) => (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden bg-gradient-to-br from-accent to-blue-600 p-6 rounded-xl shadow-card text-white flex items-center justify-between min-w-[200px] flex-1 ${
-        onClick
-          ? "cursor-pointer hover:shadow-floating hover:-translate-y-1 transition-all duration-300"
-          : ""
-      }`}
+      className={`relative overflow-hidden bg-gradient-to-br from-accent to-blue-600 p-6 rounded-xl shadow-card text-white flex items-center justify-between min-w-[200px] flex-1 ${onClick
+        ? "cursor-pointer hover:shadow-floating hover:-translate-y-1 transition-all duration-300"
+        : ""
+        }`}
     >
       <div className="flex flex-col z-10">
         <p className="text-blue-100 text-sm font-bold uppercase tracking-wider mb-2 opacity-80">
@@ -378,14 +372,12 @@ const DashboardPage = () => {
       className={`flex flex-col items-center justify-center gap-2 p-4 bg-background-secondary rounded-xl border border-border hover:border-${color} hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}
     >
       <div
-        className={`p-3 rounded-full bg-${
-          color === "accent" ? "accent" : `${color}-bg`
-        }`}
+        className={`p-3 rounded-full bg-${color === "accent" ? "accent" : `${color}-bg`
+          }`}
       >
         <Icon
-          className={`w-6 h-6 ${
-            color === "accent" ? "text-white" : `text-${color}-accent`
-          }`}
+          className={`w-6 h-6 ${color === "accent" ? "text-white" : `text-${color}-accent`
+            }`}
         />
       </div>
       <span className="text-sm font-semibold text-text-primary">{label}</span>
@@ -500,9 +492,8 @@ const DashboardPage = () => {
                         <div className="absolute left-10 top-2.5 h-5 w-px bg-border"></div>
                         <input
                           type="text"
-                          placeholder={`Search by ${
-                            pendingView === "chit" ? "chit name" : "member name"
-                          }...`}
+                          placeholder={`Search by ${pendingView === "chit" ? "chit name" : "member name"
+                            }...`}
                           value={pendingSearch}
                           onChange={(e) => setPendingSearch(e.target.value)}
                           className="w-full pl-12 pr-4 py-2 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent text-sm"

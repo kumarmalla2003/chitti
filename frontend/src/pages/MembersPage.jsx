@@ -41,7 +41,7 @@ const MembersPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
@@ -68,7 +68,7 @@ const MembersPage = () => {
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const data = await getAllMembers(token);
+        const data = await getAllMembers();
         setMembers(data.members);
       } catch (err) {
         setError(err.message);
@@ -76,10 +76,10 @@ const MembersPage = () => {
         setLoading(false);
       }
     };
-    if (token) {
+    if (isLoggedIn) {
       fetchMembers();
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -105,7 +105,7 @@ const MembersPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteMember(itemToDelete.id, token);
+      await deleteMember(itemToDelete.id);
       setMembers((prevMembers) =>
         prevMembers.filter((m) => m.id !== itemToDelete.id)
       );
@@ -159,8 +159,8 @@ const MembersPage = () => {
 
     try {
       const [assignmentsData, collectionsData] = await Promise.all([
-        getAssignmentsForMember(member.id, token),
-        getCollectionsByMemberId(member.id, token),
+        getAssignmentsForMember(member.id),
+        getCollectionsByMemberId(member.id),
       ]);
 
       const reportProps = {

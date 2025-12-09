@@ -24,7 +24,7 @@ from app.schemas.payouts import PayoutListResponse
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
-@router.post("/", response_model=ChitResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ChitResponse, status_code=status.HTTP_201_CREATED)
 async def create_chit(
     chit: ChitCreate,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
@@ -71,7 +71,7 @@ async def create_chit(
     response_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=db_chit.id)
     return response_details
 
-@router.get("/", response_model=ChitListResponse)
+@router.get("", response_model=ChitListResponse)
 async def read_chits(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],

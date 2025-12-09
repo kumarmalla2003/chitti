@@ -42,7 +42,7 @@ const CollectionsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [viewMode, setViewMode] = useState(() =>
     window.innerWidth < 768 ? "card" : "table"
@@ -69,7 +69,7 @@ const CollectionsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllCollections(token);
+      const data = await getAllCollections();
       setCollections(data.collections);
     } catch (err) {
       setError(err.message);
@@ -79,10 +79,10 @@ const CollectionsPage = () => {
   };
 
   useEffect(() => {
-    if (token) {
+    if (isLoggedIn) {
       fetchData();
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -108,7 +108,7 @@ const CollectionsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteCollection(itemToDelete.id, token);
+      await deleteCollection(itemToDelete.id);
       setCollections((prevCollections) =>
         prevCollections.filter((p) => p.id !== itemToDelete.id)
       );
@@ -126,7 +126,7 @@ const CollectionsPage = () => {
     setReportLoading(true);
     setError(null);
     try {
-      const data = await getAllCollections(token, filters);
+      const data = await getAllCollections(filters);
 
       if (!data.collections || data.collections.length === 0) {
         setError("No collections found for the selected criteria.");

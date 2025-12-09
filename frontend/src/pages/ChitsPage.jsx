@@ -43,7 +43,7 @@ const ChitsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [printingChitId, setPrintingChitId] = useState(null);
@@ -59,7 +59,7 @@ const ChitsPage = () => {
   useScrollToTop(success || error);
 
   useEffect(() => {
-    const handleResize = () => {};
+    const handleResize = () => { };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode]);
@@ -67,7 +67,7 @@ const ChitsPage = () => {
   useEffect(() => {
     const fetchChits = async () => {
       try {
-        const data = await getAllChits(token);
+        const data = await getAllChits();
         setChits(data.chits);
       } catch (err) {
         setError(err.message);
@@ -75,10 +75,10 @@ const ChitsPage = () => {
         setLoading(false);
       }
     };
-    if (token) {
+    if (isLoggedIn) {
       fetchChits();
     }
-  }, [token]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -104,7 +104,7 @@ const ChitsPage = () => {
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteChit(itemToDelete.id, token);
+      await deleteChit(itemToDelete.id);
       setChits((prevChits) =>
         prevChits.filter((c) => c.id !== itemToDelete.id)
       );
@@ -161,9 +161,9 @@ const ChitsPage = () => {
     try {
       const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
         [
-          getPayoutsByChitId(chit.id, token),
-          getAssignmentsForChit(chit.id, token),
-          getCollectionsByChitId(chit.id, token),
+          getPayoutsByChitId(chit.id),
+          getAssignmentsForChit(chit.id),
+          getCollectionsByChitId(chit.id),
         ]
       );
 

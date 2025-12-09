@@ -158,11 +158,10 @@ const TabButton = React.forwardRef(
         type="button"
         onClick={() => !disabled && setActiveTab(name)}
         disabled={disabled}
-        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${
-          isActive
-            ? "bg-background-secondary text-accent border-b-2 border-accent"
-            : "text-text-secondary hover:bg-background-tertiary"
-        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-background-primary rounded-t-md ${isActive
+          ? "bg-background-secondary text-accent border-b-2 border-accent"
+          : "text-text-secondary hover:bg-background-tertiary"
+          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <Icon className="w-4 h-4" />
         <span>{label}</span>
@@ -339,7 +338,7 @@ const MobileContent = ({
 
 const ChitDetailPage = () => {
   const navigate = useNavigate();
-  const { token } = useSelector((state) => state.auth);
+  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
@@ -404,7 +403,7 @@ const ChitDetailPage = () => {
     const fetchChit = async () => {
       setPageLoading(true);
       try {
-        const chit = await getChitById(id, token);
+        const chit = await getChitById(id);
         const fetchedData = {
           name: chit.name,
           chit_value: chit.chit_value.toString(),
@@ -435,7 +434,7 @@ const ChitDetailPage = () => {
       setMode("view");
       fetchChit();
     }
-  }, [id, location.pathname, token]);
+  }, [id, location.pathname, isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -560,7 +559,7 @@ const ChitDetailPage = () => {
           payout_day: Number(formData.payout_day),
         };
         delete dataToSend.end_date;
-        const newChit = await createChit(dataToSend, token);
+        const newChit = await createChit(dataToSend);
         setCreatedChitId(newChit.id);
         setCreatedChitName(newChit.name);
         setOriginalData(newChit);
@@ -592,7 +591,7 @@ const ChitDetailPage = () => {
           if (patchData.payout_day)
             patchData.payout_day = Number(patchData.payout_day);
 
-          const updatedChit = await patchChit(createdChitId, patchData, token);
+          const updatedChit = await patchChit(createdChitId, patchData);
           setCreatedChitName(updatedChit.name);
           setOriginalData(updatedChit);
         }
@@ -612,14 +611,27 @@ const ChitDetailPage = () => {
         };
         delete patchData.end_date;
 
-        await patchChit(id, patchData, token);
+        await patchChit(id, patchData);
         setSuccess("Chit updated successfully!");
         if (activeTabIndex < TABS.length - 1) {
           setActiveTab(TABS[activeTabIndex + 1]);
         }
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Submit Error:", err);
+      let errorMessage = err.message;
+      if (err.response && err.response.data && err.response.data.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          // Pydantic validation errors
+          errorMessage = err.response.data.detail
+            .map((e) => `${e.loc[1]}: ${e.msg}`)
+            .join(", ");
+        } else {
+          // Generic detail message
+          errorMessage = err.response.data.detail;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -712,9 +724,9 @@ const ChitDetailPage = () => {
     try {
       const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
         [
-          getPayoutsByChitId(id, token),
-          getAssignmentsForChit(id, token),
-          getCollectionsByChitId(id, token),
+          getPayoutsByChitId(id),
+          getAssignmentsForChit(id),
+          getCollectionsByChitId(id),
         ]
       );
 
