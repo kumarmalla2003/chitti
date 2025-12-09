@@ -7,10 +7,6 @@ import { useMembers, useDeleteMember } from "../hooks/useMembers";
 import { getAssignmentsForMember } from "../../../services/assignmentsService";
 import { getCollectionsByMemberId } from "../../../services/collectionsService";
 import { useSelector } from "react-redux";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
-import MobileNav from "../../../components/layout/MobileNav";
-import BottomNav from "../../../components/layout/BottomNav";
 import Message from "../../../components/ui/Message";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
@@ -38,7 +34,7 @@ import { pdf } from "@react-pdf/renderer";
  */
 const MembersPage = () => {
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // isMenuOpen removed (handled by MainLayout)
   const location = useLocation();
   const [success, setSuccess] = useState(null);
   const [localError, setLocalError] = useState(null);
@@ -253,145 +249,127 @@ const MembersPage = () => {
 
   return (
     <>
-      <div
-        className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
-      >
-        <Header
-          onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection="members"
-        />
-        <div className="pb-16 md:pb-0">
-          <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
-            <div className="container mx-auto">
-              <div className="relative flex justify-center items-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
-                  All Members
-                </h1>
-                {filteredMembers.length > 0 && (
-                  <div className="absolute right-0 flex items-center">
-                    <button
-                      onClick={handlePrintAll}
-                      disabled={isPrintingAll}
-                      className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 disabled:opacity-50"
-                      title="Print All Members"
-                    >
-                      {isPrintingAll ? (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                      ) : (
-                        <Printer className="w-6 h-6" />
-                      )}
-                    </button>
-                  </div>
+      <div className="container mx-auto">
+        <div className="relative flex justify-center items-center mb-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
+            All Members
+          </h1>
+          {filteredMembers.length > 0 && (
+            <div className="absolute right-0 flex items-center">
+              <button
+                onClick={handlePrintAll}
+                disabled={isPrintingAll}
+                className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 disabled:opacity-50"
+                title="Print All Members"
+              >
+                {isPrintingAll ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <Printer className="w-6 h-6" />
                 )}
-              </div>
-
-              <hr className="my-4 border-border" />
-
-              {success && <Message type="success">{success}</Message>}
-              {error && (
-                <Message type="error" onClose={() => setLocalError(null)}>
-                  {error}
-                </Message>
-              )}
-
-              {/* --- CONTROLS ROW: Search + View Toggle --- */}
-              <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
-                <div className="relative flex-grow md:max-w-md flex items-center">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Search className="w-5 h-5 text-text-secondary" />
-                  </span>
-                  <div className="absolute left-10 h-6 w-px bg-border"></div>
-                  <input
-                    type="text"
-                    placeholder="Search by name or phone number..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-                  />
-                </div>
-
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() =>
-                      setViewMode((prev) =>
-                        prev === "table" ? "card" : "table"
-                      )
-                    }
-                    className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
-                    title={
-                      viewMode === "table"
-                        ? "Switch to Card View"
-                        : "Switch to Table View"
-                    }
-                  >
-                    {viewMode === "table" ? (
-                      <LayoutGrid className="w-5 h-5" />
-                    ) : (
-                      <List className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {loading && (
-                <div className="flex justify-center items-center h-64">
-                  <Loader2 className="w-10 h-10 animate-spin text-accent" />
-                </div>
-              )}
-
-              {!loading && !error && filteredMembers.length === 0 && (
-                <Card className="text-center p-8">
-                  <h2 className="text-2xl font-bold text-text-primary mb-2">
-                    {searchQuery ? "No Matching Members" : "No Members Found"}
-                  </h2>
-                  <p className="text-text-secondary">
-                    {searchQuery
-                      ? "Try a different search term."
-                      : "You haven't added any members yet. Click the button below to create one!"}
-                  </p>
-                </Card>
-              )}
-
-              {!loading && !error && filteredMembers.length > 0 && (
-                <>
-                  {viewMode === "table" ? (
-                    <div className="overflow-x-auto rounded-lg shadow-sm">
-                      <Table
-                        columns={columns}
-                        data={filteredMembers}
-                        onRowClick={(row) =>
-                          navigate(`/members/view/${row.id}`)
-                        }
-                      />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredMembers.map((member) => (
-                        <MemberCard
-                          key={member.id}
-                          member={member}
-                          onView={() => navigate(`/members/view/${member.id}`)}
-                          onEdit={() => navigate(`/members/edit/${member.id}`)}
-                          onDelete={() => handleDeleteClick(member)}
-                          onPrint={handlePrintMember}
-                          isPrinting={printingMemberId === member.id}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+              </button>
             </div>
-          </main>
-          <Footer />
+          )}
         </div>
+
+        <hr className="my-4 border-border" />
+
+        {success && <Message type="success">{success}</Message>}
+        {error && (
+          <Message type="error" onClose={() => setLocalError(null)}>
+            {error}
+          </Message>
+        )}
+
+        {/* --- CONTROLS ROW: Search + View Toggle --- */}
+        <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
+          <div className="relative flex-grow md:max-w-md flex items-center">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+              <Search className="w-5 h-5 text-text-secondary" />
+            </span>
+            <div className="absolute left-10 h-6 w-px bg-border"></div>
+            <input
+              type="text"
+              placeholder="Search by name or phone number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
+            />
+          </div>
+
+          <div className="flex-shrink-0">
+            <button
+              onClick={() =>
+                setViewMode((prev) =>
+                  prev === "table" ? "card" : "table"
+                )
+              }
+              className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
+              title={
+                viewMode === "table"
+                  ? "Switch to Card View"
+                  : "Switch to Table View"
+              }
+            >
+              {viewMode === "table" ? (
+                <LayoutGrid className="w-5 h-5" />
+              ) : (
+                <List className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="w-10 h-10 animate-spin text-accent" />
+          </div>
+        )}
+
+        {!loading && !error && filteredMembers.length === 0 && (
+          <Card className="text-center p-8">
+            <h2 className="text-2xl font-bold text-text-primary mb-2">
+              {searchQuery ? "No Matching Members" : "No Members Found"}
+            </h2>
+            <p className="text-text-secondary">
+              {searchQuery
+                ? "Try a different search term."
+                : "You haven't added any members yet. Click the button below to create one!"}
+            </p>
+          </Card>
+        )}
+
+        {!loading && !error && filteredMembers.length > 0 && (
+          <>
+            {viewMode === "table" ? (
+              <div className="overflow-x-auto rounded-lg shadow-sm">
+                <Table
+                  columns={columns}
+                  data={filteredMembers}
+                  onRowClick={(row) =>
+                    navigate(`/members/view/${row.id}`)
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredMembers.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    onView={() => navigate(`/members/view/${member.id}`)}
+                    onEdit={() => navigate(`/members/edit/${member.id}`)}
+                    onDelete={() => handleDeleteClick(member)}
+                    onPrint={handlePrintMember}
+                    isPrinting={printingMemberId === member.id}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <MobileNav
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        activeSection="members"
-      />
-      <BottomNav />
+
       <Link to="/members/create" className="group">
         <Button variant="fab" className="group-hover:scale-110">
           <Plus className="w-6 h-6" />

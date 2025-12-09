@@ -1,9 +1,11 @@
 // frontend/src/features/chits/components/forms/ChitDetailsForm.jsx
 
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
+import { Controller } from "react-hook-form";
 import Message from "../../../../components/ui/Message";
 import CustomMonthInput from "../../../../components/ui/CustomMonthInput";
-import useCursorTracking from "../../../../hooks/useCursorTracking"; // <--- Import Hook
+import FormattedInput from "../../../../components/ui/FormattedInput";
 import {
   Layers,
   Users,
@@ -11,80 +13,52 @@ import {
   WalletMinimal,
   TrendingUp,
   IndianRupee,
-  Layers2Icon,
 } from "lucide-react";
+
+/**
+ * Helper to format numbers with commas (Indian Locale)
+ */
+const formatNumber = (value) => {
+  if (value === undefined || value === null || value === "") return "";
+  return Number(value).toLocaleString("en-IN");
+};
+
+/**
+ * Helper to parse formatted string back to number
+ */
+const parseNumber = (value) => {
+  // value is the string from input (e.g. "1,000")
+  const rawValue = value.replace(/[^0-9]/g, "");
+  return rawValue ? Number(rawValue) : "";
+};
 
 const ChitDetailsForm = ({
   mode,
-  formData,
-  onFormChange,
-  onFormSubmit,
-  error,
+  control,
+  register,
+  errors,
   success,
   isPostCreation = false,
   onEnterKeyOnLastInput,
 }) => {
   const nameInputRef = useRef(null);
-  const valueInputRef = useRef(null); // <--- Ref for Chit Value
-  const installmentInputRef = useRef(null); // <--- Ref for Installment
+  const isFormDisabled = mode === "view";
+  const isEditMode = mode === "edit";
 
-  // Helper to safely format value for display
-  const getFormattedValue = (val) => {
-    if (!val) return "";
-    // Ensure we format only valid numbers
-    const num = parseInt(val.toString().replace(/,/g, ""));
-    return isNaN(num) ? "" : num.toLocaleString("en-IN");
-  };
-
-  const formattedChitValue = getFormattedValue(formData.chit_value);
-  const formattedInstallment = getFormattedValue(formData.monthly_installment);
-
-  // Setup trackers
-  const trackValueCursor = useCursorTracking(
-    valueInputRef,
-    formattedChitValue,
-    /\d/
-  );
-  const trackInstallmentCursor = useCursorTracking(
-    installmentInputRef,
-    formattedInstallment,
-    /\d/
-  );
-
+  // Auto-focus name field on create
   useEffect(() => {
     if (mode === "create" && !isPostCreation) {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [mode, isPostCreation]);
 
-  const isFormDisabled = mode === "view";
-
   const handleKeyDown = (e) => {
-    // ... (Keep existing keydown logic unchanged)
     if (e.key === "Enter" && !isFormDisabled) {
-      const inputName = e.target.name || e.target.getAttribute("name");
+      const inputName = e.target.name;
       if (inputName === "payout_day") {
         if (onEnterKeyOnLastInput) {
           e.preventDefault();
-          e.stopPropagation();
           onEnterKeyOnLastInput();
-        }
-      } else {
-        const form = e.target.closest("fieldset");
-        if (form) {
-          const focusable = Array.from(
-            form.querySelectorAll(
-              'input:not([disabled]):not([type="hidden"]), select, textarea, button'
-            )
-          );
-          const index = focusable.indexOf(e.target);
-          if (index !== -1 && index + 1 < focusable.length) {
-            const nextElement = focusable[index + 1];
-            if (!nextElement.closest(".relative.flex.items-center")) {
-              e.preventDefault();
-              nextElement.focus();
-            }
-          }
         }
       }
     }
@@ -97,26 +71,25 @@ const ChitDetailsForm = ({
           {success}
         </Message>
       )}
-      {error && (
+      {errors.root && (
         <Message type="error" title="Error" onClose={() => { }}>
-          {typeof error === "string"
-            ? error
-            : error.message || "An error occurred."}
+          {errors.root.message}
         </Message>
       )}
+
       <fieldset
         disabled={isFormDisabled}
         className="space-y-6"
         onKeyDown={handleKeyDown}
       >
-        {/* Name Input (Unchanged) */}
+        {/* --- NAME --- */}
         <div>
           <label
             htmlFor="name"
             className="block text-lg font-medium text-text-secondary mb-1"
           >
             Chit Name{" "}
-            {mode === "edit" && (
+            {isEditMode && (
               <span className="text-xs text-text-secondary">
                 (Cannot be changed)
               </span>
@@ -128,23 +101,28 @@ const ChitDetailsForm = ({
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
-              ref={nameInputRef}
+              {...register("name")}
+              ref={(e) => {
+                register("name").ref(e);
+                nameInputRef.current = e;
+              }}
               type="text"
               id="name"
-              name="name"
-              value={formData.name}
-              onChange={onFormChange}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+              className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.name ? "border-red-500" : "border-border"
+                }`}
               maxLength={50}
-              placeholder="Kasi Malla Family Chit"
-              required
-              disabled={isFormDisabled || mode === "edit"}
+              placeholder="e.g. Kasi Malla Family Chit"
+              disabled={isFormDisabled || isEditMode}
             />
           </div>
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
+          )}
         </div>
 
-        {/* Chit Value & Size */}
+        {/* --- CHIT VALUE & SIZE --- */}
         <div className="grid sm:grid-cols-2 gap-6">
+          {/* Chit Value (Formatted) */}
           <div>
             <label
               htmlFor="chit_value"
@@ -157,24 +135,26 @@ const ChitDetailsForm = ({
                 <IndianRupee className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                ref={valueInputRef} // <--- Attach Ref
-                type="text"
-                id="chit_value"
+              <FormattedInput
                 name="chit_value"
-                // Use calculated formatted value
-                value={formattedChitValue}
-                onChange={(e) => {
-                  trackValueCursor(e); // <--- Track
-                  onFormChange(e);
-                }}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                control={control}
+                format={formatNumber}
+                parse={parseNumber}
+                id="chit_value"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.chit_value ? "border-red-500" : "border-border"
+                  }`}
                 placeholder="1,00,000"
-                required
-                inputMode="numeric"
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.chit_value && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.chit_value.message}
+              </p>
+            )}
           </div>
+
+          {/* Size */}
           <div>
             <label
               htmlFor="size"
@@ -188,22 +168,25 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                {...register("size", { valueAsNumber: true })}
                 type="number"
                 id="size"
-                name="size"
-                value={formData.size}
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.size ? "border-red-500" : "border-border"
+                  }`}
                 min="1"
                 placeholder="20"
-                required
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.size && (
+              <p className="mt-1 text-sm text-red-500">{errors.size.message}</p>
+            )}
           </div>
         </div>
 
-        {/* Installment & Duration */}
+        {/* --- INSTALLMENT & DURATION --- */}
         <div className="grid sm:grid-cols-2 gap-6">
+          {/* Monthly Installment (Formatted) */}
           <div>
             <label
               htmlFor="monthly_installment"
@@ -216,25 +199,27 @@ const ChitDetailsForm = ({
                 <IndianRupee className="w-5 h-5 text-text-secondary" />
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                ref={installmentInputRef} // <--- Attach Ref
-                type="text"
-                id="monthly_installment"
+              <FormattedInput
                 name="monthly_installment"
-                value={formattedInstallment}
-                onChange={(e) => {
-                  trackInstallmentCursor(e); // <--- Track
-                  onFormChange(e);
-                }}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                control={control}
+                format={formatNumber}
+                parse={parseNumber}
+                id="monthly_installment"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.monthly_installment ? "border-red-500" : "border-border"
+                  }`}
                 placeholder="5,000"
-                required
-                inputMode="numeric"
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.monthly_installment && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.monthly_installment.message}
+              </p>
+            )}
           </div>
+
+          {/* Duration */}
           <div>
-            {/* Duration (Unchanged) */}
             <label
               htmlFor="duration_months"
               className="block text-lg font-medium text-text-secondary mb-1"
@@ -247,21 +232,25 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                {...register("duration_months", { valueAsNumber: true })}
                 type="number"
                 id="duration_months"
-                name="duration_months"
-                value={formData.duration_months}
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
+                  }`}
                 min="1"
                 placeholder="20"
-                required
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.duration_months && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.duration_months.message}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Dates and Days (Unchanged components, but kept for context) */}
+        {/* --- DATES --- */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -270,13 +259,22 @@ const ChitDetailsForm = ({
             >
               Start Date
             </label>
-            <CustomMonthInput
+            <Controller
+              control={control}
               name="start_date"
-              value={formData.start_date}
-              onChange={onFormChange}
-              required
-              disabled={isFormDisabled}
+              render={({ field }) => (
+                <CustomMonthInput
+                  {...field}
+                  disabled={isFormDisabled}
+                  className={errors.start_date ? "border-red-500" : ""}
+                />
+              )}
             />
+            {errors.start_date && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.start_date.message}
+              </p>
+            )}
           </div>
           <div>
             <label
@@ -285,14 +283,22 @@ const ChitDetailsForm = ({
             >
               End Date
             </label>
-            <CustomMonthInput
+            <Controller
+              control={control}
               name="end_date"
-              value={formData.end_date}
-              onChange={onFormChange}
-              disabled={isFormDisabled}
+              render={({ field }) => (
+                <CustomMonthInput
+                  {...field}
+                  disabled={isFormDisabled} // Logic for disabling end date if calculated automatically?
+                  className={errors.end_date ? "border-red-500" : ""}
+                />
+              )}
             />
+            {/* End date is usually read-only/calculated, but we allow edits if needed or keep enabled */}
           </div>
         </div>
+
+        {/* --- DAYS --- */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label
@@ -307,18 +313,22 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                {...register("collection_day", { valueAsNumber: true })}
                 type="number"
                 id="collection_day"
-                name="collection_day"
-                value={formData.collection_day}
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.collection_day ? "border-red-500" : "border-border"
+                  }`}
                 min="1"
                 max="28"
                 placeholder="5"
-                required
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.collection_day && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.collection_day.message}
+              </p>
+            )}
           </div>
           <div>
             <label
@@ -333,23 +343,37 @@ const ChitDetailsForm = ({
               </span>
               <div className="absolute left-10 h-6 w-px bg-border"></div>
               <input
+                {...register("payout_day", { valueAsNumber: true })}
                 type="number"
                 id="payout_day"
-                name="payout_day"
-                value={formData.payout_day}
-                onChange={onFormChange}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.payout_day ? "border-red-500" : "border-border"
+                  }`}
                 min="1"
                 max="28"
                 placeholder="10"
-                required
+                disabled={isFormDisabled}
               />
             </div>
+            {errors.payout_day && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.payout_day.message}
+              </p>
+            )}
           </div>
         </div>
       </fieldset>
     </>
   );
+};
+
+ChitDetailsForm.propTypes = {
+  mode: PropTypes.string.isRequired,
+  control: PropTypes.object.isRequired,
+  register: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  success: PropTypes.string,
+  isPostCreation: PropTypes.bool,
+  onEnterKeyOnLastInput: PropTypes.func,
 };
 
 export default ChitDetailsForm;

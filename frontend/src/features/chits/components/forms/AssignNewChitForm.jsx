@@ -3,11 +3,12 @@
 import {
   useState,
   useEffect,
-  useMemo,
   forwardRef,
   useImperativeHandle,
   useRef,
 } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import ChitDetailsForm from "./ChitDetailsForm";
 import PayoutsSection from "../sections/PayoutsSection";
 import Button from "../../../../components/ui/Button";
@@ -23,8 +24,9 @@ import {
 import { createChit, patchChit } from "../../../../services/chitsService";
 import { getUnassignedMonths } from "../../../../services/assignmentsService";
 import useScrollToTop from "../../../../hooks/useScrollToTop";
+import { chitSchema } from "../../schemas/chitSchema";
 
-// --- Helper Functions (unchanged) ---
+// --- Helper Functions ---
 const getFirstDayOfMonth = (yearMonth) => (yearMonth ? `${yearMonth}-01` : "");
 const toYearMonth = (dateString) => {
   if (!dateString) return "";
@@ -72,28 +74,116 @@ const AssignNewChitForm = forwardRef(
     // --- State Management ---
     const [step, setStep] = useState("details"); // 'details', 'payouts', 'month'
     const [createdChit, setCreatedChit] = useState(null);
-    const [originalData, setOriginalData] = useState(null);
-    const [formData, setFormData] = useState({
-      name: "",
-      chit_value: "",
-      size: "", // <-- RENAMED
-      monthly_installment: "",
-      duration_months: "",
-      start_date: "",
-      end_date: "",
-      collection_day: "",
-      payout_day: "",
-    });
     const [availableMonths, setAvailableMonths] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [pageError, setPageError] = useState(null);
     const [success, setSuccess] = useState(null);
 
     const scrollRef = useRef(null);
-    useScrollToTop(success || error); // Scroll on success/error
+    useScrollToTop(success || pageError); // Scroll on success/error
 
-    // --- Expose goBack function (unchanged) ---
+    // RHF Setup
+    const {
+      register,
+      handleSubmit,
+      control,
+      setValue,
+      watch,
+      reset,
+      getValues,
+      formState: { errors, isValid, isSubmitting, dirtyFields },
+    } = useForm({
+      resolver: zodResolver(chitSchema),
+      defaultValues: {
+        name: "",
+        chit_value: "",
+        size: undefined,
+        monthly_installment: "",
+        duration_months: undefined,
+        start_date: "",
+        end_date: "",
+        collection_day: undefined,
+        payout_day: undefined,
+      },
+      mode: "onChange",
+    });
+
+    // --- Watched Values for Logic ---
+    const wName = watch("name");
+
+    useEffect(() => {
+      const subscription = watch((value, { name, type }) => {
+        if (!name) return;
+
+        // Logic from handleFormChange
+        const val = value[name];
+
+        if (name === "size") {
+          // Sync duration
+          const numVal = Number(val);
+          // Only update if differ to prevent loop? (Watch doesn't trigger unless user input usually)
+          // RHF watch triggers on setValue too.
+          // Get current duration.
+          const currDur = getValues("duration_months");
+          if (currDur !== numVal) {
+            setValue("duration_months", numVal);
+          }
+
+          // Calc dates if start exists
+          const start = getValues("start_date");
+          if (start && val) {
+            setValue("end_date", calculateEndDate(start, val));
+          }
+        } else if (name === "duration_months") {
+          const numVal = Number(val);
+          const currSize = getValues("size");
+          if (currSize !== numVal) {
+            setValue("size", numVal);
+          }
+
+          const start = getValues("start_date");
+          const end = getValues("end_date");
+          if (start && val) {
+            setValue("end_date", calculateEndDate(start, val));
+          } else if (end && val) {
+            setValue("start_date", calculateStartDate(end, val));
+          }
+        } else if (name === "start_date") {
+          const duration = getValues("duration_months");
+          const end = getValues("end_date");
+          if (duration) {
+            setValue("end_date", calculateEndDate(val, duration));
+          } else if (end) {
+            const newDur = calculateDuration(val, end);
+            if (newDur) {
+              setValue("duration_months", Number(newDur));
+              setValue("size", Number(newDur));
+            }
+          }
+        } else if (name === "end_date") {
+          const duration = getValues("duration_months");
+          const start = getValues("start_date");
+          if (duration) {
+            setValue("start_date", calculateStartDate(val, duration));
+          } else if (start) {
+            const newDur = calculateDuration(start, val);
+            if (newDur) {
+              setValue("duration_months", Number(newDur));
+              setValue("size", Number(newDur));
+            }
+          }
+        }
+      });
+      return () => subscription.unsubscribe();
+    }, [watch, setValue, getValues]);
+
+    // Update Header Name
+    useEffect(() => {
+      if (onChitNameChange) onChitNameChange(wName || "");
+    }, [wName, onChitNameChange]);
+
+    // --- Expose goBack function ---
     useImperativeHandle(ref, () => ({
       goBack: () => {
         if (step === "month") {
@@ -106,7 +196,7 @@ const AssignNewChitForm = forwardRef(
       },
     }));
 
-    // --- Auto-clear success messages (unchanged) ---
+    // --- Auto-clear success messages ---
     useEffect(() => {
       if (success) {
         const timer = setTimeout(() => setSuccess(null), 3000);
@@ -114,149 +204,54 @@ const AssignNewChitForm = forwardRef(
       }
     }, [success]);
 
-    // --- Form Validation (MODIFIED) ---
-    const isFormValid = useMemo(
-      () =>
-        formData.name.trim() !== "" &&
-        formData.chit_value.trim() !== "" &&
-        formData.size.trim() !== "" && // <-- RENAMED
-        formData.monthly_installment.trim() !== "" &&
-        formData.duration_months.trim() !== "" &&
-        formData.start_date.trim() !== "" &&
-        formData.collection_day.trim() !== "" &&
-        formData.payout_day.trim() !== "",
-      [formData]
-    );
-
-    // --- Form Change Handler (MODIFIED) ---
-    const handleFormChange = (e) => {
-      const { name, value } = e.target;
-      setError(null);
-      setSuccess(null);
-
-      setFormData((prevFormData) => {
-        let newFormData = { ...prevFormData, [name]: value };
-
-        // Sanitize numeric inputs
-        if (
-          name === "chit_value" ||
-          name === "monthly_installment" ||
-          name === "collection_day" ||
-          name === "payout_day"
-        ) {
-          newFormData[name] = value.replace(/[^0-9]/g, "");
-        }
-        // Update parent's chit name display
-        else if (name === "name") {
-          onChitNameChange(value);
-        }
-        // Sync size with duration_months
-        else if (name === "size") {
-          // <-- RENAMED
-          newFormData.duration_months = value;
-          if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-            newFormData.end_date = calculateEndDate(
-              newFormData.start_date,
-              value
-            );
-          }
-        }
-        // Sync duration_months with size and recalculate dates
-        else if (name === "duration_months") {
-          newFormData.size = value; // <-- RENAMED
-          if (newFormData.start_date.match(/^\d{4}-\d{2}$/)) {
-            newFormData.end_date = calculateEndDate(
-              newFormData.start_date,
-              value
-            );
-          } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-            newFormData.start_date = calculateStartDate(
-              newFormData.end_date,
-              value
-            );
-          }
-        }
-        // Handle start_date changes
-        else if (name === "start_date" && value.match(/^\d{4}-\d{2}$/)) {
-          if (newFormData.duration_months) {
-            newFormData.end_date = calculateEndDate(
-              value,
-              newFormData.duration_months
-            );
-          } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-            const newDuration = calculateDuration(value, newFormData.end_date);
-            newFormData.duration_months = newDuration;
-            newFormData.size = newDuration; // <-- RENAMED
-          }
-        }
-        // Handle end_date changes
-        else if (name === "end_date" && value.match(/^\d{4}-\d{2}$/)) {
-          if (newFormData.duration_months) {
-            newFormData.start_date = calculateStartDate(
-              value,
-              newFormData.duration_months
-            );
-          } else if (newFormData.end_date.match(/^\d{4}-\d{2}$/)) {
-            const newDuration = calculateDuration(
-              newFormData.start_date,
-              value
-            );
-            newFormData.duration_months = newDuration;
-            newFormData.size = newDuration; // <-- RENAMED
-          }
-        }
-
-        return newFormData;
-      });
-    };
-
-    // --- Step 1: Save New Chit (MODIFIED) ---
-    const handleSaveChit = async () => {
-      if (!isFormValid) return;
-
+    // --- Step 1: Save New Chit ---
+    const handleSaveChit = async (data) => {
       setLoading(true);
-      setError(null);
+      setPageError(null);
       setSuccess(null);
 
       try {
         const dataToSend = {
-          ...formData,
-          start_date: getFirstDayOfMonth(formData.start_date),
-          chit_value: Number(formData.chit_value),
-          size: Number(formData.size), // <-- RENAMED
-          monthly_installment: Number(formData.monthly_installment),
-          duration_months: Number(formData.duration_months),
-          collection_day: Number(formData.collection_day),
-          payout_day: Number(formData.payout_day),
+          ...data,
+          start_date: getFirstDayOfMonth(data.start_date),
+          chit_value: Number(data.chit_value),
+          size: Number(data.size),
+          monthly_installment: Number(data.monthly_installment),
+          duration_months: Number(data.duration_months),
+          collection_day: Number(data.collection_day),
+          payout_day: Number(data.payout_day),
         };
         delete dataToSend.end_date;
 
         const newChit = await createChit(dataToSend, token);
         setCreatedChit(newChit);
-        setOriginalData({
-          ...formData,
+
+        // Reset form to new Values
+        const newDefaults = {
+          ...newChit,
+          start_date: toYearMonth(newChit.start_date),
           end_date: toYearMonth(newChit.end_date),
-        });
+        };
+        reset(newDefaults);
+
         setSuccess(`Chit "${newChit.name}" created successfully!`);
         onChitNameChange(newChit.name);
         setStep("payouts");
       } catch (err) {
-        setError(err.message);
+        setPageError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    // --- Step 1 (Post-Creation): Update (MODIFIED) ---
-    const handleUpdateChit = async () => {
+    // --- Step 1 (Post-Creation): Update ---
+    const handleUpdateChit = async (data) => {
       if (!createdChit) return;
 
       const changes = {};
-      for (const key in formData) {
-        if (key !== "end_date" && formData[key] !== originalData[key]) {
-          changes[key] = formData[key];
-        }
-      }
+      Object.keys(dirtyFields).forEach((key) => {
+        changes[key] = data[key];
+      });
 
       if (Object.keys(changes).length === 0) {
         setStep("payouts");
@@ -264,7 +259,7 @@ const AssignNewChitForm = forwardRef(
       }
 
       setLoading(true);
-      setError(null);
+      setPageError(null);
       setSuccess(null);
 
       try {
@@ -274,9 +269,7 @@ const AssignNewChitForm = forwardRef(
           patchData.start_date = getFirstDayOfMonth(patchData.start_date);
         if (patchData.chit_value)
           patchData.chit_value = Number(patchData.chit_value);
-        if (patchData.size)
-          // <-- RENAMED
-          patchData.size = Number(patchData.size); // <-- RENAMED
+        if (patchData.size) patchData.size = Number(patchData.size);
         if (patchData.monthly_installment)
           patchData.monthly_installment = Number(patchData.monthly_installment);
         if (patchData.duration_months)
@@ -288,42 +281,46 @@ const AssignNewChitForm = forwardRef(
 
         const updatedChit = await patchChit(createdChit.id, patchData, token);
         setCreatedChit(updatedChit);
-        setOriginalData({
-          ...formData,
+
+        const newDefaults = {
+          ...updatedChit,
+          start_date: toYearMonth(updatedChit.start_date),
           end_date: toYearMonth(updatedChit.end_date),
-        });
+        };
+        reset(newDefaults);
+
         onChitNameChange(updatedChit.name);
         setSuccess("Chit details updated successfully!");
         setStep("payouts");
       } catch (err) {
-        setError(err.message);
+        setPageError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    // --- Step 2: Proceed to Month (unchanged) ---
+    // --- Step 2: Proceed to Month ---
     const handleProceedToMonth = async () => {
       if (!createdChit) return;
 
       setLoading(true);
-      setError(null);
+      setPageError(null);
 
       try {
         const data = await getUnassignedMonths(createdChit.id, token);
         setAvailableMonths(data.available_months);
         setStep("month");
       } catch (err) {
-        setError(err.message);
+        setPageError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    // --- Step 3: Confirm Assignment (unchanged) ---
+    // --- Step 3: Confirm Assignment ---
     const handleConfirmAssignment = async () => {
       if (!selectedMonth) {
-        setError("Please select a chit month to assign.");
+        setPageError("Please select a chit month to assign.");
         return;
       }
 
@@ -340,34 +337,37 @@ const AssignNewChitForm = forwardRef(
     if (!createdChit) {
       return (
         <div className="my-4" ref={scrollRef}>
-          {error && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error}
+          {pageError && (
+            <Message type="error" onClose={() => setPageError(null)}>
+              {pageError}
             </Message>
           )}
           {success && <Message type="success">{success}</Message>}
-          <ChitDetailsForm
-            mode="create"
-            formData={formData}
-            onFormChange={handleFormChange}
-            onEnterKeyOnLastInput={handleSaveChit}
-          />
-          <div className="mt-6">
-            <Button
-              type="button"
-              onClick={handleSaveChit}
-              disabled={!isFormValid || loading}
-              className="w-full flex items-center justify-center" // Centered & Full Width
-            >
-              {loading ? (
-                <Loader2 className="animate-spin w-5 h-5" />
-              ) : (
-                <>
-                  <Save className="mr-2 w-5 h-5" /> Save Chit
-                </>
-              )}
-            </Button>
-          </div>
+
+          <form onSubmit={handleSubmit(handleSaveChit)}>
+            <ChitDetailsForm
+              mode="create"
+              control={control}
+              register={register}
+              errors={errors}
+              onEnterKeyOnLastInput={handleSubmit(handleSaveChit)}
+            />
+            <div className="mt-6">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <Save className="mr-2 w-5 h-5" /> Save Chit
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
       );
     }
@@ -376,36 +376,39 @@ const AssignNewChitForm = forwardRef(
     if (createdChit && step === "details") {
       return (
         <div className="my-4" ref={scrollRef}>
-          {error && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error}
+          {pageError && (
+            <Message type="error" onClose={() => setPageError(null)}>
+              {pageError}
             </Message>
           )}
           {success && <Message type="success">{success}</Message>}
-          <ChitDetailsForm
-            mode="create"
-            formData={formData}
-            onFormChange={handleFormChange}
-            isPostCreation={true}
-            onEnterKeyOnLastInput={handleUpdateChit}
-          />
-          <div className="mt-6">
-            <Button
-              type="button"
-              variant="warning"
-              onClick={handleUpdateChit}
-              disabled={loading}
-              className="w-full flex items-center justify-center" // Centered & Full Width
-            >
-              {loading ? (
-                <Loader2 className="animate-spin w-5 h-5" />
-              ) : (
-                <>
-                  <SquarePen className="mr-2 w-5 h-5" /> Update & Continue
-                </>
-              )}
-            </Button>
-          </div>
+
+          <form onSubmit={handleSubmit(handleUpdateChit)}>
+            <ChitDetailsForm
+              mode="create"
+              control={control}
+              register={register}
+              errors={errors}
+              isPostCreation={true}
+              onEnterKeyOnLastInput={handleSubmit(handleUpdateChit)}
+            />
+            <div className="mt-6">
+              <Button
+                type="submit"
+                variant="warning"
+                disabled={loading}
+                className="w-full flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <SquarePen className="mr-2 w-5 h-5" /> Update & Continue
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
       );
     }
@@ -414,9 +417,9 @@ const AssignNewChitForm = forwardRef(
     if (createdChit && step === "payouts") {
       return (
         <div className="my-4" ref={scrollRef}>
-          {error && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error}
+          {pageError && (
+            <Message type="error" onClose={() => setPageError(null)}>
+              {pageError}
             </Message>
           )}
           {success && <Message type="success">{success}</Message>}
@@ -439,7 +442,7 @@ const AssignNewChitForm = forwardRef(
               variant="primary"
               onClick={handleProceedToMonth}
               disabled={loading}
-              className="w-full flex items-center justify-center" // Centered & Full Width
+              className="w-full flex items-center justify-center"
             >
               {loading ? (
                 <Loader2 className="animate-spin w-5 h-5" />
@@ -458,9 +461,9 @@ const AssignNewChitForm = forwardRef(
     if (createdChit && step === "month") {
       return (
         <div className="my-4" ref={scrollRef}>
-          {error && (
-            <Message type="error" onClose={() => setError(null)}>
-              {error}
+          {pageError && (
+            <Message type="error" onClose={() => setPageError(null)}>
+              {pageError}
             </Message>
           )}
 
@@ -499,7 +502,7 @@ const AssignNewChitForm = forwardRef(
               variant="success"
               onClick={handleConfirmAssignment}
               disabled={!selectedMonth || loading}
-              className="w-full flex items-center justify-center" // Centered & Full Width
+              className="w-full flex items-center justify-center"
             >
               {loading ? (
                 <Loader2 className="animate-spin w-5 h-5" />

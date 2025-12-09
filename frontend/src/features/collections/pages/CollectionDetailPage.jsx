@@ -4,10 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import useScrollToTop from "../../../hooks/useScrollToTop";
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
-import MobileNav from "../../../components/layout/MobileNav";
-import BottomNav from "../../../components/layout/BottomNav";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import CollectionDetailsForm from "../components/forms/CollectionDetailsForm";
@@ -39,7 +35,7 @@ const CollectionDetailPage = () => {
   const defaultAssignmentId = queryParams.get("assignmentId");
 
   const [mode, setMode] = useState("view");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // isMenuOpen removed (handled by MainLayout)
   const [formData, setFormData] = useState({
     chit_assignment_id: defaultAssignmentId || "",
     amount_paid: "",
@@ -186,125 +182,105 @@ const CollectionDetailPage = () => {
 
   return (
     <>
-      <div
-        className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
-      >
-        <Header
-          onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection="collections"
-        />
-        <div className="pb-16 md:pb-0">
-          <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
-            <div className="container mx-auto">
-              {/* --- Header Row --- */}
-              <div className="relative flex justify-center items-center mb-4">
-                <button
-                  onClick={handleBackNavigation}
-                  className="absolute left-0 text-text-primary hover:text-accent transition-colors"
-                >
-                  <ArrowLeft className="w-6 h-6" />
-                </button>
-                <h1
-                  ref={titleRef}
-                  tabIndex="-1"
-                  className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
-                >
-                  {getTitle()}
-                </h1>
-                {mode === "view" && (
-                  <Link
-                    to={`/collections/edit/${id}`}
-                    className="absolute right-0 p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
-                  >
-                    <SquarePen className="w-6 h-6" />
-                  </Link>
-                )}
-              </div>
-              <hr className="my-4 border-border" />
-
-              <div className="w-full max-w-2xl mx-auto">
-                {success && (
-                  <Message type="success" title="Success">
-                    {success}
-                  </Message>
-                )}
-                {error && (
-                  <Message
-                    type="error"
-                    title="Error"
-                    onClose={() => setError(null)}
-                  >
-                    {error}
-                  </Message>
-                )}
-              </div>
-
-              {/* --- VIEW MODE: Dashboard --- */}
-              {mode === "view" && collectionDetails ? (
-                <div className="max-w-4xl mx-auto">
-                  <CollectionViewDashboard
-                    collectionData={collectionDetails}
-                    collectionId={id}
-                  />
-                </div>
-              ) : (
-                /* --- CREATE / EDIT MODE: Form --- */
-                <div className="max-w-2xl mx-auto">
-                  <form onSubmit={handleSubmit}>
-                    <Card>
-                      <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-                        <Info className="w-6 h-6" /> Details
-                      </h2>
-                      <hr className="border-border mb-4" />
-
-                      <CollectionDetailsForm
-                        mode={mode}
-                        formData={formData}
-                        onFormChange={handleFormChange}
-                        defaultAssignmentId={
-                          mode === "create" ? defaultAssignmentId : null
-                        }
-                        collectionData={collectionDetails}
-                      />
-                      {mode !== "view" && (
-                        <div className="flex justify-end mt-6">
-                          <Button
-                            type="submit"
-                            variant={mode === "create" ? "success" : "warning"}
-                            disabled={loading}
-                            className="w-full"
-                          >
-                            {loading ? (
-                              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                            ) : mode === "create" ? (
-                              <>
-                                <Plus className="w-5 h-5 inline-block mr-2" />
-                                Log Collection
-                              </>
-                            ) : (
-                              <>
-                                <Save className="w-5 h-5 inline-block mr-2" />
-                                Update Collection
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </Card>
-                  </form>
-                </div>
-              )}
-            </div>
-          </main>
-          <Footer />
+      <div className="container mx-auto">
+        {/* --- Header Row --- */}
+        <div className="relative flex justify-center items-center mb-4">
+          <button
+            onClick={handleBackNavigation}
+            className="absolute left-0 text-text-primary hover:text-accent transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1
+            ref={titleRef}
+            tabIndex="-1"
+            className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
+          >
+            {getTitle()}
+          </h1>
+          {mode === "view" && (
+            <Link
+              to={`/collections/edit/${id}`}
+              className="absolute right-0 p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200 print:hidden"
+            >
+              <SquarePen className="w-6 h-6" />
+            </Link>
+          )}
         </div>
+        <hr className="my-4 border-border" />
+
+        <div className="w-full max-w-2xl mx-auto">
+          {success && (
+            <Message type="success" title="Success">
+              {success}
+            </Message>
+          )}
+          {error && (
+            <Message
+              type="error"
+              title="Error"
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Message>
+          )}
+        </div>
+
+        {mode === "view" && collectionDetails ? (
+          <div>
+            <CollectionViewDashboard
+              collectionData={collectionDetails}
+              collectionId={id}
+            />
+          </div>
+        ) : (
+          /* --- CREATE / EDIT MODE: Form --- */
+          <div className="max-w-2xl mx-auto">
+            <form onSubmit={handleSubmit}>
+              <Card>
+                <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
+                  <Info className="w-6 h-6" /> Details
+                </h2>
+                <hr className="border-border mb-4" />
+
+                <CollectionDetailsForm
+                  mode={mode}
+                  formData={formData}
+                  onFormChange={handleFormChange}
+                  defaultAssignmentId={
+                    mode === "create" ? defaultAssignmentId : null
+                  }
+                  collectionData={collectionDetails}
+                />
+                {mode !== "view" && (
+                  <div className="flex justify-end mt-6">
+                    <Button
+                      type="submit"
+                      variant={mode === "create" ? "success" : "warning"}
+                      disabled={loading}
+                      className="w-full"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                      ) : mode === "create" ? (
+                        <>
+                          <Plus className="w-5 h-5 inline-block mr-2" />
+                          Log Collection
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5 inline-block mr-2" />
+                          Update Collection
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            </form>
+          </div>
+        )}
       </div>
-      <MobileNav
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        activeSection="collections"
-      />
-      <BottomNav />
     </>
   );
 };

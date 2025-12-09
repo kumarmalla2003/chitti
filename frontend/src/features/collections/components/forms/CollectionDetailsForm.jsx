@@ -1,7 +1,8 @@
 // frontend/src/features/collections/components/forms/CollectionDetailsForm.jsx
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
+import { useWatch, Controller } from "react-hook-form";
 import {
   Layers,
   User,
@@ -18,26 +19,27 @@ import {
 } from "../../../../services/assignmentsService";
 import CustomDateInput from "../../../../components/ui/CustomDateInput";
 import ViewOnlyField from "../../../../components/ui/ViewOnlyField";
-import useCursorTracking from "../../../../hooks/useCursorTracking";
+import FormattedInput from "../../../../components/ui/FormattedInput";
 
 const CollectionDetailsForm = ({
   mode,
-  formData,
-  onFormChange,
-  defaultAssignmentId,
+  control,
+  register,
+  setValue,
+  errors,
   paymentData, // Can be used for 'view' mode data
   defaultChitId = null,
   defaultMemberId = null,
+  defaultAssignmentId = null,
 }) => {
   const { token } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
 
-  const amountInputRef = useRef(null);
-  const trackAmountCursor = useCursorTracking(
-    amountInputRef,
-    formData.amount_paid,
-    /[\d.]/
-  );
+  // Watch fields to trigger side-effects
+  const selectedMemberId = useWatch({ control, name: "member_id" });
+  const selectedChitId = useWatch({ control, name: "chit_id" });
+  // We need to watch assignment ID for enabling fields or just rely on RHF
+  const selectedAssignmentId = useWatch({ control, name: "chit_assignment_id" });
 
   const [allChits, setAllChits] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
@@ -46,13 +48,142 @@ const CollectionDetailsForm = ({
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
 
-  const [selectedChitId, setSelectedChitId] = useState(defaultChitId || "");
-  const [selectedMemberId, setSelectedMemberId] = useState(
-    defaultMemberId || ""
-  );
-
   const [isLoading, setIsLoading] = useState(true);
   const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
+
+  // Initial Fetch
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      if (mode !== "view") {
+        setIsLoading(true);
+        try {
+          const [chitsData, membersData] = await Promise.all([
+            getAllChits(token),
+            getAllMembers(token),
+          ]);
+          setAllChits(chitsData.chits);
+          setAllMembers(membersData.members);
+          setFilteredChits(chitsData.chits);
+          setFilteredMembers(membersData.members);
+        } catch (err) {
+          console.error("Failed to load dropdown data", err);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchInitialData();
+  }, [mode, token]);
+
+  // Effect: When Member changes (and not View mode)
+  useEffect(() => {
+    if (mode === "view") return;
+
+    const filterChitsByMember = async () => {
+      if (selectedMemberId) {
+        // If we have a default Chit ID and it matches, we might not need to filter or clearing
+        // But generally if Member changes, we filter available chits
+        try {
+          const memberAssignments = await getAssignmentsForMember(
+            selectedMemberId,
+            token
+          );
+          const validChitIds = new Set(memberAssignments.map((a) => a.chit.id));
+
+          if (!defaultChitId) {
+            const newFilteredChits = allChits.filter((c) => validChitIds.has(c.id));
+            setFilteredChits(newFilteredChits);
+
+            // If selected Chit is no longer valid, clear it
+            if (selectedChitId && !validChitIds.has(Number(selectedChitId))) {
+              setValue("chit_id", "");
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch member assignments", err);
+        }
+      } else {
+        // Reset filters if no member selected (and no default)
+        if (!defaultChitId) setFilteredChits(allChits);
+      }
+    };
+
+    // Defer to avoid conflict with initial load
+    if (!isLoading && allChits.length > 0) {
+      filterChitsByMember();
+    }
+  }, [selectedMemberId, allChits, defaultChitId, mode, token, setValue, isLoading]); // Removed selectedChitId from filtered deps to avoid loops?
+
+  // Effect: When Chit changes
+  useEffect(() => {
+    if (mode === "view") return;
+
+    const filterMembersByChit = async () => {
+      if (selectedChitId) {
+        try {
+          const chitAssignments = await getAssignmentsForChit(selectedChitId, token);
+          const validMemberIds = new Set(
+            chitAssignments.assignments.map((a) => a.member.id)
+          );
+
+          if (!defaultMemberId) {
+            const newFilteredMembers = allMembers.filter((m) => validMemberIds.has(m.id));
+            setFilteredMembers(newFilteredMembers);
+
+            if (selectedMemberId && !validMemberIds.has(Number(selectedMemberId))) {
+              setValue("member_id", "");
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch chit assignments", err);
+        }
+      } else {
+        if (!defaultMemberId) setFilteredMembers(allMembers);
+      }
+    };
+
+    if (!isLoading && allMembers.length > 0) {
+      filterMembersByChit();
+    }
+  }, [selectedChitId, allMembers, defaultMemberId, mode, token, setValue, isLoading]);
+
+  // Effect: Fetch Assignments when both selected
+  useEffect(() => {
+    if (selectedChitId && selectedMemberId && mode !== "view") {
+      const fetchAssignments = async () => {
+        setIsAssignmentsLoading(true);
+        try {
+          // We can fetch assignments for Member and filter by Chit
+          // Or getAssignmentsForChit and filter by Member.
+          // Original used getAssignmentsForMember(selectedMemberId)
+          const assignments = await getAssignmentsForMember(
+            selectedMemberId,
+            token
+          );
+          const finalAssignments = assignments.filter(
+            (a) => a.chit.id === parseInt(selectedChitId)
+          );
+          setFilteredAssignments(finalAssignments);
+
+          // Auto-select assignment if only one? OR check defaultAssignmentId
+          // NOTE: CollectionHistoryList sets defaults. RHF 'reset' should handle value.
+          // IF defaultAssignmentId is passed prop (e.g. from container resetting form),
+          // checking it here might be redundant if 'reset' sets the value.
+          // BUT: 'reset' sets the value in form state. The OPTIONS must be available for it to show correctly.
+          // So fetching assignments is critical.
+
+        } catch (err) {
+          console.error("Failed to filter assignments", err);
+        } finally {
+          setIsAssignmentsLoading(false);
+        }
+      };
+      fetchAssignments();
+    } else {
+      setFilteredAssignments([]);
+    }
+  }, [selectedChitId, selectedMemberId, mode, token]);
+
 
   const formatMonthYear = (dateString) => {
     if (!dateString) return "-";
@@ -69,160 +200,6 @@ const CollectionDetailsForm = ({
     return `${day}/${month}/${year}`;
   };
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (mode !== "view") {
-        setIsLoading(true);
-        try {
-          const [chitsData, membersData] = await Promise.all([
-            getAllChits(token),
-            getAllMembers(token),
-          ]);
-          setAllChits(chitsData.chits);
-          setAllMembers(membersData.members);
-
-          if (defaultMemberId) {
-            const memberAssignments = await getAssignmentsForMember(
-              defaultMemberId,
-              token
-            );
-            const validChitIds = new Set(
-              memberAssignments.map((a) => a.chit.id)
-            );
-            setFilteredChits(
-              chitsData.chits.filter((c) => validChitIds.has(c.id))
-            );
-            setFilteredMembers(
-              membersData.members.filter(
-                (m) => m.id === parseInt(defaultMemberId)
-              )
-            );
-          } else if (defaultChitId) {
-            const chitAssignments = await getAssignmentsForChit(
-              defaultChitId,
-              token
-            );
-            const validMemberIds = new Set(
-              chitAssignments.assignments.map((a) => a.member.id)
-            );
-            setFilteredMembers(
-              membersData.members.filter((m) => validMemberIds.has(m.id))
-            );
-            setFilteredChits(
-              chitsData.chits.filter((c) => c.id === parseInt(defaultChitId))
-            );
-          } else {
-            setFilteredChits(chitsData.chits);
-            setFilteredMembers(membersData.members);
-          }
-        } catch (err) {
-          console.error("Failed to load dropdown data", err);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchInitialData();
-  }, [mode, token, defaultChitId, defaultMemberId]);
-
-  useEffect(() => {
-    if (paymentData && (mode === "edit" || mode === "view")) {
-      setSelectedChitId(String(paymentData.chit.id));
-      setSelectedMemberId(String(paymentData.member.id));
-    }
-  }, [paymentData, mode]);
-
-  const handleMemberChange = async (e) => {
-    const newMemberId = e.target.value;
-    setSelectedMemberId(newMemberId);
-    onFormChange(e);
-    onFormChange({ target: { name: "chit_assignment_id", value: "" } });
-    setFilteredAssignments([]);
-
-    if (newMemberId) {
-      setIsLoading(true);
-      try {
-        const memberAssignments = await getAssignmentsForMember(
-          newMemberId,
-          token
-        );
-        const validChitIds = new Set(memberAssignments.map((a) => a.chit.id));
-        if (!defaultChitId) {
-          setFilteredChits(allChits.filter((c) => validChitIds.has(c.id)));
-        }
-      } catch (err) {
-        console.error("Failed to fetch member assignments", err);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setFilteredChits(allChits);
-    }
-  };
-
-  const handleChitChange = async (e) => {
-    const newChitId = e.target.value;
-    setSelectedChitId(newChitId);
-    onFormChange(e);
-    onFormChange({ target: { name: "chit_assignment_id", value: "" } });
-    setFilteredAssignments([]);
-
-    if (newChitId) {
-      setIsLoading(true);
-      try {
-        const chitAssignments = await getAssignmentsForChit(newChitId, token);
-        const validMemberIds = new Set(
-          chitAssignments.assignments.map((a) => a.member.id)
-        );
-        if (!defaultMemberId) {
-          setFilteredMembers(
-            allMembers.filter((m) => validMemberIds.has(m.id))
-          );
-        }
-      } catch (err) {
-        console.error("Failed to fetch chit assignments", err);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setFilteredMembers(allMembers);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedChitId && selectedMemberId && mode !== "view") {
-      const fetchAssignments = async () => {
-        setIsAssignmentsLoading(true);
-        try {
-          const assignments = await getAssignmentsForMember(
-            selectedMemberId,
-            token
-          );
-          const finalAssignments = assignments.filter(
-            (a) => a.chit.id === parseInt(selectedChitId)
-          );
-          setFilteredAssignments(finalAssignments);
-          if (
-            defaultAssignmentId &&
-            finalAssignments.some((a) => a.id === parseInt(defaultAssignmentId))
-          ) {
-            onFormChange({
-              target: {
-                name: "chit_assignment_id",
-                value: defaultAssignmentId,
-              },
-            });
-          }
-        } catch (err) {
-          console.error("Failed to filter assignments", err);
-        } finally {
-          setIsAssignmentsLoading(false);
-        }
-      };
-      fetchAssignments();
-    }
-  }, [selectedChitId, selectedMemberId, mode, token, defaultAssignmentId]);
-
   const assignmentOptions = useMemo(() => {
     return filteredAssignments.map((a) => ({
       ...a,
@@ -231,6 +208,7 @@ const CollectionDetailsForm = ({
   }, [filteredAssignments]);
 
   if (mode === "view" && paymentData) {
+    // ... View Mode render (unchanged logic just using props)
     const assignmentLabel = `${formatMonthYear(paymentData.chit_month)}`;
     return (
       <fieldset disabled={isFormDisabled} className="space-y-6">
@@ -270,15 +248,17 @@ const CollectionDetailsForm = ({
         />
         <ViewOnlyField
           label="Notes"
-          value={formData.notes || "-"}
+          value={paymentData.notes || "-"}
           icon={FileText}
         />
       </fieldset>
     );
   }
 
+  // --- CREATE / EDIT FORM ---
   return (
     <fieldset disabled={isFormDisabled} className="space-y-6">
+      {/* MEMBER */}
       <div>
         <label
           htmlFor="member_id"
@@ -288,16 +268,13 @@ const CollectionDetailsForm = ({
         </label>
         <div className="relative flex items-center">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <User className="w-5 h-5 text-text-secondary" /> {/* Fixed size */}
+            <User className="w-5 h-5 text-text-secondary" />
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("member_id")}
             id="member_id"
-            name="member_id"
-            value={selectedMemberId}
-            onChange={handleMemberChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.member_id ? "border-red-500" : "border-border"}`}
             disabled={isLoading || !!defaultMemberId}
           >
             <option value="">
@@ -310,8 +287,10 @@ const CollectionDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.member_id && <p className="text-red-500 text-sm mt-1">{errors.member_id.message}</p>}
       </div>
 
+      {/* CHIT */}
       <div>
         <label
           htmlFor="chit_id"
@@ -321,17 +300,13 @@ const CollectionDetailsForm = ({
         </label>
         <div className="relative flex items-center">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <Layers className="w-5 h-5 text-text-secondary" />{" "}
-            {/* Fixed size */}
+            <Layers className="w-5 h-5 text-text-secondary" />
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("chit_id")}
             id="chit_id"
-            name="chit_id"
-            value={selectedChitId}
-            onChange={handleChitChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.chit_id ? "border-red-500" : "border-border"}`}
             disabled={isLoading || !!defaultChitId}
           >
             <option value="">
@@ -344,8 +319,10 @@ const CollectionDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.chit_id && <p className="text-red-500 text-sm mt-1">{errors.chit_id.message}</p>}
       </div>
 
+      {/* ASSIGNMENT */}
       <div>
         <label
           htmlFor="chit_assignment_id"
@@ -355,17 +332,13 @@ const CollectionDetailsForm = ({
         </label>
         <div className="relative flex items-center">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <Calendar className="w-5 h-5 text-text-secondary" />{" "}
-            {/* Fixed size */}
+            <Calendar className="w-5 h-5 text-text-secondary" />
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("chit_assignment_id")}
             id="chit_assignment_id"
-            name="chit_assignment_id"
-            value={formData.chit_assignment_id}
-            onChange={onFormChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.chit_assignment_id ? "border-red-500" : "border-border"}`}
             disabled={
               isAssignmentsLoading || !selectedChitId || !selectedMemberId
             }
@@ -382,8 +355,10 @@ const CollectionDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.chit_assignment_id && <p className="text-red-500 text-sm mt-1">{errors.chit_assignment_id.message}</p>}
       </div>
 
+      {/* AMOUNT & DATE */}
       <div className="grid sm:grid-cols-2 gap-6">
         <div>
           <label
@@ -394,31 +369,23 @@ const CollectionDetailsForm = ({
           </label>
           <div className="relative flex items-center">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <IndianRupee className="w-5 h-5 text-text-secondary" />{" "}
-              {/* Fixed size */}
+              <IndianRupee className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <input
-              ref={amountInputRef}
-              type="text"
-              id="amount_paid"
+            <FormattedInput
               name="amount_paid"
-              value={formData.amount_paid}
-              onChange={(e) => {
-                trackAmountCursor(e);
-                let value = e.target.value.replace(/[^0-9.]/g, "");
-                const parts = value.split(".");
-                if (parts.length > 2) {
-                  value = parts[0] + "." + parts.slice(1).join("");
-                }
-                onFormChange({ target: { name: "amount_paid", value } });
+              control={control}
+              format={(val) => val}
+              parse={(val) => {
+                const raw = val.replace(/[^0-9.]/g, "");
+                // Optional: logic to keep one dot
+                return raw ? Number(raw) : "";
               }}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-              required
+              className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent ${errors.amount_paid ? "border-red-500" : "border-border"}`}
               placeholder="5000"
-              inputMode="decimal"
             />
           </div>
+          {errors.amount_paid && <p className="text-red-500 text-sm mt-1">{errors.amount_paid.message}</p>}
         </div>
 
         <div>
@@ -428,20 +395,23 @@ const CollectionDetailsForm = ({
           >
             Collection Date
           </label>
-          {/* Note: Ensure formData has collection_date, or map payment_date to it */}
-          <CustomDateInput
-            name={
-              formData.collection_date !== undefined
-                ? "collection_date"
-                : "payment_date"
-            }
-            value={formData.collection_date || formData.payment_date}
-            onChange={onFormChange}
-            required
+          <Controller
+            name="collection_date"
+            control={control}
+            render={({ field }) => (
+              <CustomDateInput
+                {...field}
+                value={field.value || ""}
+                onChange={(val) => field.onChange(val)} // CustomDateInput expects direct value usually
+                className={errors.collection_date ? "border-red-500" : ""}
+              />
+            )}
           />
+          {errors.collection_date && <p className="text-red-500 text-sm mt-1">{errors.collection_date.message}</p>}
         </div>
       </div>
 
+      {/* METHOD */}
       <div>
         <label
           htmlFor="collection_method"
@@ -455,16 +425,9 @@ const CollectionDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("collection_method")}
             id="collection_method"
-            name={
-              formData.collection_method !== undefined
-                ? "collection_method"
-                : "payment_method"
-            }
-            value={formData.collection_method || formData.payment_method}
-            onChange={onFormChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent ${errors.collection_method ? "border-red-500" : "border-border"}`}
           >
             <option value="Cash">Cash</option>
             <option value="UPI">UPI</option>
@@ -472,8 +435,10 @@ const CollectionDetailsForm = ({
             <option value="Other">Other</option>
           </select>
         </div>
+        {errors.collection_method && <p className="text-red-500 text-sm mt-1">{errors.collection_method.message}</p>}
       </div>
 
+      {/* NOTES */}
       <div>
         <label
           htmlFor="notes"
@@ -487,10 +452,8 @@ const CollectionDetailsForm = ({
           </span>
           <div className="absolute top-2.5 left-10 h-6 w-px bg-border pointer-events-none"></div>
           <textarea
+            {...register("notes")}
             id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={onFormChange}
             rows="3"
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
             placeholder="e.g., Paid via GPay"

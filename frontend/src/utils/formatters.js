@@ -1,7 +1,7 @@
 export const formatCurrency = (val) => {
     if (val === undefined || val === null) return "";
     const num = Number(val.toString().replace(/,/g, ""));
-    return isNaN(num) ? "Rs. 0" : `Rs. ${num.toLocaleString("en-IN")}`;
+    return isNaN(num) ? "₹ 0" : `₹ ${num.toLocaleString("en-IN")}`;
 };
 
 export const formatDate = (dateString, options = {}) => {

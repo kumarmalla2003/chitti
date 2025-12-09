@@ -21,12 +21,10 @@ import {
 } from "lucide-react";
 
 // --- Layout & UI Imports ---
-import Header from "../../../components/layout/Header";
-import Footer from "../../../components/layout/Footer";
-import MobileNav from "../../../components/layout/MobileNav";
-import BottomNav from "../../../components/layout/BottomNav";
 import Card from "../../../components/ui/Card";
 import Table from "../../../components/ui/Table";
+import TabButton from "../../../components/ui/TabButton"; // Imported shared component
+import { formatCurrency } from "../../../utils/formatters"; // Imported shared utility
 
 import api from "../../../lib/api";
 
@@ -49,29 +47,13 @@ const fetchDashboardData = async () => {
   };
 };
 
-// --- TabButton Component ---
-const TabButton = ({ name, icon: Icon, label, activeTab, setActiveTab }) => {
-  const isActive = activeTab === name;
-  return (
-    <button
-      type="button"
-      onClick={() => setActiveTab(name)}
-      className={`flex-1 flex-shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none rounded-t-md border-b-2 whitespace-nowrap ${isActive
-        ? "bg-background-secondary text-accent border-accent"
-        : "text-text-secondary border-transparent hover:bg-background-tertiary"
-        }`}
-    >
-      <Icon className="w-4 h-4" />
-      <span>{label}</span>
-    </button>
-  );
-};
+// TabButton removed (using shared)
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // isMenuOpen state removed (handled by MainLayout)
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ chits: [], members: [], collections: [] });
   const [stats, setStats] = useState(null);
@@ -247,8 +229,7 @@ const DashboardPage = () => {
     }
   }, [pendingData, pendingView, pendingSearch]);
 
-  const formatCurrency = (amount) =>
-    `₹ ${(amount || 0).toLocaleString("en-IN")}`;
+  // formatCurrency removed (using shared)
 
   // --- TABLE COLUMNS ---
 
@@ -399,310 +380,291 @@ const DashboardPage = () => {
 
   return (
     <>
-      <div
-        className={`transition-all duration-300 ${isMenuOpen ? "blur-sm" : ""}`}
-      >
-        <Header
-          onMenuOpen={() => setIsMenuOpen(true)}
-          activeSection="dashboard"
-        />
 
-        <div className="pb-16 md:pb-0">
-          <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
-            <div className="container mx-auto space-y-8">
-              {/* --- 1. Page Heading --- */}
+      <div className="container mx-auto space-y-8">
+        {/* --- 1. Page Heading --- */}
+        <div className="relative flex justify-center items-center mb-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
+            Dashboard
+          </h1>
+        </div>
+        <hr className="my-4 border-border" />
+
+        {/* --- 2. Key Metrics Grid (4 Columns) --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <MetricCard
+            icon={WalletMinimal}
+            label="Monthly Collection"
+            value={formatCurrency(stats?.collectedThisMonth)}
+            subtext={`Target: ${formatCurrency(stats?.monthlyTarget)}`}
+            onClick={() => navigate("/collections")}
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="Monthly Payouts"
+            value={formatCurrency(stats?.monthlyPayouts)}
+            subtext="Total Liability"
+            onClick={() => navigate("/chits")}
+          />
+          <MetricCard
+            icon={Layers}
+            label="Active Chits"
+            value={stats?.activeChits || 0}
+            subtext={`Total Chits: ${stats?.totalChits || 0}`}
+            onClick={() => navigate("/chits")}
+          />
+          <MetricCard
+            icon={Users}
+            label="Active Members"
+            value={stats?.activeMembers || 0}
+            subtext={`Total Members: ${stats?.totalMembers || 0}`}
+            onClick={() => navigate("/members")}
+          />
+        </div>
+
+        {/* --- 3. Main Layout Grid --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* --- LEFT COLUMN --- */}
+          <div className="lg:col-span-2 flex flex-col gap-8">
+            {/* SECTION A: Pending Collections */}
+            <Card>
               <div className="relative flex justify-center items-center mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
-                  Dashboard
-                </h1>
+                {/* Icon matches Heading Color */}
+                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <AlertCircle className="text-text-primary w-6 h-6" />
+                  Pending Collections
+                </h2>
               </div>
-              <hr className="my-4 border-border" />
+              <hr className="border-border mb-4" />
 
-              {/* --- 2. Key Metrics Grid (4 Columns) --- */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <MetricCard
-                  icon={WalletMinimal}
-                  label="Monthly Collection"
-                  value={formatCurrency(stats?.collectedThisMonth)}
-                  subtext={`Target: ${formatCurrency(stats?.monthlyTarget)}`}
-                  onClick={() => navigate("/collections")}
-                />
-                <MetricCard
-                  icon={TrendingUp}
-                  label="Monthly Payouts"
-                  value={formatCurrency(stats?.monthlyPayouts)}
-                  subtext="Total Liability"
-                  onClick={() => navigate("/chits")}
-                />
-                <MetricCard
+              {/* Scrollable Tabs */}
+              <div className="flex items-center border-b border-border mb-4 overflow-x-auto whitespace-nowrap no-scrollbar">
+                <TabButton
+                  name="chit"
                   icon={Layers}
-                  label="Active Chits"
-                  value={stats?.activeChits || 0}
-                  subtext={`Total Chits: ${stats?.totalChits || 0}`}
-                  onClick={() => navigate("/chits")}
+                  label="By Chits"
+                  activeTab={pendingView}
+                  setActiveTab={setPendingView}
                 />
-                <MetricCard
+                <TabButton
+                  name="member"
                   icon={Users}
-                  label="Active Members"
-                  value={stats?.activeMembers || 0}
-                  subtext={`Total Members: ${stats?.totalMembers || 0}`}
-                  onClick={() => navigate("/members")}
+                  label="By Members"
+                  activeTab={pendingView}
+                  setActiveTab={setPendingView}
                 />
               </div>
 
-              {/* --- 3. Main Layout Grid --- */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* --- LEFT COLUMN --- */}
-                <div className="lg:col-span-2 flex flex-col gap-8">
-                  {/* SECTION A: Pending Collections */}
-                  <Card>
-                    <div className="relative flex justify-center items-center mb-4">
-                      {/* Icon matches Heading Color */}
-                      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                        <AlertCircle className="text-text-primary w-6 h-6" />
+              {/* Search Bar - Conditional Rendering */}
+              {showSearchBar && (
+                <div className="relative w-full sm:max-w-md mb-4">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Search className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 top-2.5 h-5 w-px bg-border"></div>
+                  <input
+                    type="text"
+                    placeholder={`Search by ${pendingView === "chit" ? "chit name" : "member name"
+                      }...`}
+                    value={pendingSearch}
+                    onChange={(e) => setPendingSearch(e.target.value)}
+                    className="w-full pl-12 pr-4 py-2 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent text-sm"
+                  />
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="max-h-[500px] overflow-y-auto">
+                {filteredPendingList.length > 0 ? (
+                  <Table
+                    columns={
+                      pendingView === "chit" ? chitColumns : memberColumns
+                    }
+                    data={filteredPendingList}
+                    variant="secondary"
+                  />
+                ) : (
+                  <EmptyState message="No pending collections." />
+                )}
+              </div>
+            </Card>
+
+            {/* SECTION B: Upcoming Payouts */}
+            <Card>
+              <div className="relative flex justify-center items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Clock className="text-warning-accent w-6 h-6" />
+                  Upcoming Payouts
+                </h2>
+              </div>
+              <hr className="border-border mb-6" />
+
+              <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border rounded-xl bg-background-primary/50">
+                <div className="p-4 bg-background-tertiary rounded-full mb-3">
+                  <Calendar className="w-8 h-8 text-text-secondary" />
+                </div>
+                <h3 className="text-lg font-semibold text-text-primary mb-1">
+                  No Scheduled Payouts
+                </h3>
+                <p className="text-sm text-text-secondary max-w-xs">
+                  There are no payouts scheduled for the current month
+                  based on active chit cycles.
+                </p>
+              </div>
+            </Card>
+
+            {/* SECTION C: Recent Activity */}
+            <Card>
+              <div className="relative flex justify-center items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Activity className="text-accent w-6 h-6" />
+                  Recent Activity
+                </h2>
+                <button
+                  onClick={() => navigate("/collections")}
+                  className="absolute right-0 text-sm text-accent hover:underline font-semibold"
+                >
+                  View All
+                </button>
+              </div>
+              <hr className="border-border mb-4" />
+
+              <div className="space-y-1">
+                {stats?.recentCollections?.length > 0 ? (
+                  stats.recentCollections.map((collection) => (
+                    <ActivityItem
+                      key={collection.id}
+                      collection={collection}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-text-secondary">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No recent collections</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* --- RIGHT COLUMN --- */}
+          <div className="space-y-8">
+            {/* Quick Actions */}
+            <Card>
+              <h2 className="text-xl font-bold text-text-primary mb-4 text-center">
+                Quick Actions
+              </h2>
+              <hr className="border-border mb-6" />
+              <div className="grid grid-cols-2 gap-3">
+                <QuickAction
+                  icon={Layers}
+                  label="New Chit"
+                  onClick={() => navigate("/chits/create")}
+                  color="accent"
+                />
+                <QuickAction
+                  icon={Users}
+                  label="Add Member"
+                  onClick={() => navigate("/members/create")}
+                  color="success"
+                />
+                <QuickAction
+                  icon={WalletMinimal}
+                  label="Log Collection"
+                  onClick={() => navigate("/collections/create")}
+                  color="success"
+                />
+                <QuickAction
+                  icon={Activity}
+                  label="View Reports"
+                  onClick={() => navigate("/chits")}
+                  color="accent"
+                />
+              </div>
+            </Card>
+
+            {/* Alerts & Reminders */}
+            <Card>
+              <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center justify-center gap-2">
+                <AlertCircle className="text-warning-accent w-6 h-6" />
+                Reminders
+              </h2>
+              <hr className="border-border mb-6" />
+              <div className="space-y-3">
+                <div className="p-3 bg-warning-bg border border-warning-accent/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-warning-accent mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-warning-accent">
                         Pending Collections
-                      </h2>
-                    </div>
-                    <hr className="border-border mb-4" />
-
-                    {/* Scrollable Tabs */}
-                    <div className="flex items-center border-b border-border mb-4 overflow-x-auto whitespace-nowrap no-scrollbar">
-                      <TabButton
-                        name="chit"
-                        icon={Layers}
-                        label="By Chits"
-                        activeTab={pendingView}
-                        setActiveTab={setPendingView}
-                      />
-                      <TabButton
-                        name="member"
-                        icon={Users}
-                        label="By Members"
-                        activeTab={pendingView}
-                        setActiveTab={setPendingView}
-                      />
-                    </div>
-
-                    {/* Search Bar - Conditional Rendering */}
-                    {showSearchBar && (
-                      <div className="relative w-full sm:max-w-md mb-4">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                          <Search className="w-5 h-5 text-text-secondary" />
-                        </span>
-                        <div className="absolute left-10 top-2.5 h-5 w-px bg-border"></div>
-                        <input
-                          type="text"
-                          placeholder={`Search by ${pendingView === "chit" ? "chit name" : "member name"
-                            }...`}
-                          value={pendingSearch}
-                          onChange={(e) => setPendingSearch(e.target.value)}
-                          className="w-full pl-12 pr-4 py-2 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent text-sm"
-                        />
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="max-h-[500px] overflow-y-auto">
-                      {filteredPendingList.length > 0 ? (
-                        <Table
-                          columns={
-                            pendingView === "chit" ? chitColumns : memberColumns
-                          }
-                          data={filteredPendingList}
-                          variant="secondary"
-                        />
-                      ) : (
-                        <EmptyState message="No pending collections." />
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* SECTION B: Upcoming Payouts */}
-                  <Card>
-                    <div className="relative flex justify-center items-center mb-4">
-                      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                        <Clock className="text-warning-accent w-6 h-6" />
-                        Upcoming Payouts
-                      </h2>
-                    </div>
-                    <hr className="border-border mb-6" />
-
-                    <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border rounded-xl bg-background-primary/50">
-                      <div className="p-4 bg-background-tertiary rounded-full mb-3">
-                        <Calendar className="w-8 h-8 text-text-secondary" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-text-primary mb-1">
-                        No Scheduled Payouts
-                      </h3>
-                      <p className="text-sm text-text-secondary max-w-xs">
-                        There are no payouts scheduled for the current month
-                        based on active chit cycles.
+                      </p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {pendingData.totalCount} members pending this
+                        month
                       </p>
                     </div>
-                  </Card>
-
-                  {/* SECTION C: Recent Activity */}
-                  <Card>
-                    <div className="relative flex justify-center items-center mb-4">
-                      <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-                        <Activity className="text-accent w-6 h-6" />
-                        Recent Activity
-                      </h2>
-                      <button
-                        onClick={() => navigate("/collections")}
-                        className="absolute right-0 text-sm text-accent hover:underline font-semibold"
-                      >
-                        View All
-                      </button>
-                    </div>
-                    <hr className="border-border mb-4" />
-
-                    <div className="space-y-1">
-                      {stats?.recentCollections?.length > 0 ? (
-                        stats.recentCollections.map((collection) => (
-                          <ActivityItem
-                            key={collection.id}
-                            collection={collection}
-                          />
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-text-secondary">
-                          <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p>No recent collections</p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
+                  </div>
                 </div>
 
-                {/* --- RIGHT COLUMN --- */}
-                <div className="space-y-8">
-                  {/* Quick Actions */}
-                  <Card>
-                    <h2 className="text-xl font-bold text-text-primary mb-4 text-center">
-                      Quick Actions
-                    </h2>
-                    <hr className="border-border mb-6" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <QuickAction
-                        icon={Layers}
-                        label="New Chit"
-                        onClick={() => navigate("/chits/create")}
-                        color="accent"
-                      />
-                      <QuickAction
-                        icon={Users}
-                        label="Add Member"
-                        onClick={() => navigate("/members/create")}
-                        color="success"
-                      />
-                      <QuickAction
-                        icon={WalletMinimal}
-                        label="Log Collection"
-                        onClick={() => navigate("/collections/create")}
-                        color="success"
-                      />
-                      <QuickAction
-                        icon={Activity}
-                        label="View Reports"
-                        onClick={() => navigate("/chits")}
-                        color="accent"
-                      />
+                <div className="p-3 bg-info-bg border border-info-accent/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-info-accent mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-info-accent">
+                        Payout Schedule
+                      </p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {stats?.activeChits || 0} payouts scheduled this
+                        month
+                      </p>
                     </div>
-                  </Card>
-
-                  {/* Alerts & Reminders */}
-                  <Card>
-                    <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center justify-center gap-2">
-                      <AlertCircle className="text-warning-accent w-6 h-6" />
-                      Reminders
-                    </h2>
-                    <hr className="border-border mb-6" />
-                    <div className="space-y-3">
-                      <div className="p-3 bg-warning-bg border border-warning-accent/30 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <Clock className="w-4 h-4 text-warning-accent mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-warning-accent">
-                              Pending Collections
-                            </p>
-                            <p className="text-xs text-text-secondary mt-1">
-                              {pendingData.totalCount} members pending this
-                              month
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-info-bg border border-info-accent/30 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <Calendar className="w-4 h-4 text-info-accent mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-info-accent">
-                              Payout Schedule
-                            </p>
-                            <p className="text-xs text-text-secondary mt-1">
-                              {stats?.activeChits || 0} payouts scheduled this
-                              month
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Performance Summary */}
-                  <Card>
-                    <h2 className="text-xl font-bold text-text-primary mb-4 text-center">
-                      Performance
-                    </h2>
-                    <hr className="border-border mb-6" />
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-text-secondary">
-                            Collection Rate
-                          </span>
-                          <span className="text-lg font-bold text-success-accent">
-                            {stats?.collectionRate}%
-                          </span>
-                        </div>
-                        <div className="h-2 bg-background-primary rounded-full overflow-hidden border border-border">
-                          <div
-                            className="h-full bg-success-accent transition-all duration-500"
-                            style={{
-                              width: `${Math.min(
-                                stats?.collectionRate || 0,
-                                100
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center pt-2 border-t border-border">
-                        <span className="text-sm text-text-secondary">
-                          Total Collected
-                        </span>
-                        <span className="text-sm font-bold text-text-primary">
-                          {formatCurrency(stats?.collectedThisMonth)}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
+                  </div>
                 </div>
               </div>
-            </div>
-          </main>
-          <Footer />
+            </Card>
+
+            {/* Performance Summary */}
+            <Card>
+              <h2 className="text-xl font-bold text-text-primary mb-4 text-center">
+                Performance
+              </h2>
+              <hr className="border-border mb-6" />
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-text-secondary">
+                      Collection Rate
+                    </span>
+                    <span className="text-lg font-bold text-success-accent">
+                      {stats?.collectionRate}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-background-primary rounded-full overflow-hidden border border-border">
+                    <div
+                      className="h-full bg-success-accent transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          stats?.collectionRate || 0,
+                          100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  <span className="text-sm text-text-secondary">
+                    Total Collected
+                  </span>
+                  <span className="text-sm font-bold text-text-primary">
+                    {formatCurrency(stats?.collectedThisMonth)}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
-      <MobileNav
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        activeSection="dashboard"
-      />
-      <BottomNav />
     </>
   );
 };

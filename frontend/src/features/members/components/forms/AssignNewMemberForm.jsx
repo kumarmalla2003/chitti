@@ -1,11 +1,14 @@
 // frontend/src/features/members/components/forms/AssignNewMemberForm.jsx
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import MemberDetailsForm from "./MemberDetailsForm";
 import Button from "../../../../components/ui/Button";
 import Message from "../../../../components/ui/Message";
 import { Save, Calendar, Check, Loader2 } from "lucide-react";
 import { createMember } from "../../../../services/membersService";
+import { memberSchema } from "../../schemas/memberSchema";
 
 const AssignNewMemberForm = forwardRef(
   (
@@ -20,21 +23,46 @@ const AssignNewMemberForm = forwardRef(
     },
     ref
   ) => {
-    const [formData, setFormData] = useState({
-      full_name: "",
-      phone_number: "",
+    // Stage 1: Member Creation Form
+    const {
+      register,
+      handleSubmit,
+      control,
+      getValues,
+      watch,
+      formState: { errors },
+    } = useForm({
+      resolver: zodResolver(memberSchema),
+      defaultValues: {
+        full_name: "",
+        phone_number: "",
+      },
+      mode: "onChange"
     });
+
+    // Watch name for header update
+    const watchedName = watch("full_name");
+    useEffect(() => {
+      if (onMemberNameChange) {
+        onMemberNameChange(watchedName || "");
+      }
+    }, [watchedName, onMemberNameChange]);
+
     const [createdMember, setCreatedMember] = useState(null);
     const [selectedMonth, setSelectedMonth] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [pageError, setPageError] = useState(null); // General errors
     const [memberCreatedSuccess, setMemberCreatedSuccess] = useState(null);
 
     useImperativeHandle(ref, () => ({
       goBack: () => {
         if (createdMember) {
           setCreatedMember(null);
-          onMemberNameChange("");
+          // Check if we need to reset name?
+          // If we go back from Stage 2 to Stage 1, we might want to keep the name?
+          // The prompt said: "if createdMember... setCreatedMember(null); onMemberNameChange('');".
+          // If we reset createdMember, we show the form again.
+          onMemberNameChange(getValues("full_name"));
         } else {
           onBackToList();
         }
@@ -50,48 +78,19 @@ const AssignNewMemberForm = forwardRef(
       }
     }, [memberCreatedSuccess]);
 
-    useEffect(() => {
-      setTimeout(() => {
-        const input = document.getElementById("full_name");
-        if (input) {
-          input.focus();
-        }
-      }, 100);
-    }, []);
+    // Focus handling handled by MemberDetailsForm logic or autoFocus
 
-    const handleFormChange = (e) => {
-      const { name, value } = e.target;
-      let processedValue = value;
-      if (name === "phone_number") {
-        processedValue = value.replace(/\D/g, "").slice(0, 10);
-      } else if (name === "full_name") {
-        onMemberNameChange(value);
-      }
-      setFormData((prev) => ({ ...prev, [name]: processedValue }));
-    };
-
-    const handleCreateMember = async (e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (!formData.full_name || formData.phone_number.length !== 10) {
-        setError(
-          "Please provide a full name and a valid 10-digit phone number."
-        );
-        return;
-      }
+    const handleCreateMember = async (data) => {
       setLoading(true);
-      setError(null);
+      setPageError(null);
       try {
-        const newMember = await createMember(formData, token);
+        const newMember = await createMember(data, token);
         setCreatedMember(newMember);
         setMemberCreatedSuccess(
           `Member "${newMember.full_name}" created successfully!`
         );
       } catch (err) {
-        setError(err.message);
+        setPageError(err.message);
       } finally {
         setLoading(false);
       }
@@ -104,7 +103,7 @@ const AssignNewMemberForm = forwardRef(
       }
 
       if (!selectedMonth) {
-        setError("Please select a chit month to assign.");
+        setPageError("Please select a chit month to assign.");
         return;
       }
 
@@ -115,37 +114,25 @@ const AssignNewMemberForm = forwardRef(
       });
     };
 
-    const handleKeyDown = (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!createdMember) {
-          handleCreateMember(e);
-        } else if (selectedMonth) {
-          handleConfirmAssignment(e);
-        }
-      }
-    };
-
     return (
       <div className="my-4">
-        {error && (
-          <Message type="error" onClose={() => setError(null)}>
-            {error}
+        {pageError && (
+          <Message type="error" onClose={() => setPageError(null)}>
+            {pageError}
           </Message>
         )}
 
         {!createdMember ? (
-          <div onKeyDown={handleKeyDown}>
+          <form onSubmit={handleSubmit(handleCreateMember)}>
             <MemberDetailsForm
-              formData={formData}
-              onFormChange={handleFormChange}
+              mode="create"
+              control={control}
+              register={register}
+              errors={errors}
             />
             <div className="flex justify-end gap-2 mt-6">
               <Button
-                type="button"
-                onClick={handleCreateMember}
+                type="submit"
                 disabled={loading}
                 className="flex items-center justify-center"
               >
@@ -158,9 +145,9 @@ const AssignNewMemberForm = forwardRef(
                 )}
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
-          <div onKeyDown={handleKeyDown}>
+          <div>
             {memberCreatedSuccess && (
               <Message type="success">{memberCreatedSuccess}</Message>
             )}
@@ -175,7 +162,6 @@ const AssignNewMemberForm = forwardRef(
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                // --- ADDED text-center ---
                 className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center"
               >
                 <option value="">Select an available month...</option>

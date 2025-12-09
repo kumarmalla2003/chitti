@@ -1,10 +1,13 @@
 // frontend/src/features/members/components/forms/AssignExistingMemberForm.jsx
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "../../../../components/ui/Button";
 import Message from "../../../../components/ui/Message";
 import { User, Check, Loader2, Calendar } from "lucide-react";
 import { getAllMembers } from "../../../../services/membersService";
+import { assignmentSchema } from "../../../assignments/schemas/assignmentSchema";
 
 const AssignExistingMemberForm = forwardRef(
   (
@@ -22,11 +25,22 @@ const AssignExistingMemberForm = forwardRef(
   ) => {
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [pageError, setPageError] = useState(null);
+    const [submitError, setSubmitError] = useState(null);
 
-    const [selectedMemberId, setSelectedMemberId] = useState("");
-    const [selectedMonth, setSelectedMonth] = useState("");
+    const {
+      register,
+      handleSubmit,
+      formState: { errors, isValid, isSubmitting },
+    } = useForm({
+      resolver: zodResolver(assignmentSchema),
+      defaultValues: {
+        chit_id: String(chitId),
+        member_id: "",
+        chit_month: "",
+      },
+      mode: "onChange",
+    });
 
     useImperativeHandle(ref, () => ({
       goBack: () => {
@@ -38,12 +52,12 @@ const AssignExistingMemberForm = forwardRef(
     useEffect(() => {
       const fetchAllMembers = async () => {
         setLoading(true);
-        setError(null);
+        setPageError(null);
         try {
           const data = await getAllMembers(token);
           setAllMembers(data.members);
         } catch (err) {
-          setError(err.message);
+          setPageError(err.message);
         } finally {
           setLoading(false);
         }
@@ -51,38 +65,28 @@ const AssignExistingMemberForm = forwardRef(
       fetchAllMembers();
     }, [token]);
 
-    const handleConfirmAssignment = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (!selectedMemberId || !selectedMonth) {
-        setError("Please select a member and a month.");
-        return;
-      }
-
-      setIsSubmitting(true);
-      setError(null);
-
+    const onSubmit = async (data) => {
+      setSubmitError(null);
       try {
         await onAssignment({
-          member_id: selectedMemberId,
-          chit_id: chitId,
-          chit_month: selectedMonth,
+          member_id: data.member_id,
+          chit_id: data.chit_id,
+          chit_month: data.chit_month,
         });
       } catch (err) {
-        setError(err.message);
-        setIsSubmitting(false);
+        setSubmitError(err.message);
       }
     };
 
-    const isFormInvalid = !selectedMemberId || !selectedMonth;
-
     return (
-      <form className="my-4" onSubmit={handleConfirmAssignment}>
-        {error && (
-          <Message type="error" onClose={() => setError(null)}>
-            {error}
-          </Message>
+      <form className="my-4" onSubmit={handleSubmit(onSubmit)}>
+        {(pageError || submitError || Object.keys(errors).length > 0) && (
+          <div className="mb-4">
+            {pageError && <Message type="error" onClose={() => setPageError(null)}>{pageError}</Message>}
+            {submitError && <Message type="error" onClose={() => setSubmitError(null)}>{submitError}</Message>}
+            {errors.member_id && <Message type="error">{errors.member_id.message}</Message>}
+            {errors.chit_month && <Message type="error">{errors.chit_month.message}</Message>}
+          </div>
         )}
 
         {loading && (
@@ -107,11 +111,9 @@ const AssignExistingMemberForm = forwardRef(
                 </span>
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <select
+                  {...register("member_id")}
                   id="member_id"
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                  required
+                  className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent ${errors.member_id ? "border-red-500" : "border-border"}`}
                 >
                   <option value="">
                     {allMembers.length > 0
@@ -141,12 +143,9 @@ const AssignExistingMemberForm = forwardRef(
                 </span>
                 <div className="absolute left-10 h-6 w-px bg-border"></div>
                 <select
+                  {...register("chit_month")}
                   id="chit_month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  // --- ADDED text-center ---
-                  className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center"
-                  required
+                  className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center ${errors.chit_month ? "border-red-500" : "border-border"}`}
                 >
                   <option value="">
                     {availableMonths.length > 0
@@ -164,19 +163,17 @@ const AssignExistingMemberForm = forwardRef(
 
             {/* Submit Button */}
             <div className="mt-6">
-              {" "}
-              {/* Removed flex justify-end */}
               <Button
                 type="submit"
                 variant="success"
-                disabled={isFormInvalid || isSubmitting}
-                className="w-full flex items-center justify-center" // Added full width & centering
+                disabled={!isValid || isSubmitting}
+                className="w-full flex items-center justify-center"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin w-5 h-5" />
                 ) : (
                   <>
-                    <Check className="mr-2 w-5 h-5" /> {/* Added fix size */}
+                    <Check className="mr-2 w-5 h-5" />
                     Confirm Assignment
                   </>
                 )}

@@ -1,27 +1,23 @@
 // frontend/src/features/members/components/forms/MemberDetailsForm.jsx
 
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 import Message from "../../../../components/ui/Message";
 import { User, Phone } from "lucide-react";
-import useCursorTracking from "../../../../hooks/useCursorTracking"; // <--- Import the hook
+import FormattedInput from "../../../../components/ui/FormattedInput";
 
 const MemberDetailsForm = ({
   mode,
-  formData,
-  onFormChange,
-  error,
+  control,
+  register,
+  errors,
   success,
   isPostCreation = false,
+  onEnterKeyOnLastInput,
 }) => {
   const nameInputRef = useRef(null);
-  const phoneInputRef = useRef(null); // <--- Add ref for phone input
-
-  // Initialize tracking hook for phone number
-  const trackPhoneCursor = useCursorTracking(
-    phoneInputRef,
-    formData.phone_number,
-    /\d/ // Track digits
-  );
+  const isFormDisabled = mode === "view";
+  const isEditMode = mode === "edit";
 
   useEffect(() => {
     if (mode === "create" && !isPostCreation) {
@@ -29,22 +25,31 @@ const MemberDetailsForm = ({
     }
   }, [mode, isPostCreation]);
 
-  const isFormDisabled = mode === "view";
-
-  const handlePhoneChange = (e) => {
-    trackPhoneCursor(e); // <--- 1. Track cursor before update
-    onFormChange(e); // <--- 2. Trigger parent update (which sanitizes)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !isFormDisabled) {
+      const inputName = e.target.name;
+      if (inputName === "phone_number") {
+        if (onEnterKeyOnLastInput) {
+          e.preventDefault();
+          onEnterKeyOnLastInput();
+        }
+      }
+    }
   };
 
   return (
     <>
       {success && <Message type="success">{success}</Message>}
-      {error && (
+      {errors.root && (
         <Message type="error" onClose={() => { }}>
-          {error}
+          {errors.root.message}
         </Message>
       )}
-      <fieldset disabled={isFormDisabled} className="space-y-6">
+      <fieldset
+        disabled={isFormDisabled}
+        className="space-y-6"
+        onKeyDown={handleKeyDown}
+      >
         <div>
           <label
             htmlFor="full_name"
@@ -58,16 +63,24 @@ const MemberDetailsForm = ({
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
             <input
-              ref={nameInputRef}
+              {...register("full_name")}
+              ref={(e) => {
+                register("full_name").ref(e);
+                nameInputRef.current = e;
+              }}
               type="text"
               id="full_name"
-              name="full_name"
-              value={formData.full_name}
-              onChange={onFormChange}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+              className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.full_name ? "border-red-500" : "border-border"
+                }`}
               required
+              disabled={isFormDisabled}
             />
           </div>
+          {errors.full_name && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.full_name.message}
+            </p>
+          )}
         </div>
         <div>
           <label
@@ -81,22 +94,39 @@ const MemberDetailsForm = ({
               <Phone className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <input
-              ref={phoneInputRef} // <--- Attach ref
+            <FormattedInput
+              name="phone_number"
+              control={control}
+              format={(val) => val}
+              parse={(val) => val.replace(/\D/g, "").slice(0, 10)}
               type="tel"
               id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handlePhoneChange} // <--- Use wrapper handler
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed"
+              className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.phone_number ? "border-red-500" : "border-border"
+                }`}
               required
-              maxLength="10"
+              disabled={isFormDisabled}
+              placeholder="e.g. 9876543210"
             />
           </div>
+          {errors.phone_number && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.phone_number.message}
+            </p>
+          )}
         </div>
       </fieldset>
     </>
   );
+};
+
+MemberDetailsForm.propTypes = {
+  mode: PropTypes.string.isRequired,
+  control: PropTypes.object.isRequired,
+  register: PropTypes.func.isRequired,
+  errors: PropTypes.object.isRequired,
+  success: PropTypes.string,
+  isPostCreation: PropTypes.bool,
+  onEnterKeyOnLastInput: PropTypes.func,
 };
 
 export default MemberDetailsForm;

@@ -1,7 +1,8 @@
 // frontend/src/features/payouts/components/forms/PayoutDetailsForm.jsx
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
+import { useWatch, Controller } from "react-hook-form";
 import {
   Layers,
   User,
@@ -18,12 +19,14 @@ import {
 } from "../../../../services/assignmentsService";
 import CustomDateInput from "../../../../components/ui/CustomDateInput";
 import ViewOnlyField from "../../../../components/ui/ViewOnlyField";
-import useCursorTracking from "../../../../hooks/useCursorTracking";
+import FormattedInput from "../../../../components/ui/FormattedInput";
 
 const PayoutDetailsForm = ({
   mode,
-  formData,
-  onFormChange,
+  control,
+  register,
+  setValue,
+  errors,
   defaultAssignmentId,
   payoutData,
   defaultChitId = null,
@@ -32,22 +35,8 @@ const PayoutDetailsForm = ({
   const { token } = useSelector((state) => state.auth);
   const isFormDisabled = mode === "view";
 
-  const amountInputRef = useRef(null);
-
-  // Helper to format value for display
-  const getFormattedValue = (val) => {
-    if (!val) return "";
-    const num = parseInt(val.toString().replace(/,/g, ""));
-    return isNaN(num) ? "" : num.toLocaleString("en-IN");
-  };
-
-  const formattedAmount = getFormattedValue(formData.amount);
-
-  const trackAmountCursor = useCursorTracking(
-    amountInputRef,
-    formattedAmount,
-    /\d/
-  );
+  const selectedChitId = useWatch({ control, name: "chit_id" });
+  const selectedMemberId = useWatch({ control, name: "member_id" });
 
   const [allChits, setAllChits] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
@@ -56,29 +45,10 @@ const PayoutDetailsForm = ({
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
 
-  const [selectedChitId, setSelectedChitId] = useState(defaultChitId || "");
-  const [selectedMemberId, setSelectedMemberId] = useState(
-    defaultMemberId || ""
-  );
-
   const [isLoading, setIsLoading] = useState(true);
   const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
 
-  const formatMonthYear = (dateString) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString + "T00:00:00Z");
-    return date.toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "long",
-    });
-  };
-
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return "-";
-    const [year, month, day] = dateString.split("-");
-    return `${day}/${month}/${year}`;
-  };
-
+  // Initial Data Fetch
   useEffect(() => {
     const fetchInitialData = async () => {
       if (mode !== "view") {
@@ -103,45 +73,57 @@ const PayoutDetailsForm = ({
     fetchInitialData();
   }, [mode, token]);
 
+  // Filter Members based on Chit
   useEffect(() => {
-    if (payoutData && (mode === "edit" || mode === "view")) {
-      setSelectedChitId(String(payoutData.chit.id));
-      setSelectedMemberId(String(payoutData.member?.id || ""));
-    }
-  }, [payoutData, mode]);
+    if (mode === "view") return;
 
-  const handleChitChange = async (e) => {
-    const newChitId = e.target.value;
-    setSelectedChitId(newChitId);
-    onFormChange(e); // Propagate chit_id change
-    onFormChange({ target: { name: "chit_assignment_id", value: "" } });
-    setFilteredAssignments([]);
+    const filterMembers = async () => {
+      if (selectedChitId) {
+        try {
+          const chitAssignments = await getAssignmentsForChit(selectedChitId, token);
+          const validMemberIds = new Set(
+            chitAssignments.assignments.map((a) => a.member.id)
+          );
 
-    if (newChitId) {
-      setIsLoading(true);
-      try {
-        const chitAssignments = await getAssignmentsForChit(newChitId, token);
-        const validMemberIds = new Set(
-          chitAssignments.assignments.map((a) => a.member.id)
-        );
-        setFilteredMembers(allMembers.filter((m) => validMemberIds.has(m.id)));
-      } catch (err) {
-        console.error("Failed to fetch chit assignments", err);
-      } finally {
-        setIsLoading(false);
+          // Keep all members if defaultMemberId is set (logic preserved?)
+          // Actually usually we want to filter to only members in that chit.
+          if (!defaultMemberId) {
+            const newFilteredMembers = allMembers.filter((m) => validMemberIds.has(m.id));
+            setFilteredMembers(newFilteredMembers);
+
+            // If current member is not in the list, clear it
+            if (selectedMemberId && !validMemberIds.has(Number(selectedMemberId))) {
+              setValue("member_id", "");
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch chit assignments", err);
+        }
+      } else {
+        setFilteredMembers(allMembers);
       }
-    } else {
-      setFilteredMembers(allMembers);
     }
-  };
 
-  const handleMemberChange = (e) => {
-    const newMemberId = e.target.value;
-    setSelectedMemberId(newMemberId);
-    onFormChange(e); // <--- FIXED: Propagate member_id change to parent
-    onFormChange({ target: { name: "chit_assignment_id", value: "" } });
-  };
+    if (!isLoading && allMembers.length > 0) {
+      filterMembers();
+    }
+  }, [selectedChitId, allMembers, defaultMemberId, mode, token, setValue, isLoading]);
 
+  // Filter Chits based on Member (Optional, usually Payout starts with Chit?)
+  // Logic in original code allowed Member selection to filter Chits too?
+  // Original `handleMemberChange` logic did NOT filtering Chits.
+  // Wait, let's look at original `handleMemberChange`:
+  // It only sets selectedMemberId and clears assignment.
+  // BUT `handleChitChange` filtered Members.
+  // So validation implies: Select Chit -> Filter Members.
+  // There was NO reverse filtering (Select Member -> Filter Chits) in PayoutDetailsForm?
+  // Original `handleMemberChange` only did `setSelectedMemberId`.
+  // CHECK LINES 138-143:
+  // const handleMemberChange = (e) => { setSelectedMemberId... onFormChange... }
+  // Only Chit change had the filtering logic.
+  // So I should NOT implement reverse filtering here to match original behavior.
+
+  // Assignments Fetching
   useEffect(() => {
     if (selectedChitId && selectedMemberId && mode !== "view") {
       const fetchAssignments = async () => {
@@ -162,8 +144,25 @@ const PayoutDetailsForm = ({
         }
       };
       fetchAssignments();
+    } else {
+      setFilteredAssignments([]);
     }
   }, [selectedChitId, selectedMemberId, mode, token]);
+
+  const formatMonthYear = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString + "T00:00:00Z");
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "long",
+    });
+  };
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "-";
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   const assignmentOptions = useMemo(() => {
     return filteredAssignments.map((a) => ({
@@ -235,13 +234,10 @@ const PayoutDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("chit_id")}
             id="chit_id"
-            name="chit_id"
-            value={selectedChitId}
-            onChange={handleChitChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
-            disabled={isLoading}
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.chit_id ? "border-red-500" : "border-border"}`}
+            disabled={isLoading || !!defaultChitId}
           >
             <option value="">
               {isLoading ? "Loading..." : "Select a chit..."}
@@ -253,6 +249,7 @@ const PayoutDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.chit_id && <p className="text-red-500 text-sm mt-1">{errors.chit_id.message}</p>}
       </div>
 
       <div>
@@ -268,12 +265,9 @@ const PayoutDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("member_id")}
             id="member_id"
-            name="member_id"
-            value={selectedMemberId}
-            onChange={handleMemberChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.member_id ? "border-red-500" : "border-border"}`}
             disabled={!selectedChitId}
           >
             <option value="">Select a member...</option>
@@ -284,6 +278,7 @@ const PayoutDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.member_id && <p className="text-red-500 text-sm mt-1">{errors.member_id.message}</p>}
       </div>
 
       <div>
@@ -299,12 +294,9 @@ const PayoutDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("chit_assignment_id")}
             id="chit_assignment_id"
-            name="chit_assignment_id"
-            value={formData.chit_assignment_id}
-            onChange={onFormChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.chit_assignment_id ? "border-red-500" : "border-border"}`}
             disabled={isAssignmentsLoading || !selectedMemberId}
           >
             <option value="">
@@ -319,6 +311,7 @@ const PayoutDetailsForm = ({
             ))}
           </select>
         </div>
+        {errors.chit_assignment_id && <p className="text-red-500 text-sm mt-1">{errors.chit_assignment_id.message}</p>}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-6">
@@ -334,28 +327,19 @@ const PayoutDetailsForm = ({
               <IndianRupee className="w-5 h-5 text-text-secondary" />
             </span>
             <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <input
-              ref={amountInputRef}
-              type="text"
-              id="amount"
+            <FormattedInput
               name="amount"
-              value={formattedAmount}
-              onChange={(e) => {
-                trackAmountCursor(e);
-                // Standardize input update for parent
-                let value = e.target.value.replace(/[^0-9.]/g, "");
-                const parts = value.split(".");
-                if (parts.length > 2) {
-                  value = parts[0] + "." + parts.slice(1).join("");
-                }
-                onFormChange({ target: { name: "amount", value } });
+              control={control}
+              format={(val) => val}
+              parse={(val) => {
+                const raw = val.replace(/[^0-9.]/g, "");
+                return raw ? Number(raw) : "";
               }}
-              className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-              required
+              className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent ${errors.amount ? "border-red-500" : "border-border"}`}
               placeholder="50,000"
-              inputMode="decimal"
             />
           </div>
+          {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount.message}</p>}
         </div>
 
         <div>
@@ -365,12 +349,19 @@ const PayoutDetailsForm = ({
           >
             Payout Date
           </label>
-          <CustomDateInput
+          <Controller
             name="paid_date"
-            value={formData.paid_date}
-            onChange={onFormChange}
-            required
+            control={control}
+            render={({ field }) => (
+              <CustomDateInput
+                {...field}
+                value={field.value || ""}
+                onChange={(val) => field.onChange(val)}
+                className={errors.paid_date ? "border-red-500" : ""}
+              />
+            )}
           />
+          {errors.paid_date && <p className="text-red-500 text-sm mt-1">{errors.paid_date.message}</p>}
         </div>
       </div>
 
@@ -387,12 +378,9 @@ const PayoutDetailsForm = ({
           </span>
           <div className="absolute left-10 h-6 w-px bg-border"></div>
           <select
+            {...register("method")}
             id="method"
-            name="method"
-            value={formData.method}
-            onChange={onFormChange}
-            className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-            required
+            className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent ${errors.method ? "border-red-500" : "border-border"}`}
           >
             <option value="Cash">Cash</option>
             <option value="UPI">UPI</option>
@@ -400,6 +388,7 @@ const PayoutDetailsForm = ({
             <option value="Cheque">Cheque</option>
           </select>
         </div>
+        {errors.method && <p className="text-red-500 text-sm mt-1">{errors.method.message}</p>}
       </div>
 
       <div>
@@ -415,10 +404,8 @@ const PayoutDetailsForm = ({
           </span>
           <div className="absolute top-2.5 left-10 h-6 w-px bg-border pointer-events-none"></div>
           <textarea
+            {...register("notes")}
             id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={onFormChange}
             rows="3"
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
             placeholder="e.g., Disbursed via Bank Transfer"

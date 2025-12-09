@@ -22,10 +22,7 @@ const ChitMobileContent = ({
     setActiveTab,
     mode,
     chitId,
-    formData,
-    handleFormChange,
     activeTabIndex,
-    isDetailsFormValid,
     loading,
     handleNext,
     handleMiddle,
@@ -34,6 +31,11 @@ const ChitMobileContent = ({
     onLogCollectionClick,
     collectionDefaults,
     setCollectionDefaults,
+    // Form Hook Props
+    control,
+    register,
+    errors,
+    isValid,
 }) => {
     const tabRefs = useRef({});
 
@@ -97,8 +99,9 @@ const ChitMobileContent = ({
                         <hr className="border-border mb-4" />
                         <ChitDetailsForm
                             mode={mode}
-                            formData={formData}
-                            onFormChange={handleFormChange}
+                            control={control}
+                            register={register}
+                            errors={errors}
                             isPostCreation={isPostCreation}
                             onEnterKeyOnLastInput={handleNext}
                         />
@@ -110,7 +113,7 @@ const ChitMobileContent = ({
                             onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
                             onNext={handleNext}
                             onMiddle={handleMiddle}
-                            isNextDisabled={activeTabIndex === 0 && !isDetailsFormValid}
+                            isNextDisabled={activeTabIndex === 0 && !isValid}
                             loading={loading}
                             mode={mode}
                             isPostCreation={isPostCreation}
@@ -198,10 +201,7 @@ ChitMobileContent.propTypes = {
     setActiveTab: PropTypes.func.isRequired,
     mode: PropTypes.oneOf(["create", "edit", "view"]).isRequired,
     chitId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    formData: PropTypes.object.isRequired,
-    handleFormChange: PropTypes.func.isRequired,
     activeTabIndex: PropTypes.number.isRequired,
-    isDetailsFormValid: PropTypes.bool.isRequired,
     loading: PropTypes.bool.isRequired,
     handleNext: PropTypes.func.isRequired,
     handleMiddle: PropTypes.func.isRequired,
@@ -210,6 +210,11 @@ ChitMobileContent.propTypes = {
     onLogCollectionClick: PropTypes.func.isRequired,
     collectionDefaults: PropTypes.object,
     setCollectionDefaults: PropTypes.func.isRequired,
+    // RHForm props
+    control: PropTypes.object.isRequired,
+    register: PropTypes.func.isRequired,
+    errors: PropTypes.object.isRequired,
+    isValid: PropTypes.bool.isRequired,
 };
 
 export default ChitMobileContent;

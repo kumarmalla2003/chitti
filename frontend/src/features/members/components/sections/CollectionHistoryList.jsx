@@ -3,11 +3,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Table from "../../../../components/ui/Table";
 import Message from "../../../../components/ui/Message";
 import Button from "../../../../components/ui/Button";
 import CollectionDetailsForm from "../../../collections/components/forms/CollectionDetailsForm";
 import Card from "../../../../components/ui/Card";
+import { collectionSchema } from "../../../collections/schemas/collectionSchema";
 import {
   Loader2,
   AlertCircle,
@@ -25,7 +28,6 @@ import {
   useCollectionsByChit,
   useCollectionsByMember,
   useCreateCollection,
-  collectionKeys,
 } from "../../../collections/hooks/useCollections";
 import {
   usePayoutsByChit,
@@ -60,12 +62,24 @@ const CollectionHistoryList = ({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
-    chit_assignment_id: "",
-    amount_paid: "",
-    collection_date: new Date().toISOString().split("T")[0],
-    collection_method: "Cash",
-    notes: "",
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(collectionSchema),
+    defaultValues: {
+      member_id: memberId ? String(memberId) : "",
+      chit_id: chitId ? String(chitId) : "",
+      chit_assignment_id: "",
+      amount_paid: "",
+      collection_date: new Date().toISOString().split("T")[0],
+      collection_method: "Cash",
+      notes: "",
+    },
   });
 
   useScrollToTop(formSuccess || formError);
@@ -147,18 +161,19 @@ const CollectionHistoryList = ({
   useEffect(() => {
     if (collectionDefaults) {
       setView("create");
-      setFormData((prev) => ({
-        ...prev,
-        chit_assignment_id: collectionDefaults.assignmentId,
+      reset({
+        member_id: collectionDefaults.memberId ? String(collectionDefaults.memberId) : (memberId ? String(memberId) : ""),
+        chit_id: collectionDefaults.chitId ? String(collectionDefaults.chitId) : (chitId ? String(chitId) : ""),
+        chit_assignment_id: collectionDefaults.assignmentId ? String(collectionDefaults.assignmentId) : "",
         collection_date: new Date().toISOString().split("T")[0],
         collection_method: "Cash",
         amount_paid: "",
         notes: "",
-      }));
+      });
       setFormError(null);
       setFormSuccess(null);
     }
-  }, [collectionDefaults]);
+  }, [collectionDefaults, reset, memberId, chitId]);
 
   const handleAddCollectionClick = () => {
     if (mode === "view" && chitId) {
@@ -176,6 +191,7 @@ const CollectionHistoryList = ({
     });
 
   const filteredTransactions = useMemo(() => {
+    // ... logic unchanged ...
     if (!searchQuery) return transactions;
     const lowercasedQuery = searchQuery.toLowerCase();
     return transactions.filter((t) => {
@@ -211,6 +227,7 @@ const CollectionHistoryList = ({
       : "Search chit, type, amount...";
 
   const columns = [
+    // ... columns unchanged ...
     {
       header: "S.No",
       cell: (row, index) =>
@@ -282,32 +299,30 @@ const CollectionHistoryList = ({
     },
   ];
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormError(null);
-    setFormSuccess(null);
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const onSubmit = async (data) => {
     setFormLoading(true);
     setFormError(null);
     setFormSuccess(null);
 
     try {
       const dataToSend = {
-        ...formData,
-        amount_paid: parseFloat(formData.amount_paid.replace(/,/g, "")),
-        chit_assignment_id: parseInt(formData.chit_assignment_id),
-        collection_date: formData.collection_date,
-        collection_method: formData.collection_method,
+        ...data,
+        // If chitId/memberId are disabled in form, they might be missing in data depending on browser behavior?
+        // But RHF usually captures them if registered even if disabled properly?
+        // Safeguard: use props if data is missing
+        chit_id: parseInt(data.chit_id || chitId),
+        member_id: parseInt(data.member_id || memberId),
+        amount_paid: data.amount_paid, // already number from FormattedInput
+        chit_assignment_id: parseInt(data.chit_assignment_id),
+        // collection_date and method are strings
       };
 
       await createCollection(dataToSend);
       setFormSuccess("Collection logged successfully!");
-      setFormData({
+
+      reset({
+        member_id: memberId ? String(memberId) : "",
+        chit_id: chitId ? String(chitId) : "",
         chit_assignment_id: "",
         amount_paid: "",
         collection_date: new Date().toISOString().split("T")[0],
@@ -327,7 +342,8 @@ const CollectionHistoryList = ({
         setCollectionDefaults(null);
       }
     } catch (err) {
-      setFormError(err.message);
+      console.error(err);
+      setFormError(err.message || "Failed to create collection");
     } finally {
       setFormLoading(false);
     }
@@ -340,6 +356,16 @@ const CollectionHistoryList = ({
     if (setCollectionDefaults) {
       setCollectionDefaults(null);
     }
+    // Reset to defaults
+    reset({
+      member_id: memberId ? String(memberId) : "",
+      chit_id: chitId ? String(chitId) : "",
+      chit_assignment_id: "",
+      amount_paid: "",
+      collection_date: new Date().toISOString().split("T")[0],
+      collection_method: "Cash",
+      notes: "",
+    });
   };
 
   const handleShowList = () => {
@@ -353,6 +379,7 @@ const CollectionHistoryList = ({
   const headerTitle = view === "list" ? "Transactions" : "Log New Collection";
 
   if (loading) {
+    // ...
     return (
       <Card className="flex-1 flex flex-col">
         <div className="flex justify-center items-center py-8">
@@ -395,7 +422,7 @@ const CollectionHistoryList = ({
       <hr className="border-border mb-4" />
 
       {view === "create" ? (
-        <form onSubmit={handleFormSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {formSuccess && <Message type="success">{formSuccess}</Message>}
           {formError && (
             <Message type="error" onClose={() => setFormError(null)}>
@@ -405,8 +432,10 @@ const CollectionHistoryList = ({
 
           <CollectionDetailsForm
             mode="create"
-            formData={formData}
-            onFormChange={handleFormChange}
+            control={control}
+            register={register}
+            setValue={setValue}
+            errors={errors}
             defaultAssignmentId={collectionDefaults?.assignmentId}
             defaultChitId={collectionDefaults?.chitId || chitId}
             defaultMemberId={collectionDefaults?.memberId || memberId}
@@ -431,6 +460,7 @@ const CollectionHistoryList = ({
         </form>
       ) : (
         <>
+          {/* VIEW MODE LIST */}
           {formSuccess && <Message type="success">{formSuccess}</Message>}
           {mode !== "view" && (
             <div className="mb-4">
