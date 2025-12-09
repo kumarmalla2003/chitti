@@ -3,24 +3,25 @@
 import { useState, useEffect } from "react"; // <-- CORRECTED IMPORT
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "./redux/slices/authSlice";
+import { logout } from "./features/auth/authSlice";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import HomePage from "./pages/HomePage";
-import DashboardPage from "./pages/DashboardPage";
-import ChitsPage from "./pages/ChitsPage";
-import ChitDetailPage from "./pages/ChitDetailPage";
-import MembersPage from "./pages/MembersPage";
-import MemberDetailPage from "./pages/MemberDetailPage";
-import LoginModal from "./components/auth/LoginModal";
+import HomePage from "./features/home/pages/HomePage";
+import DashboardPage from "./features/dashboard/pages/DashboardPage";
+import ChitsPage from "./features/chits/pages/ChitsPage";
+import ChitDetailPage from "./features/chits/pages/ChitDetailPage";
+import MembersPage from "./features/members/pages/MembersPage";
+import MemberDetailPage from "./features/members/pages/MemberDetailPage";
+import LoginModal from "./features/auth/components/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
 
 // Ensure these files exist or rename them back to PaymentsPage/PaymentDetailPage if needed
-import CollectionsPage from "./pages/CollectionsPage";
-import CollectionDetailPage from "./pages/CollectionDetailPage";
+import CollectionsPage from "./features/collections/pages/CollectionsPage";
+import CollectionDetailPage from "./features/collections/pages/CollectionDetailPage";
 
-import PayoutsPage from "./pages/PayoutsPage";
-import PayoutDetailPage from "./pages/PayoutDetailPage";
+import PayoutsPage from "./features/payouts/pages/PayoutsPage";
+import PayoutDetailPage from "./features/payouts/pages/PayoutDetailPage";
+
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

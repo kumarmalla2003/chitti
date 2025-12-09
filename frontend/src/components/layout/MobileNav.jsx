@@ -1,7 +1,7 @@
 // frontend/src/components/layout/MobileNav.jsx
 
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../../redux/slices/authSlice";
+import { logout } from "../../features/auth/authSlice";
 import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
 import { ArrowLeft, LogIn, LogOut } from "lucide-react";
@@ -97,16 +97,14 @@ const MobileNav = ({
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 ease-in-out md:hidden ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 ease-in-out md:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         onClick={onClose}
       />
 
       <div
-        className={`fixed top-0 left-0 h-full w-72 bg-background-secondary z-40 shadow-lg transition-transform duration-300 ease-in-out md:hidden ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 h-full w-72 bg-background-secondary z-40 shadow-lg transition-transform duration-300 ease-in-out md:hidden ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="px-4 py-5 flex flex-col h-full">
           {/* Header */}
@@ -143,43 +141,41 @@ const MobileNav = ({
           <nav className="flex flex-col space-y-2 mt-6">
             {isLoggedIn
               ? loggedInNavLinks.map((link, index) => (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    onClick={onClose}
-                    className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
-                      isLinkActive(link.href)
-                        ? "text-accent font-semibold underline underline-offset-4"
-                        : "text-text-primary"
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  onClick={onClose}
+                  className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${isLinkActive(link.href)
+                      ? "text-accent font-semibold underline underline-offset-4"
+                      : "text-text-primary"
                     }`}
-                    style={{
-                      transitionDelay: `${75 + index * 25}ms`,
-                      transform: isOpen ? "translateX(0)" : "translateX(-20px)",
-                      opacity: isOpen ? 1 : 0,
-                    }}
-                  >
-                    {link.text}
-                  </Link>
-                ))
+                  style={{
+                    transitionDelay: `${75 + index * 25}ms`,
+                    transform: isOpen ? "translateX(0)" : "translateX(-20px)",
+                    opacity: isOpen ? 1 : 0,
+                  }}
+                >
+                  {link.text}
+                </Link>
+              ))
               : loggedOutNavLinks.map((link, index) => (
-                  <a
-                    key={link.id}
-                    href={link.href}
-                    onClick={(e) => handleLinkClick(e, link.id)}
-                    className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${
-                      activeSection === link.id
-                        ? "text-accent font-semibold underline underline-offset-4"
-                        : "text-text-primary"
+                <a
+                  key={link.id}
+                  href={link.href}
+                  onClick={(e) => handleLinkClick(e, link.id)}
+                  className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${activeSection === link.id
+                      ? "text-accent font-semibold underline underline-offset-4"
+                      : "text-text-primary"
                     }`}
-                    style={{
-                      transitionDelay: `${75 + index * 25}ms`,
-                      transform: isOpen ? "translateX(0)" : "translateX(-20px)",
-                      opacity: isOpen ? 1 : 0,
-                    }}
-                  >
-                    {link.text}
-                  </a>
-                ))}
+                  style={{
+                    transitionDelay: `${75 + index * 25}ms`,
+                    transform: isOpen ? "translateX(0)" : "translateX(-20px)",
+                    opacity: isOpen ? 1 : 0,
+                  }}
+                >
+                  {link.text}
+                </a>
+              ))}
           </nav>
 
           {/* Theme Toggle */}

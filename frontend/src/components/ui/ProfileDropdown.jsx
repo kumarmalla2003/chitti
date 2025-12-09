@@ -1,7 +1,7 @@
 // frontend/src/components/ui/ProfileDropdown.jsx
 
 import { useDispatch } from "react-redux";
-import { logout } from "../../redux/slices/authSlice";
+import { logout } from "../../features/auth/authSlice";
 import { LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
