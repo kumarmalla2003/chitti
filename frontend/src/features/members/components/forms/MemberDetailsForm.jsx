@@ -74,6 +74,8 @@ const MemberDetailsForm = ({
                 }`}
               required
               disabled={isFormDisabled}
+              autoComplete="off"
+              autoCorrect="off"
             />
           </div>
           {errors.full_name && (
@@ -106,6 +108,8 @@ const MemberDetailsForm = ({
               required
               disabled={isFormDisabled}
               placeholder="e.g. 9876543210"
+              autoComplete="off"
+              autoCorrect="off"
             />
           </div>
           {errors.phone_number && (

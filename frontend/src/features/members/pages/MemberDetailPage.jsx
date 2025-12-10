@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
+import useMediaQuery from "../../../hooks/useMediaQuery";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
@@ -75,6 +76,7 @@ const MemberDetailPage = () => {
   const titleRef = useRef(null);
 
   const [mode, setMode] = useState("view");
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [activeTab, setActiveTab] = useState("details");
   const [originalData, setOriginalData] = useState(null);
 
@@ -93,7 +95,7 @@ const MemberDetailPage = () => {
       full_name: "",
       phone_number: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
   });
 
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -471,33 +473,37 @@ const MemberDetailPage = () => {
           </div>
         ) : (
           /* --- EDIT / CREATE MODE --- */
+          /* Conditionally render based on screen size to prevent ID conflicts */
           <>
-            <div className="md:hidden">
-              <MemberMobileContent
-                TABS={TABS}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                mode={mode}
-                createdMemberId={createdMemberId || id}
-                activeTabIndex={activeTabIndex}
-                isValid={isValid}
-                detailsLoading={detailsLoading}
-                handleNext={handleNext}
-                handleMiddle={handleMiddle}
-                handleMobileFormSubmit={handleMobileFormSubmit}
-                isPostCreation={isPostCreation}
-                onLogCollectionClick={handleLogCollectionClick}
-                collectionDefaults={collectionDefaults}
-                setCollectionDefaults={setCollectionDefaults}
-                // RHForm
-                control={control}
-                register={register}
-                errors={errors}
-              />
-            </div>
+            {!isDesktop && (
+              <div className="md:hidden">
+                <MemberMobileContent
+                  TABS={TABS}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  mode={mode}
+                  createdMemberId={createdMemberId || id}
+                  activeTabIndex={activeTabIndex}
+                  isValid={isValid}
+                  detailsLoading={detailsLoading}
+                  handleNext={handleNext}
+                  handleMiddle={handleMiddle}
+                  handleMobileFormSubmit={handleMobileFormSubmit}
+                  isPostCreation={isPostCreation}
+                  onLogCollectionClick={handleLogCollectionClick}
+                  collectionDefaults={collectionDefaults}
+                  setCollectionDefaults={setCollectionDefaults}
+                  // RHForm
+                  control={control}
+                  register={register}
+                  errors={errors}
+                />
+              </div>
+            )}
 
-            <div className="hidden md:block">
-              <form
+            {isDesktop && (
+              <div className="hidden md:block">
+                <form
                 id="member-details-form-desktop"
                 onSubmit={handleRHSubmit(onSubmit)}
               >
@@ -590,6 +596,8 @@ const MemberDetailPage = () => {
                 </div>
               </form>
             </div>
+
+            )}
           </>
         )}
       </div>

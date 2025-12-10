@@ -142,6 +142,8 @@ const CustomDateInput = ({ name, value, onChange, disabled, required }) => {
         required={required}
         maxLength="10"
         inputMode="numeric"
+        autoComplete="off"
+        autoCorrect="off"
       />
 
       <span className="absolute inset-y-0 right-0 flex items-center pr-3">

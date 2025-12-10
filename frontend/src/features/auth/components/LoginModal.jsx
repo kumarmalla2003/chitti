@@ -213,6 +213,8 @@ const LoginModal = ({ isOpen, onClose }) => {
                   }`}
                 disabled={isLoading}
                 maxLength="11" // 10 digits + 1 space
+                autoComplete="off"
+                autoCorrect="off"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -254,7 +256,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                       ? "border-error-border focus:ring-error-border"
                       : "border-border focus:ring-accent"
                       }`}
+
                     disabled={isLoading}
+                    autoComplete="off"
+                    autoCorrect="off"
                   />
                 ))}
               </div>

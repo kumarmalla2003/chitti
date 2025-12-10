@@ -39,7 +39,7 @@ const AssignExistingMemberForm = forwardRef(
         member_id: "",
         chit_month: "",
       },
-      mode: "onChange",
+      mode: "onTouched",
     });
 
     useImperativeHandle(ref, () => ({

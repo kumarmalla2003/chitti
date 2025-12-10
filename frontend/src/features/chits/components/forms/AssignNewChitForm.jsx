@@ -106,7 +106,7 @@ const AssignNewChitForm = forwardRef(
         collection_day: undefined,
         payout_day: undefined,
       },
-      mode: "onChange",
+      mode: "onTouched",
     });
 
     // --- Watched Values for Logic ---

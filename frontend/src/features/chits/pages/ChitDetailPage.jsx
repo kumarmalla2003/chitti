@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { chitSchema } from "../schemas/chitSchema";
 
 import useScrollToTop from "../../../hooks/useScrollToTop";
+import useMediaQuery from "../../../hooks/useMediaQuery";
 import Message from "../../../components/ui/Message";
 
 import Card from "../../../components/ui/Card";
@@ -123,7 +124,7 @@ const ChitDetailPage = () => {
       collection_day: "",
       payout_day: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
   });
 
   // Watch fields for calculations
@@ -476,6 +477,11 @@ const ChitDetailPage = () => {
     }
   };
 
+  // --- VIEW MODE ---
+  // View helper to decide if we show mobile or desktop
+  // We use useMediaQuery to prevent duplicate DOM with same IDs
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -485,7 +491,6 @@ const ChitDetailPage = () => {
   }
 
   // View Mode passes values from getValues() to Dashboard? 
-  // View Dashboard expects `chitData` object.
   const currentChitData = getValues();
 
   return (
@@ -565,144 +570,149 @@ const ChitDetailPage = () => {
           </div>
         ) : (
           /* --- CREATE/EDIT MODE --- */
+          /* Conditionally render based on screen size to prevent ID conflicts */
           <>
-            <div className="md:hidden">
-              <ChitMobileContent
-                TABS={TABS}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                mode={mode}
-                chitId={id || createdChitId}
-                activeTabIndex={activeTabIndex}
-                isValid={isValid}
-                loading={loading}
-                handleNext={handleNext}
-                handleMiddle={handleMiddle}
-                handleMobileFormSubmit={handleMobileFormSubmit}
-                isPostCreation={!!(mode === "create" && createdChitId)}
-                onLogCollectionClick={handleLogCollectionClick}
-                collectionDefaults={collectionDefaults}
-                setCollectionDefaults={setCollectionDefaults}
-                // RHForm Props
-                control={control}
-                register={register}
-                errors={errors}
-              />
-            </div>
+            {!isDesktop && (
+              <div className="md:hidden">
+                <ChitMobileContent
+                  TABS={TABS}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  mode={mode}
+                  chitId={id || createdChitId}
+                  activeTabIndex={activeTabIndex}
+                  isValid={isValid}
+                  loading={loading}
+                  handleNext={handleNext}
+                  handleMiddle={handleMiddle}
+                  handleMobileFormSubmit={handleMobileFormSubmit}
+                  isPostCreation={!!(mode === "create" && createdChitId)}
+                  onLogCollectionClick={handleLogCollectionClick}
+                  collectionDefaults={collectionDefaults}
+                  setCollectionDefaults={setCollectionDefaults}
+                  // RHForm Props
+                  control={control}
+                  register={register}
+                  errors={errors}
+                />
+              </div>
+            )}
 
-            <div className="hidden md:block">
-              <form
-                id="chit-details-form-desktop"
-                onSubmit={handleRHSubmit(onSubmit)}
-              >
-                <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-                  {activeTab === "details" && (
-                    <div className="md:col-span-1 flex flex-col gap-8">
-                      <DetailsSectionComponent
-                        mode={mode}
-                        control={control}
-                        register={register}
-                        errors={errors}
-                        isPostCreation={
-                          !!(mode === "create" && createdChitId)
-                        }
-                        onEnterKeyOnLastInput={() => handleRHSubmit(onSubmit)()}
+            {isDesktop && (
+              <div className="hidden md:block">
+                <form
+                  id="chit-details-form-desktop"
+                  onSubmit={handleRHSubmit(onSubmit)}
+                >
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <DetailsSectionComponent
+                          mode={mode}
+                          control={control}
+                          register={register}
+                          errors={errors}
+                          isPostCreation={
+                            !!(mode === "create" && createdChitId)
+                          }
+                          onEnterKeyOnLastInput={() => handleRHSubmit(onSubmit)()}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "payouts" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <PayoutsSectionComponent
+                          mode={mode}
+                          chitId={id || createdChitId}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "members" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <MembersSectionComponent
+                          mode={mode}
+                          chitId={id || createdChitId}
+                          onLogCollectionClick={handleLogCollectionClick}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "collections" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <CollectionHistoryList
+                          chitId={id || createdChitId}
+                          mode={mode}
+                          collectionDefaults={collectionDefaults}
+                          setCollectionDefaults={setCollectionDefaults}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <PayoutsSectionComponent
+                          mode={mode}
+                          chitId={id || createdChitId}
+                        />
+                        <MembersSectionComponent
+                          mode={mode}
+                          chitId={id || createdChitId}
+                          onLogCollectionClick={handleLogCollectionClick}
+                        />
+                      </div>
+                    )}
+
+                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                      <TabButton
+                        name="details"
+                        icon={Info}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                      />
+                      <TabButton
+                        name="payouts"
+                        icon={TrendingUp}
+                        label="Payouts"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdChitId}
+                      />
+                      <TabButton
+                        name="members"
+                        icon={Users}
+                        label="Members"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdChitId}
+                      />
+                      <TabButton
+                        name="collections"
+                        icon={WalletMinimal}
+                        label="Collections"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdChitId}
                       />
                     </div>
-                  )}
 
-                  {activeTab === "payouts" && (
-                    <div className="md:col-span-2 flex flex-col gap-8">
-                      <PayoutsSectionComponent
-                        mode={mode}
-                        chitId={id || createdChitId}
-                      />
-                    </div>
-                  )}
-
-                  {activeTab === "members" && (
-                    <div className="md:col-span-2 flex flex-col gap-8">
-                      <MembersSectionComponent
-                        mode={mode}
-                        chitId={id || createdChitId}
-                        onLogCollectionClick={handleLogCollectionClick}
-                      />
-                    </div>
-                  )}
-
-                  {activeTab === "collections" && (
-                    <div className="md:col-span-2 flex flex-col gap-8">
-                      <CollectionHistoryList
-                        chitId={id || createdChitId}
-                        mode={mode}
-                        collectionDefaults={collectionDefaults}
-                        setCollectionDefaults={setCollectionDefaults}
-                      />
-                    </div>
-                  )}
-
-                  {activeTab === "details" && (
-                    <div className="md:col-span-1 flex flex-col gap-8">
-                      <PayoutsSectionComponent
-                        mode={mode}
-                        chitId={id || createdChitId}
-                      />
-                      <MembersSectionComponent
-                        mode={mode}
-                        chitId={id || createdChitId}
-                        onLogCollectionClick={handleLogCollectionClick}
-                      />
-                    </div>
-                  )}
-
-                  <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                    <TabButton
-                      name="details"
-                      icon={Info}
-                      label="Details"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                    />
-                    <TabButton
-                      name="payouts"
-                      icon={TrendingUp}
-                      label="Payouts"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                      disabled={mode === "create" && !createdChitId}
-                    />
-                    <TabButton
-                      name="members"
-                      icon={Users}
-                      label="Members"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                      disabled={mode === "create" && !createdChitId}
-                    />
-                    <TabButton
-                      name="collections"
-                      icon={WalletMinimal}
-                      label="Collections"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                      disabled={mode === "create" && !createdChitId}
-                    />
+                    {mode !== "view" && activeTab === "details" && (
+                      <div className="md:col-span-2">
+                        <ChitDesktopActionButton
+                          mode={mode}
+                          loading={loading}
+                          isPostCreation={
+                            !!(mode === "create" && createdChitId)
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-
-                  {mode !== "view" && activeTab === "details" && (
-                    <div className="md:col-span-2">
-                      <ChitDesktopActionButton
-                        mode={mode}
-                        loading={loading}
-                        isPostCreation={
-                          !!(mode === "create" && createdChitId)
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              </form>
-            </div>
+                </form>
+              </div>
+            )}
           </>
         )}
       </div>

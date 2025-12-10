@@ -409,6 +409,8 @@ const PayoutDetailsForm = ({
             rows="3"
             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
             placeholder="e.g., Disbursed via Bank Transfer"
+            autoComplete="off"
+            autoCorrect="off"
           />
         </div>
       </div>

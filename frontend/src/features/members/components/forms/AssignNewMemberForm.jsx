@@ -37,7 +37,7 @@ const AssignNewMemberForm = forwardRef(
         full_name: "",
         phone_number: "",
       },
-      mode: "onChange"
+      mode: "onTouched"
     });
 
     // Watch name for header update

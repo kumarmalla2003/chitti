@@ -59,6 +59,7 @@ const PayoutDetailPage = () => {
       method: "Cash",
       notes: "",
     },
+    mode: "onTouched",
   });
 
   useEffect(() => {

@@ -78,7 +78,7 @@ const useCursorTracking = (inputRef, value, significantCharRegex = /\d/) => {
       input.setSelectionRange(newCursorPos, newCursorPos);
       cursorState.current.capture = false; // Reset
     }
-  }, [value, significantCharRegex]); // Run whenever the value updates
+  }, [value, significantCharRegex, inputRef]); // Run whenever the value updates
 
   return trackCursor;
 };

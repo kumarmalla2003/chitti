@@ -27,8 +27,9 @@ const formatNumber = (value) => {
  * Helper to parse formatted string back to number
  */
 const parseNumber = (value) => {
-  // value is the string from input (e.g. "1,000")
-  const rawValue = value.replace(/[^0-9]/g, "");
+  if (!value) return "";
+  // strict replacement of non-digits
+  const rawValue = value.toString().replace(/\D/g, "");
   return rawValue ? Number(rawValue) : "";
 };
 
@@ -108,6 +109,7 @@ const ChitDetailsForm = ({
               }}
               type="text"
               id="name"
+              autoComplete="off"
               className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.name ? "border-red-500" : "border-border"
                 }`}
               maxLength={50}
@@ -171,6 +173,7 @@ const ChitDetailsForm = ({
                 {...register("size", { valueAsNumber: true })}
                 type="number"
                 id="size"
+                autoComplete="off"
                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.size ? "border-red-500" : "border-border"
                   }`}
                 min="1"
@@ -235,6 +238,7 @@ const ChitDetailsForm = ({
                 {...register("duration_months", { valueAsNumber: true })}
                 type="number"
                 id="duration_months"
+                autoComplete="off"
                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
                   }`}
                 min="1"
@@ -316,6 +320,7 @@ const ChitDetailsForm = ({
                 {...register("collection_day", { valueAsNumber: true })}
                 type="number"
                 id="collection_day"
+                autoComplete="off"
                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.collection_day ? "border-red-500" : "border-border"
                   }`}
                 min="1"
@@ -346,6 +351,7 @@ const ChitDetailsForm = ({
                 {...register("payout_day", { valueAsNumber: true })}
                 type="number"
                 id="payout_day"
+                autoComplete="off"
                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.payout_day ? "border-red-500" : "border-border"
                   }`}
                 min="1"
