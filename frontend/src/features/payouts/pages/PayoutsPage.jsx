@@ -1,29 +1,30 @@
 // frontend/src/features/payouts/pages/PayoutsPage.jsx
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
+import useTableKeyboardNavigation from "../../../hooks/useTableKeyboardNavigation";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getAllPayouts, deletePayout } from "../../../services/payoutsService";
-import { useSelector } from "react-redux";
+import { usePayouts, useDeletePayout } from "../hooks/usePayouts";
+import { getAllPayouts } from "../../../services/payoutsService";
 import Message from "../../../components/ui/Message";
-import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import Skeleton from "../../../components/ui/Skeleton";
+import EmptyState from "../../../components/ui/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
 import SearchToolbar from "../../../components/ui/SearchToolbar";
 import ActionButton from "../../../components/ui/ActionButton";
+import Pagination from "../../../components/ui/Pagination";
 import PayoutCard from "../components/cards/PayoutCard";
+import PayoutCardSkeleton from "../components/cards/PayoutCardSkeleton";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import {
   Plus,
-  Loader2,
   SquarePen,
   Trash2,
   Printer,
   TrendingUp,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 
 import { pdf } from "@react-pdf/renderer";
@@ -50,16 +51,14 @@ const SORT_OPTIONS = [
 const PayoutsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const tableRef = useRef(null);
 
-  const [payouts, setPayouts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(null);
   const [sortBy, setSortBy] = useState("date_desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const { isLoggedIn } = useSelector((state) => state.auth);
 
   // Initialize view mode from localStorage, fallback to responsive default
   const [viewMode, setViewMode] = useState(() => {
@@ -72,10 +71,27 @@ const PayoutsPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+
+  // React Query hooks
+  const {
+    data: payoutsData,
+    isLoading: loading,
+    error: queryError,
+  } = usePayouts();
+
+  const deletePayoutMutation = useDeletePayout();
+
+  // Extract payouts from query data
+  const payouts = useMemo(() => {
+    const rawPayouts = payoutsData?.payouts ?? (Array.isArray(payoutsData) ? payoutsData : []);
+    return rawPayouts;
+  }, [payoutsData]);
+
+  // Combine query error with local error
+  const error = localError || (queryError?.message ?? null);
 
   useScrollToTop(success || error);
 
@@ -83,25 +99,6 @@ const PayoutsPage = () => {
   useEffect(() => {
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
   }, [viewMode]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getAllPayouts();
-      setPayouts(Array.isArray(data) ? data : data.payouts || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchData();
-    }
-  }, [isLoggedIn]);
 
   useEffect(() => {
     if (location.state?.success) {
@@ -120,6 +117,7 @@ const PayoutsPage = () => {
   // Reset to page 1 when search/filter/sort changes
   useEffect(() => {
     setCurrentPage(1);
+    resetFocus();
   }, [searchQuery, statusFilter, sortBy]);
 
   const handleDeleteClick = (payout) => {
@@ -129,30 +127,31 @@ const PayoutsPage = () => {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    setDeleteLoading(true);
-    setError(null);
-    try {
-      await deletePayout(itemToDelete.id);
-      fetchData();
-      setSuccess(`Payout record has been deleted.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteLoading(false);
-      setIsModalOpen(false);
-      setItemToDelete(null);
-    }
+    setLocalError(null);
+
+    deletePayoutMutation.mutate(itemToDelete.id, {
+      onSuccess: () => {
+        setSuccess(`Payout record has been deleted.`);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+      onError: (err) => {
+        setLocalError(err.message);
+        setIsModalOpen(false);
+        setItemToDelete(null);
+      },
+    });
   };
 
   const handleGenerateReport = async (filters) => {
     setReportLoading(true);
-    setError(null);
+    setLocalError(null);
     try {
       const data = await getAllPayouts(filters);
       const reportPayouts = Array.isArray(data) ? data : data.payouts || [];
 
       if (!reportPayouts || reportPayouts.length === 0) {
-        setError("No payouts found for the selected criteria.");
+        setLocalError("No payouts found for the selected criteria.");
         setReportLoading(false);
         return;
       }
@@ -194,7 +193,7 @@ const PayoutsPage = () => {
       setIsReportModalOpen(false);
     } catch (err) {
       console.error("Report generation failed", err);
-      setError(err.message || "Failed to generate report.");
+      setLocalError(err.message || "Failed to generate report.");
     } finally {
       setReportLoading(false);
     }
@@ -249,6 +248,14 @@ const PayoutsPage = () => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sortedPayouts.slice(start, start + ITEMS_PER_PAGE);
   }, [sortedPayouts, currentPage]);
+
+  // Keyboard navigation
+  const { focusedRowIndex, resetFocus } = useTableKeyboardNavigation({
+    tableRef,
+    items: paginatedPayouts,
+    viewMode,
+    onNavigate: (payout) => navigate(`/payouts/view/${payout.id}`),
+  });
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -337,55 +344,69 @@ const PayoutsPage = () => {
 
         {success && <Message type="success">{success}</Message>}
         {error && (
-          <Message type="error" onClose={() => setError(null)}>
+          <Message type="error" onClose={() => setLocalError(null)}>
             {error}
           </Message>
         )}
 
-        {/* Unified Search Toolbar */}
-        <SearchToolbar
-          searchPlaceholder="Search by member, chit, or amount..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortOptions={SORT_OPTIONS}
-          sortValue={sortBy}
-          onSortChange={setSortBy}
-          filterOptions={STATUS_OPTIONS}
-          filterValue={statusFilter}
-          onFilterChange={setStatusFilter}
-          viewMode={viewMode}
-          onViewChange={setViewMode}
-        />
+        {/* Unified Search Toolbar - only show when 2+ items */}
+        {payouts.length >= 2 && (
+          <SearchToolbar
+            searchPlaceholder="Search by member, chit, or amount..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortOptions={SORT_OPTIONS}
+            sortValue={sortBy}
+            onSortChange={setSortBy}
+            filterOptions={STATUS_OPTIONS}
+            filterValue={statusFilter}
+            onFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewChange={setViewMode}
+          />
+        )}
 
         {loading && (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-10 h-10 animate-spin text-accent" />
-          </div>
+          viewMode === "table" ? (
+            <Skeleton.Table rows={5} columns={7} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <PayoutCardSkeleton key={i} />
+              ))}
+            </div>
+          )
         )}
 
-        {!loading && !error && sortedPayouts.length === 0 && (
-          <Card className="text-center p-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">
-              {searchQuery || statusFilter ? "No Matching Payouts" : "No Payouts Found"}
-            </h2>
-            <p className="text-text-secondary">
-              {searchQuery || statusFilter
+        {!loading && sortedPayouts.length === 0 && (
+          <EmptyState
+            icon={TrendingUp}
+            title={
+              searchQuery || statusFilter
+                ? "No Matching Payouts"
+                : "No Payouts Found"
+            }
+            description={
+              searchQuery || statusFilter
                 ? "Try adjusting your search or filter."
-                : "You haven't recorded any payouts yet. Click the button below to start!"}
-            </p>
-          </Card>
+                : "You haven't recorded any payouts yet. Click the + button to start!"
+            }
+          />
         )}
 
-        {!loading && !error && sortedPayouts.length > 0 && (
+        {!loading && sortedPayouts.length > 0 && (
           <>
             {viewMode === "table" ? (
-              <div className="overflow-x-auto rounded-lg shadow-sm">
+              <div
+                ref={tableRef}
+                tabIndex={0}
+                className="overflow-x-auto rounded-lg shadow-sm focus:outline-none"
+              >
                 <Table
                   columns={columns}
                   data={paginatedPayouts}
-                  onRowClick={(row) =>
-                    navigate(`/payouts/view/${row.id}`)
-                  }
+                  onRowClick={(row) => navigate(`/payouts/view/${row.id}`)}
+                  focusedRowIndex={focusedRowIndex}
                 />
               </div>
             ) : (
@@ -394,9 +415,8 @@ const PayoutsPage = () => {
                   <PayoutCard
                     key={payout.id}
                     payout={payout}
-                    onView={() =>
-                      navigate(`/payouts/view/${payout.id}`)
-                    }
+                    onView={() => navigate(`/payouts/view/${payout.id}`)}
+                    onEdit={() => navigate(`/payouts/edit/${payout.id}`)}
                     onDelete={() => handleDeleteClick(payout)}
                   />
                 ))}
@@ -404,27 +424,11 @@ const PayoutsPage = () => {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>
@@ -447,7 +451,7 @@ const PayoutsPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Payout?"
         message={`Are you sure you want to permanently delete this payout record? This action cannot be undone.`}
-        loading={deleteLoading}
+        loading={deletePayoutMutation.isPending}
       />
     </>
   );

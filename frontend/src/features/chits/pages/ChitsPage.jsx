@@ -1,7 +1,8 @@
 // frontend/src/features/chits/pages/ChitsPage.jsx
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
+import useTableKeyboardNavigation from "../../../hooks/useTableKeyboardNavigation";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/cards/ChitCard";
 import ChitCardSkeleton from "../components/cards/ChitCardSkeleton";
@@ -19,15 +20,14 @@ import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import PageHeader from "../../../components/ui/PageHeader";
 import SearchToolbar from "../../../components/ui/SearchToolbar";
 import ActionButton from "../../../components/ui/ActionButton";
+import Pagination from "../../../components/ui/Pagination";
+import FormattedCurrency from "../../../components/ui/FormattedCurrency";
 import {
   Plus,
   SquarePen,
   Trash2,
   Printer,
-  FileStack,
-  ArrowLeft,
-  ArrowRight,
-  IndianRupee,
+  Layers,
 } from "lucide-react";
 
 import ChitsListReportPDF from "../components/reports/ChitsListReportPDF";
@@ -89,7 +89,6 @@ const ChitsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const tableRef = useRef(null);
-  const [focusedRowIndex, setFocusedRowIndex] = useState(-1);
 
   const [success, setSuccess] = useState(null);
   const [localError, setLocalError] = useState(null);
@@ -158,7 +157,7 @@ const ChitsPage = () => {
   // Reset to page 1 when search/filter/sort changes
   useEffect(() => {
     setCurrentPage(1);
-    setFocusedRowIndex(-1);
+    resetFocus();
   }, [searchQuery, statusFilter, sortBy]);
 
   const handleDeleteClick = (chit) => {
@@ -233,35 +232,13 @@ const ChitsPage = () => {
     return sortedChits.slice(start, start + ITEMS_PER_PAGE);
   }, [sortedChits, currentPage]);
 
-
   // Keyboard navigation
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (viewMode !== "table" || paginatedChits.length === 0) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setFocusedRowIndex((prev) =>
-          prev < paginatedChits.length - 1 ? prev + 1 : prev
-        );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setFocusedRowIndex((prev) => (prev > 0 ? prev - 1 : 0));
-      } else if (e.key === "Enter" && focusedRowIndex >= 0) {
-        e.preventDefault();
-        navigate(`/chits/view/${paginatedChits[focusedRowIndex].id}`);
-      }
-    },
-    [viewMode, paginatedChits, focusedRowIndex, navigate]
-  );
-
-  useEffect(() => {
-    const tableEl = tableRef.current;
-    if (tableEl) {
-      tableEl.addEventListener("keydown", handleKeyDown);
-      return () => tableEl.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [handleKeyDown]);
+  const { focusedRowIndex, resetFocus } = useTableKeyboardNavigation({
+    tableRef,
+    items: paginatedChits,
+    viewMode,
+    onNavigate: (chit) => navigate(`/chits/view/${chit.id}`),
+  });
 
   const handlePrintAll = async () => {
     if (sortedChits.length === 0) return;
@@ -349,10 +326,7 @@ const ChitsPage = () => {
       accessor: "chit_value",
       className: "text-center",
       cell: (row) => (
-        <span className="inline-flex items-center justify-center">
-          <IndianRupee className="w-[1em] h-[1em]" />
-          {row.chit_value.toLocaleString("en-IN")}
-        </span>
+        <FormattedCurrency amount={row.chit_value} className="justify-center" />
       ),
     },
     {
@@ -427,20 +401,22 @@ const ChitsPage = () => {
           </Message>
         )}
 
-        {/* Unified Search Toolbar */}
-        <SearchToolbar
-          searchPlaceholder="Search by name or value..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortOptions={SORT_OPTIONS}
-          sortValue={sortBy}
-          onSortChange={setSortBy}
-          filterOptions={STATUS_OPTIONS}
-          filterValue={statusFilter}
-          onFilterChange={setStatusFilter}
-          viewMode={viewMode}
-          onViewChange={setViewMode}
-        />
+        {/* Unified Search Toolbar - only show when 2+ items */}
+        {chits.length >= 2 && (
+          <SearchToolbar
+            searchPlaceholder="Search by name or value..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortOptions={SORT_OPTIONS}
+            sortValue={sortBy}
+            onSortChange={setSortBy}
+            filterOptions={STATUS_OPTIONS}
+            filterValue={statusFilter}
+            onFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewChange={setViewMode}
+          />
+        )}
 
         {loading && (
           viewMode === "table" ? (
@@ -456,7 +432,7 @@ const ChitsPage = () => {
 
         {!loading && sortedChits.length === 0 && (
           <EmptyState
-            icon={FileStack}
+            icon={Layers}
             title={
               searchQuery || statusFilter
                 ? "No Matching Chits"
@@ -503,33 +479,17 @@ const ChitsPage = () => {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>
 
-      <Link to="/chits/create" className="chit">
-        <Button variant="fab" className="chit-hover:scale-110">
+      <Link to="/chits/create" className="group">
+        <Button variant="fab" className="group-hover:scale-110">
           <Plus className="w-6 h-6" />
         </Button>
       </Link>

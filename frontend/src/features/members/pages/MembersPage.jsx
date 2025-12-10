@@ -1,29 +1,31 @@
 // frontend/src/features/members/pages/MembersPage.jsx
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import useScrollToTop from "../../../hooks/useScrollToTop";
+import useTableKeyboardNavigation from "../../../hooks/useTableKeyboardNavigation";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMembers, useDeleteMember } from "../hooks/useMembers";
 import { getAssignmentsForMember } from "../../../services/assignmentsService";
 import { getCollectionsByMemberId } from "../../../services/collectionsService";
 import Message from "../../../components/ui/Message";
-import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import Skeleton from "../../../components/ui/Skeleton";
+import EmptyState from "../../../components/ui/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
 import SearchToolbar from "../../../components/ui/SearchToolbar";
 import ActionButton from "../../../components/ui/ActionButton";
+import Pagination from "../../../components/ui/Pagination";
 import MemberCard from "../components/cards/MemberCard";
+import MemberCardSkeleton from "../components/cards/MemberCardSkeleton";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import {
   Plus,
-  Loader2,
   Printer,
   SquarePen,
   Trash2,
-  ArrowLeft,
-  ArrowRight,
+  Users,
 } from "lucide-react";
 
 import MembersListReportPDF from "../components/reports/MembersListReportPDF";
@@ -64,6 +66,8 @@ const calculateMemberStatus = (member) => {
 const MembersPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const tableRef = useRef(null);
+
   const [success, setSuccess] = useState(null);
   const [localError, setLocalError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,6 +135,7 @@ const MembersPage = () => {
   // Reset to page 1 when search/filter/sort changes
   useEffect(() => {
     setCurrentPage(1);
+    resetFocus();
   }, [searchQuery, statusFilter, sortBy]);
 
   const handleDeleteClick = (member) => {
@@ -196,6 +201,14 @@ const MembersPage = () => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sortedMembers.slice(start, start + ITEMS_PER_PAGE);
   }, [sortedMembers, currentPage]);
+
+  // Keyboard navigation
+  const { focusedRowIndex, resetFocus } = useTableKeyboardNavigation({
+    tableRef,
+    items: paginatedMembers,
+    viewMode,
+    onNavigate: (member) => navigate(`/members/view/${member.id}`),
+  });
 
   const handlePrintAll = async () => {
     if (sortedMembers.length === 0) return;
@@ -340,50 +353,64 @@ const MembersPage = () => {
           </Message>
         )}
 
-        {/* Unified Search Toolbar */}
-        <SearchToolbar
-          searchPlaceholder="Search by name or phone number..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortOptions={SORT_OPTIONS}
-          sortValue={sortBy}
-          onSortChange={setSortBy}
-          filterOptions={STATUS_OPTIONS}
-          filterValue={statusFilter}
-          onFilterChange={setStatusFilter}
-          viewMode={viewMode}
-          onViewChange={setViewMode}
-        />
+        {/* Unified Search Toolbar - only show when 2+ items */}
+        {members.length >= 2 && (
+          <SearchToolbar
+            searchPlaceholder="Search by name or phone number..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortOptions={SORT_OPTIONS}
+            sortValue={sortBy}
+            onSortChange={setSortBy}
+            filterOptions={STATUS_OPTIONS}
+            filterValue={statusFilter}
+            onFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewChange={setViewMode}
+          />
+        )}
 
         {loading && (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-10 h-10 animate-spin text-accent" />
-          </div>
+          viewMode === "table" ? (
+            <Skeleton.Table rows={5} columns={5} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <MemberCardSkeleton key={i} />
+              ))}
+            </div>
+          )
         )}
 
-        {!loading && !error && sortedMembers.length === 0 && (
-          <Card className="text-center p-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">
-              {searchQuery || statusFilter ? "No Matching Members" : "No Members Found"}
-            </h2>
-            <p className="text-text-secondary">
-              {searchQuery || statusFilter
+        {!loading && sortedMembers.length === 0 && (
+          <EmptyState
+            icon={Users}
+            title={
+              searchQuery || statusFilter
+                ? "No Matching Members"
+                : "No Members Found"
+            }
+            description={
+              searchQuery || statusFilter
                 ? "Try adjusting your search or filter."
-                : "You haven't added any members yet. Click the button below to create one!"}
-            </p>
-          </Card>
+                : "You haven't added any members yet. Click the + button to create one!"
+            }
+          />
         )}
 
-        {!loading && !error && sortedMembers.length > 0 && (
+        {!loading && sortedMembers.length > 0 && (
           <>
             {viewMode === "table" ? (
-              <div className="overflow-x-auto rounded-lg shadow-sm">
+              <div
+                ref={tableRef}
+                tabIndex={0}
+                className="overflow-x-auto rounded-lg shadow-sm focus:outline-none"
+              >
                 <Table
                   columns={columns}
                   data={paginatedMembers}
-                  onRowClick={(row) =>
-                    navigate(`/members/view/${row.id}`)
-                  }
+                  onRowClick={(row) => navigate(`/members/view/${row.id}`)}
+                  focusedRowIndex={focusedRowIndex}
                 />
               </div>
             ) : (
@@ -403,27 +430,11 @@ const MembersPage = () => {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>
