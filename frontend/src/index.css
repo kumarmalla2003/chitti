@@ -4,11 +4,10 @@
   /* =========================================
      1. GLOBAL SCALE (ZOOM) TOKEN
      ========================================= */
-  /* Standard browser default is 16px.
-     - Set to 14px for "Zoom Out" (Compact)
-     - Set to 16px for Standard
+  /* Desktop/tablet uses standard 16px.
+     Mobile (<768px) uses compact 14px (applied via media query in @layer base).
   */
-  --text-base-size: 14px;
+  --text-base-size: 16px;
 
   /* =========================================
      2. TYPOGRAPHY
@@ -197,6 +196,13 @@
     */
     font-size: var(--text-base-size);
     scroll-behavior: smooth;
+  }
+
+  /* Mobile-only compact zoom (< 768px) */
+  @media (max-width: 767px) {
+    html {
+      font-size: 14px;
+    }
   }
   body {
     @apply font-body bg-background-primary text-text-primary;

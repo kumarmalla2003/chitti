@@ -4,11 +4,12 @@ import {
   SquarePen,
   Trash2,
   Calendar,
-  Repeat,
+  PieChart,
   RefreshCw,
   Printer,
   Loader2,
   IndianRupee,
+  Wallet,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -46,7 +47,6 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
           </h3>
         </div>
         <div className="flex items-center flex-shrink-0">
-          {/* --- "VIEW" BUTTON REMOVED --- */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -88,19 +88,19 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
       {/* Middle Row: Values */}
       <div className="flex justify-between items-center text-text-primary mb-3 text-base">
         <div className="flex items-center gap-2" title="Total Chit Value">
-          <IndianRupee className="w-5 h-5" />
-          <span className="font-semibold">
+          <Wallet className="w-5 h-5 flex-shrink-0" />
+          <span className="font-semibold inline-flex items-center">
+            <IndianRupee className="w-[1em] h-[1em]" />
             {chit.chit_value.toLocaleString("en-IN")}
           </span>
         </div>
-        {/* --- MODIFICATION: Removed all extra text --- */}
         <div className="flex items-center gap-2" title="Monthly Installment">
-          <Repeat className="w-5 h-5" />
-          <span className="font-semibold">
-            ₹{chit.monthly_installment.toLocaleString("en-IN")}
+          <PieChart className="w-5 h-5 flex-shrink-0" />
+          <span className="font-semibold inline-flex items-center">
+            <IndianRupee className="w-[1em] h-[1em]" />
+            {chit.monthly_installment.toLocaleString("en-IN")}
           </span>
         </div>
-        {/* --- END MODIFICATION --- */}
       </div>
 
       {/* Bottom Separator */}
