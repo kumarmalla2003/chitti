@@ -12,37 +12,65 @@ import Message from "../../../components/ui/Message";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
+import StatusBadge from "../../../components/ui/StatusBadge";
+import PageHeader from "../../../components/ui/PageHeader";
+import SearchToolbar from "../../../components/ui/SearchToolbar";
+import ActionButton from "../../../components/ui/ActionButton";
 import CollectionCard from "../components/cards/CollectionCard";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import {
   Plus,
   Loader2,
-  Search,
   SquarePen,
   Trash2,
   Printer,
-  LayoutGrid,
-  List,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 import CollectionReportPDF from "../components/reports/CollectionReportPDF";
 import CollectionReportModal from "../components/reports/CollectionReportModal";
 import { pdf } from "@react-pdf/renderer";
 
+const ITEMS_PER_PAGE = 10;
+const VIEW_MODE_STORAGE_KEY = "collectionsViewMode";
+
+const STATUS_OPTIONS = [
+  { value: "Paid", label: "Paid" },
+  { value: "Unpaid", label: "Unpaid" },
+  { value: "Partial", label: "Partial" },
+];
+
+const SORT_OPTIONS = [
+  { value: "date_desc", label: "Date (Newest)" },
+  { value: "date_asc", label: "Date (Oldest)" },
+  { value: "amount_desc", label: "Amount (High-Low)" },
+  { value: "amount_asc", label: "Amount (Low-High)" },
+  { value: "member_asc", label: "Member (A-Z)" },
+  { value: "member_desc", label: "Member (Z-A)" },
+];
+
 const CollectionsPage = () => {
   const navigate = useNavigate();
-  // isMenuOpen removed (handled by MainLayout)
   const location = useLocation();
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [sortBy, setSortBy] = useState("date_desc");
+  const [currentPage, setCurrentPage] = useState(1);
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  const [viewMode, setViewMode] = useState(() =>
-    window.innerWidth < 768 ? "card" : "table"
-  );
+  // Initialize view mode from localStorage, fallback to responsive default
+  const [viewMode, setViewMode] = useState(() => {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (stored === "table" || stored === "card") {
+      return stored;
+    }
+    return window.innerWidth < 768 ? "card" : "table";
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -53,12 +81,9 @@ const CollectionsPage = () => {
 
   useScrollToTop(success || error);
 
+  // Persist view mode to localStorage
   useEffect(() => {
-    const handleResize = () => {
-      // Optional: Auto-switch view on resize if desired
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
   }, [viewMode]);
 
   const fetchData = async () => {
@@ -93,6 +118,11 @@ const CollectionsPage = () => {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // Reset to page 1 when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy]);
 
   const handleDeleteClick = (collection) => {
     setItemToDelete(collection);
@@ -173,7 +203,8 @@ const CollectionsPage = () => {
     }
   };
 
-  const filteredCollections = useMemo(() => {
+  // Filter by search query
+  const searchedCollections = useMemo(() => {
     if (!searchQuery) return collections;
     const lowercasedQuery = searchQuery.toLowerCase();
     return collections.filter(
@@ -184,6 +215,44 @@ const CollectionsPage = () => {
     );
   }, [collections, searchQuery]);
 
+  // Filter by status
+  const filteredCollections = useMemo(() => {
+    if (!statusFilter) return searchedCollections;
+    return searchedCollections.filter((c) => c.collection_status === statusFilter);
+  }, [searchedCollections, statusFilter]);
+
+  // Sort filtered collections
+  const sortedCollections = useMemo(() => {
+    const sorted = [...filteredCollections];
+    switch (sortBy) {
+      case "date_asc":
+        return sorted.sort((a, b) => new Date(a.collection_date) - new Date(b.collection_date));
+      case "date_desc":
+        return sorted.sort((a, b) => new Date(b.collection_date) - new Date(a.collection_date));
+      case "amount_asc":
+        return sorted.sort((a, b) => a.amount_paid - b.amount_paid);
+      case "amount_desc":
+        return sorted.sort((a, b) => b.amount_paid - a.amount_paid);
+      case "member_asc":
+        return sorted.sort((a, b) =>
+          a.member.full_name.localeCompare(b.member.full_name)
+        );
+      case "member_desc":
+        return sorted.sort((a, b) =>
+          b.member.full_name.localeCompare(a.member.full_name)
+        );
+      default:
+        return sorted;
+    }
+  }, [filteredCollections, sortBy]);
+
+  // Pagination
+  const totalPages = Math.ceil(sortedCollections.length / ITEMS_PER_PAGE);
+  const paginatedCollections = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedCollections.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedCollections, currentPage]);
+
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -192,6 +261,12 @@ const CollectionsPage = () => {
     });
 
   const columns = [
+    {
+      header: "S.No",
+      accessor: "s_no",
+      className: "text-center",
+      cell: (row, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+    },
     {
       header: "Date",
       accessor: "collection_date",
@@ -215,9 +290,10 @@ const CollectionsPage = () => {
       cell: (row) => `₹${row.amount_paid.toLocaleString("en-IN")}`,
     },
     {
-      header: "Method",
-      accessor: "collection_method",
+      header: "Status",
+      accessor: "collection_status",
       className: "text-center",
+      cell: (row) => <StatusBadge status={row.collection_status || "Unpaid"} />,
     },
     {
       header: "Actions",
@@ -225,26 +301,24 @@ const CollectionsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <button
+          <ActionButton
+            icon={SquarePen}
+            variant="warning"
+            title="Edit Collection"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/collections/edit/${row.id}`);
             }}
-            className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Edit Collection"
-          >
-            <SquarePen className="w-5 h-5" />
-          </button>
-          <button
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="error"
+            title="Delete Collection"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteClick(row);
             }}
-            className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Delete Collection"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+          />
         </div>
       ),
     },
@@ -253,25 +327,14 @@ const CollectionsPage = () => {
   return (
     <>
       <div className="container mx-auto">
-        {/* --- HEADER ROW WITH PRINT BUTTON --- */}
-        <div className="relative flex justify-center items-center mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
-            All Collections
-          </h1>
-
-          {/* Print Button */}
-          {collections.length > 0 && (
-            <div className="absolute right-0 flex items-center">
-              <button
-                onClick={() => setIsReportModalOpen(true)}
-                className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 cursor-pointer"
-                title="Generate Report"
-              >
-                <Printer className="w-6 h-6" />
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Page Header */}
+        <PageHeader
+          title="All Collections"
+          actionIcon={Printer}
+          actionTitle="Generate Report"
+          onAction={() => setIsReportModalOpen(true)}
+          showAction={collections.length > 0}
+        />
 
         <hr className="my-4 border-border" />
 
@@ -282,44 +345,20 @@ const CollectionsPage = () => {
           </Message>
         )}
 
-        {/* --- CONTROLS ROW: Search + View Toggle --- */}
-        <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
-          <div className="relative flex-grow md:max-w-md flex items-center">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="w-5 h-5 text-text-secondary" />
-            </span>
-            <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <input
-              type="text"
-              placeholder="Search by member, chit, or amount..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-            />
-          </div>
-
-          <div className="flex-shrink-0">
-            <button
-              onClick={() =>
-                setViewMode((prev) =>
-                  prev === "table" ? "card" : "table"
-                )
-              }
-              className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
-              title={
-                viewMode === "table"
-                  ? "Switch to Card View"
-                  : "Switch to Table View"
-              }
-            >
-              {viewMode === "table" ? (
-                <LayoutGrid className="w-5 h-5" />
-              ) : (
-                <List className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        </div>
+        {/* Unified Search Toolbar */}
+        <SearchToolbar
+          searchPlaceholder="Search by member, chit, or amount..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortOptions={SORT_OPTIONS}
+          sortValue={sortBy}
+          onSortChange={setSortBy}
+          filterOptions={STATUS_OPTIONS}
+          filterValue={statusFilter}
+          onFilterChange={setStatusFilter}
+          viewMode={viewMode}
+          onViewChange={setViewMode}
+        />
 
         {loading && (
           <div className="flex justify-center items-center h-64">
@@ -327,38 +366,36 @@ const CollectionsPage = () => {
           </div>
         )}
 
-        {!loading && !error && filteredCollections.length === 0 && (
+        {!loading && !error && sortedCollections.length === 0 && (
           <Card className="text-center p-8">
             <h2 className="text-2xl font-bold text-text-primary mb-2">
-              {searchQuery
+              {searchQuery || statusFilter
                 ? "No Matching Collections"
                 : "No Collections Found"}
             </h2>
             <p className="text-text-secondary">
-              {searchQuery
-                ? "Try a different search term."
+              {searchQuery || statusFilter
+                ? "Try adjusting your search or filter."
                 : "You haven't logged any collections yet. Click the button below to start!"}
             </p>
           </Card>
         )}
 
-        {!loading && !error && filteredCollections.length > 0 && (
+        {!loading && !error && sortedCollections.length > 0 && (
           <>
-            {/* --- CONDITIONAL RENDERING BASED ON VIEW MODE --- */}
             {viewMode === "table" ? (
               <div className="overflow-x-auto rounded-lg shadow-sm">
                 <Table
                   columns={columns}
-                  data={filteredCollections}
+                  data={paginatedCollections}
                   onRowClick={(row) =>
                     navigate(`/collections/view/${row.id}`)
                   }
                 />
               </div>
             ) : (
-              // Card View
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCollections.map((collection) => (
+                {paginatedCollections.map((collection) => (
                   <CollectionCard
                     key={collection.id}
                     collection={collection}
@@ -370,6 +407,29 @@ const CollectionsPage = () => {
                 ))}
               </div>
             )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -379,7 +439,7 @@ const CollectionsPage = () => {
         </Button>
       </Link>
 
-      {/* --- REPORT MODAL --- */}
+      {/* Report Modal */}
       <CollectionReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}

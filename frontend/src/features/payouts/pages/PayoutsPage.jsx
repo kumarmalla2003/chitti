@@ -9,27 +9,46 @@ import Message from "../../../components/ui/Message";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
+import StatusBadge from "../../../components/ui/StatusBadge";
+import PageHeader from "../../../components/ui/PageHeader";
+import SearchToolbar from "../../../components/ui/SearchToolbar";
+import ActionButton from "../../../components/ui/ActionButton";
 import PayoutCard from "../components/cards/PayoutCard";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import {
   Plus,
   Loader2,
-  Search,
   SquarePen,
   Trash2,
-  LayoutGrid,
-  List,
-  TrendingUp,
   Printer,
+  TrendingUp,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 import { pdf } from "@react-pdf/renderer";
 import PayoutReportPDF from "../components/reports/PayoutReportPDF";
 import PayoutReportModal from "../components/reports/PayoutReportModal";
 
+const ITEMS_PER_PAGE = 10;
+const VIEW_MODE_STORAGE_KEY = "payoutsViewMode";
+
+const STATUS_OPTIONS = [
+  { value: "Paid", label: "Paid" },
+  { value: "Pending", label: "Pending" },
+];
+
+const SORT_OPTIONS = [
+  { value: "date_desc", label: "Date (Newest)" },
+  { value: "date_asc", label: "Date (Oldest)" },
+  { value: "amount_desc", label: "Amount (High-Low)" },
+  { value: "amount_asc", label: "Amount (Low-High)" },
+  { value: "member_asc", label: "Member (A-Z)" },
+  { value: "member_desc", label: "Member (Z-A)" },
+];
+
 const PayoutsPage = () => {
   const navigate = useNavigate();
-  // isMenuOpen removed (handled by MainLayout)
   const location = useLocation();
 
   const [payouts, setPayouts] = useState([]);
@@ -37,11 +56,19 @@ const PayoutsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [sortBy, setSortBy] = useState("date_desc");
+  const [currentPage, setCurrentPage] = useState(1);
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  const [viewMode, setViewMode] = useState(() =>
-    window.innerWidth < 768 ? "card" : "table"
-  );
+  // Initialize view mode from localStorage, fallback to responsive default
+  const [viewMode, setViewMode] = useState(() => {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (stored === "table" || stored === "card") {
+      return stored;
+    }
+    return window.innerWidth < 768 ? "card" : "table";
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -52,10 +79,9 @@ const PayoutsPage = () => {
 
   useScrollToTop(success || error);
 
+  // Persist view mode to localStorage
   useEffect(() => {
-    const handleResize = () => { };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
   }, [viewMode]);
 
   const fetchData = async () => {
@@ -90,6 +116,11 @@ const PayoutsPage = () => {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // Reset to page 1 when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy]);
 
   const handleDeleteClick = (payout) => {
     setItemToDelete(payout);
@@ -169,7 +200,8 @@ const PayoutsPage = () => {
     }
   };
 
-  const filteredPayouts = useMemo(() => {
+  // Filter by search query
+  const searchedPayouts = useMemo(() => {
     if (!searchQuery) return payouts;
     const lowercasedQuery = searchQuery.toLowerCase();
     return payouts.filter(
@@ -180,6 +212,44 @@ const PayoutsPage = () => {
     );
   }, [payouts, searchQuery]);
 
+  // Filter by status
+  const filteredPayouts = useMemo(() => {
+    if (!statusFilter) return searchedPayouts;
+    return searchedPayouts.filter((p) => p.status === statusFilter);
+  }, [searchedPayouts, statusFilter]);
+
+  // Sort filtered payouts
+  const sortedPayouts = useMemo(() => {
+    const sorted = [...filteredPayouts];
+    switch (sortBy) {
+      case "date_asc":
+        return sorted.sort((a, b) => new Date(a.paid_date) - new Date(b.paid_date));
+      case "date_desc":
+        return sorted.sort((a, b) => new Date(b.paid_date) - new Date(a.paid_date));
+      case "amount_asc":
+        return sorted.sort((a, b) => (a.amount || 0) - (b.amount || 0));
+      case "amount_desc":
+        return sorted.sort((a, b) => (b.amount || 0) - (a.amount || 0));
+      case "member_asc":
+        return sorted.sort((a, b) =>
+          (a.member?.full_name || "").localeCompare(b.member?.full_name || "")
+        );
+      case "member_desc":
+        return sorted.sort((a, b) =>
+          (b.member?.full_name || "").localeCompare(a.member?.full_name || "")
+        );
+      default:
+        return sorted;
+    }
+  }, [filteredPayouts, sortBy]);
+
+  // Pagination
+  const totalPages = Math.ceil(sortedPayouts.length / ITEMS_PER_PAGE);
+  const paginatedPayouts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedPayouts.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedPayouts, currentPage]);
+
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -188,6 +258,12 @@ const PayoutsPage = () => {
     });
 
   const columns = [
+    {
+      header: "S.No",
+      accessor: "s_no",
+      className: "text-center",
+      cell: (row, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+    },
     {
       header: "Date",
       accessor: "paid_date",
@@ -211,9 +287,10 @@ const PayoutsPage = () => {
       cell: (row) => `₹${(row.amount || 0).toLocaleString("en-IN")}`,
     },
     {
-      header: "Method",
-      accessor: "method",
+      header: "Status",
+      accessor: "status",
       className: "text-center",
+      cell: (row) => <StatusBadge status={row.status || "Pending"} />,
     },
     {
       header: "Actions",
@@ -221,26 +298,24 @@ const PayoutsPage = () => {
       className: "text-center",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
-          <button
+          <ActionButton
+            icon={SquarePen}
+            variant="warning"
+            title="Edit Payout"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/payouts/edit/${row.id}`);
             }}
-            className="p-2 text-lg rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Edit Payout"
-          >
-            <SquarePen className="w-5 h-5" />
-          </button>
-          <button
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="error"
+            title="Delete Payout"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteClick(row);
             }}
-            className="p-2 text-lg rounded-md text-error-accent hover:bg-error-accent hover:text-white transition-colors duration-200 cursor-pointer"
-            title="Delete Payout"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+          />
         </div>
       ),
     },
@@ -249,24 +324,14 @@ const PayoutsPage = () => {
   return (
     <>
       <div className="container mx-auto">
-        <div className="relative flex justify-center items-center mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-error-accent" /> All
-            Payouts
-          </h1>
-
-          {payouts.length > 0 && (
-            <div className="absolute right-0 flex items-center">
-              <button
-                onClick={() => setIsReportModalOpen(true)}
-                className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200 cursor-pointer"
-                title="Generate Report"
-              >
-                <Printer className="w-6 h-6" />
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Page Header */}
+        <PageHeader
+          title="All Payouts"
+          actionIcon={Printer}
+          actionTitle="Generate Report"
+          onAction={() => setIsReportModalOpen(true)}
+          showAction={payouts.length > 0}
+        />
 
         <hr className="my-4 border-border" />
 
@@ -277,43 +342,20 @@ const PayoutsPage = () => {
           </Message>
         )}
 
-        <div className="mb-6 flex flex-row gap-2 items-stretch justify-between">
-          <div className="relative flex-grow md:max-w-md flex items-center">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="w-5 h-5 text-text-secondary" />
-            </span>
-            <div className="absolute left-10 h-6 w-px bg-border"></div>
-            <input
-              type="text"
-              placeholder="Search by member, chit, or week..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-            />
-          </div>
-
-          <div className="flex-shrink-0">
-            <button
-              onClick={() =>
-                setViewMode((prev) =>
-                  prev === "table" ? "card" : "table"
-                )
-              }
-              className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
-              title={
-                viewMode === "table"
-                  ? "Switch to Card View"
-                  : "Switch to Table View"
-              }
-            >
-              {viewMode === "table" ? (
-                <LayoutGrid className="w-5 h-5" />
-              ) : (
-                <List className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        </div>
+        {/* Unified Search Toolbar */}
+        <SearchToolbar
+          searchPlaceholder="Search by member, chit, or amount..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortOptions={SORT_OPTIONS}
+          sortValue={sortBy}
+          onSortChange={setSortBy}
+          filterOptions={STATUS_OPTIONS}
+          filterValue={statusFilter}
+          onFilterChange={setStatusFilter}
+          viewMode={viewMode}
+          onViewChange={setViewMode}
+        />
 
         {loading && (
           <div className="flex justify-center items-center h-64">
@@ -321,26 +363,26 @@ const PayoutsPage = () => {
           </div>
         )}
 
-        {!loading && !error && filteredPayouts.length === 0 && (
+        {!loading && !error && sortedPayouts.length === 0 && (
           <Card className="text-center p-8">
             <h2 className="text-2xl font-bold text-text-primary mb-2">
-              {searchQuery ? "No Matching Payouts" : "No Payouts Found"}
+              {searchQuery || statusFilter ? "No Matching Payouts" : "No Payouts Found"}
             </h2>
             <p className="text-text-secondary">
-              {searchQuery
-                ? "Try a different search term."
+              {searchQuery || statusFilter
+                ? "Try adjusting your search or filter."
                 : "You haven't recorded any payouts yet. Click the button below to start!"}
             </p>
           </Card>
         )}
 
-        {!loading && !error && filteredPayouts.length > 0 && (
+        {!loading && !error && sortedPayouts.length > 0 && (
           <>
             {viewMode === "table" ? (
               <div className="overflow-x-auto rounded-lg shadow-sm">
                 <Table
                   columns={columns}
-                  data={filteredPayouts}
+                  data={paginatedPayouts}
                   onRowClick={(row) =>
                     navigate(`/payouts/view/${row.id}`)
                   }
@@ -348,7 +390,7 @@ const PayoutsPage = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPayouts.map((payout) => (
+                {paginatedPayouts.map((payout) => (
                   <PayoutCard
                     key={payout.id}
                     payout={payout}
@@ -358,6 +400,29 @@ const PayoutsPage = () => {
                     onDelete={() => handleDeleteClick(payout)}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
               </div>
             )}
           </>
