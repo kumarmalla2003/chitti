@@ -146,7 +146,9 @@ const ChitsListReportPDF = ({ chits }) => {
 
   // --- Metrics ---
   // Replaced "Total Chits" with "Active Chits"
-  const activeChits = chits.filter((c) => c.status === "Active").length;
+  const activeChits = chits.filter(
+    (c) => (c.calculatedStatus || c.status) === "Active"
+  ).length;
   const totalValue = chits.reduce(
     (sum, chit) => sum + (Number(chit.chit_value) || 0),
     0
@@ -185,15 +187,21 @@ const ChitsListReportPDF = ({ chits }) => {
       accessor: "status",
       // STYLE: Centers the text
       style: { width: "13%", textAlign: "center" },
-      // CONDITIONAL: Applies Green/Red color based on status
+      // CONDITIONAL: Applies colors based on status
       conditionalStyle: (row) => {
-        if (row.status === "Active") {
-          return { color: theme.success, fontWeight: "bold" };
-        } else {
-          return { color: theme.error, fontWeight: "bold" };
+        const status = row.calculatedStatus || row.status;
+        switch (status) {
+          case "Active":
+            return { color: theme.success, fontWeight: "bold" };
+          case "Upcoming":
+            return { color: theme.warning, fontWeight: "bold" };
+          case "Completed":
+            return { color: theme.textLight, fontWeight: "bold" };
+          default:
+            return { color: theme.textSecondary, fontWeight: "bold" };
         }
       },
-      cell: (row) => row.status,
+      cell: (row) => row.calculatedStatus || row.status,
     },
   ];
 

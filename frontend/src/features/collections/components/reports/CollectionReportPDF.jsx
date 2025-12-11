@@ -155,6 +155,7 @@ const CollectionReportPDF = ({ collections, filters }) => {
     chit: p.chit?.name || "Unknown",
     method: p.collection_method,
     amount: formatCurrency(p.amount_paid),
+    status: p.collection_status || "Unpaid",
   }));
 
   const columns = [
@@ -182,6 +183,26 @@ const CollectionReportPDF = ({ collections, filters }) => {
       header: "Amount",
       accessor: "amount",
       style: { width: "20%", textAlign: "center" },
+    },
+    {
+      header: "Status",
+      accessor: "status",
+      style: { width: "15%", textAlign: "center" },
+      conditionalStyle: (row) => {
+        // Access raw object via row._original if supported by atomic table,
+        // or we need to ensure 'status' is mapped in data.
+        // Looking at data mapping above: data doesn't have status yet.
+        const status = row.status || "Unpaid";
+        switch (status) {
+          case "Paid":
+            return { color: theme.success, fontWeight: "bold" };
+          case "Partial":
+            return { color: theme.warning, fontWeight: "bold" };
+          default:
+            return { color: theme.error, fontWeight: "bold" };
+        }
+      },
+      cell: (row) => row.status,
     },
   ];
 

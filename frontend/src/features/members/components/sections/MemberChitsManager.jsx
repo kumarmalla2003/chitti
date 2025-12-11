@@ -11,6 +11,7 @@ import AssignNewChitForm from "../../../chits/components/forms/AssignNewChitForm
 import AssignExistingChitForm from "../../../chits/components/forms/AssignExistingChitForm";
 import StatusBadge from "../../../../components/ui/StatusBadge";
 import AssignedChitCard from "../../../chits/components/cards/AssignedChitCard";
+import Skeleton from "../../../../components/ui/Skeleton";
 import {
   Search,
   Layers,
@@ -285,8 +286,8 @@ const MemberChitsManager = ({
         )}
 
         {loading && !assignments.length ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <div className="p-4">
+             <Skeleton.Table rows={3} columns={6} />
           </div>
         ) : assignments.length > 0 ? (
           <>

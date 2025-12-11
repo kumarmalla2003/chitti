@@ -7,6 +7,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChitCard from "../components/cards/ChitCard";
 import ChitCardSkeleton from "../components/cards/ChitCardSkeleton";
 import Skeleton from "../../../components/ui/Skeleton";
+import StaggerContainer from "../../../components/ui/StaggerContainer";
+import StaggerItem from "../../../components/ui/StaggerItem";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useChits, useDeleteChit } from "../hooks/useChits";
 import { getPayoutsByChitId } from "../../../services/payoutsService";
@@ -330,6 +332,17 @@ const ChitsPage = () => {
       ),
     },
     {
+      header: "Installment",
+      accessor: "monthly_installment",
+      className: "text-center",
+      cell: (row) => (
+        <FormattedCurrency
+          amount={row.monthly_installment}
+          className="justify-center"
+        />
+      ),
+    },
+    {
       header: "Chit Cycle",
       accessor: "chit_cycle",
       className: "text-center",
@@ -463,19 +476,20 @@ const ChitsPage = () => {
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {paginatedChits.map((chit) => (
-                  <ChitCard
-                    key={chit.id}
-                    chit={{ ...chit, status: chit.calculatedStatus }}
-                    onView={() => navigate(`/chits/view/${chit.id}`)}
-                    onEdit={() => navigate(`/chits/edit/${chit.id}`)}
-                    onDelete={() => handleDeleteClick(chit)}
-                    onPrint={handlePrintChit}
-                    isPrinting={printingChitId === chit.id}
-                  />
+                  <StaggerItem key={chit.id}>
+                    <ChitCard
+                      chit={{ ...chit, status: chit.calculatedStatus }}
+                      onView={() => navigate(`/chits/view/${chit.id}`)}
+                      onEdit={() => navigate(`/chits/edit/${chit.id}`)}
+                      onDelete={() => handleDeleteClick(chit)}
+                      onPrint={handlePrintChit}
+                      isPrinting={printingChitId === chit.id}
+                    />
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
             )}
 
             {/* Pagination */}

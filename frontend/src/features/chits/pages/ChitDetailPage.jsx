@@ -14,6 +14,7 @@ import Message from "../../../components/ui/Message";
 
 import Card from "../../../components/ui/Card";
 import TabButton from "../../../components/ui/TabButton";
+import Skeleton from "../../../components/ui/Skeleton";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
@@ -484,8 +485,19 @@ const ChitDetailPage = () => {
 
   if (pageLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-10 h-10 animate-spin text-accent" />
+      <div className="container mx-auto">
+        <div className="flex justify-center items-center mb-4 relative">
+             <Skeleton.Text width="w-1/3" height="h-8" />
+        </div>
+        <hr className="my-4 border-border" />
+        <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
+            <div className="md:col-span-1">
+                 <Skeleton.Card className="h-64" />
+            </div>
+            <div className="md:col-span-1">
+                 <Skeleton.Card className="h-64" />
+            </div>
+        </div>
       </div>
     );
   }

@@ -16,6 +16,7 @@ import {
   createBulkAssignments,
 } from "../../../../services/assignmentsService";
 import { getAllMembers } from "../../../../services/membersService";
+import Skeleton from "../../../../components/ui/Skeleton";
 
 const RapidAssignForm = forwardRef(
   ({ token, chitId, onAssignmentSuccess, onBackToList }, ref) => {
@@ -169,8 +170,8 @@ const RapidAssignForm = forwardRef(
 
     if (loading) {
       return (
-        <div className="flex justify-center p-8">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <div className="p-4">
+           <Skeleton.Table rows={5} columns={2} />
         </div>
       );
     }

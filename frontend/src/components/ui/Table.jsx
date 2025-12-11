@@ -30,7 +30,7 @@ const Table = ({ columns, data, variant = "primary", onRowClick }) => {
               <th
                 key={col.accessor || col.header}
                 scope="col"
-                className={`px-control py-4 font-semibold border-b-2 border-border ${
+                className={`px-control py-4 font-semibold border-b-2 border-border whitespace-nowrap ${
                   col.headerClassName || col.className || ""
                 }`}
               >

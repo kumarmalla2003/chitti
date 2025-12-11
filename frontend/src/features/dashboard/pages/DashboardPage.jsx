@@ -24,6 +24,9 @@ import {
 import Card from "../../../components/ui/Card";
 import Table from "../../../components/ui/Table";
 import TabButton from "../../../components/ui/TabButton"; // Imported shared component
+import Skeleton from "../../../components/ui/Skeleton";
+import StaggerContainer from "../../../components/ui/StaggerContainer";
+import StaggerItem from "../../../components/ui/StaggerItem";
 import { formatCurrency } from "../../../utils/formatters"; // Imported shared utility
 
 import api from "../../../lib/api";
@@ -367,8 +370,29 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-background-primary">
-        <Loader2 className="w-12 h-12 animate-spin text-accent" />
+      <div className="container mx-auto space-y-8">
+        <div className="relative flex justify-center items-center mb-4">
+           <Skeleton.Text width="w-48" height="h-8" />
+        </div>
+        <hr className="my-4 border-border" />
+        {/* Metrics Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+           <Skeleton.Card className="h-32" />
+           <Skeleton.Card className="h-32" />
+           <Skeleton.Card className="h-32" />
+           <Skeleton.Card className="h-32" />
+        </div>
+        {/* Main Grid Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 flex flex-col gap-8">
+                <Skeleton.Card className="h-96" />
+                <Skeleton.Card className="h-64" />
+            </div>
+            <div className="space-y-8">
+                <Skeleton.Card className="h-64" />
+                <Skeleton.Card className="h-64" />
+            </div>
+        </div>
       </div>
     );
   }
@@ -391,41 +415,49 @@ const DashboardPage = () => {
         <hr className="my-4 border-border" />
 
         {/* --- 2. Key Metrics Grid (4 Columns) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <MetricCard
-            icon={WalletMinimal}
-            label="Monthly Collection"
-            value={formatCurrency(stats?.collectedThisMonth)}
-            subtext={`Target: ${formatCurrency(stats?.monthlyTarget)}`}
-            onClick={() => navigate("/collections")}
-          />
-          <MetricCard
-            icon={TrendingUp}
-            label="Monthly Payouts"
-            value={formatCurrency(stats?.monthlyPayouts)}
-            subtext="Total Liability"
-            onClick={() => navigate("/chits")}
-          />
-          <MetricCard
-            icon={Layers}
-            label="Active Chits"
-            value={stats?.activeChits || 0}
-            subtext={`Total Chits: ${stats?.totalChits || 0}`}
-            onClick={() => navigate("/chits")}
-          />
-          <MetricCard
-            icon={Users}
-            label="Active Members"
-            value={stats?.activeMembers || 0}
-            subtext={`Total Members: ${stats?.totalMembers || 0}`}
-            onClick={() => navigate("/members")}
-          />
-        </div>
+        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StaggerItem>
+            <MetricCard
+                icon={WalletMinimal}
+                label="Monthly Collection"
+                value={formatCurrency(stats?.collectedThisMonth)}
+                subtext={`Target: ${formatCurrency(stats?.monthlyTarget)}`}
+                onClick={() => navigate("/collections")}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <MetricCard
+                icon={TrendingUp}
+                label="Monthly Payouts"
+                value={formatCurrency(stats?.monthlyPayouts)}
+                subtext="Total Liability"
+                onClick={() => navigate("/chits")}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <MetricCard
+                icon={Layers}
+                label="Active Chits"
+                value={stats?.activeChits || 0}
+                subtext={`Total Chits: ${stats?.totalChits || 0}`}
+                onClick={() => navigate("/chits")}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <MetricCard
+                icon={Users}
+                label="Active Members"
+                value={stats?.activeMembers || 0}
+                subtext={`Total Members: ${stats?.totalMembers || 0}`}
+                onClick={() => navigate("/members")}
+            />
+          </StaggerItem>
+        </StaggerContainer>
 
         {/* --- 3. Main Layout Grid --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <StaggerContainer className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* --- LEFT COLUMN --- */}
-          <div className="lg:col-span-2 flex flex-col gap-8">
+          <StaggerItem className="lg:col-span-2 flex flex-col gap-8">
             {/* SECTION A: Pending Collections */}
             <Card>
               <div className="relative flex justify-center items-center mb-4">
@@ -545,10 +577,10 @@ const DashboardPage = () => {
                 )}
               </div>
             </Card>
-          </div>
+          </StaggerItem>
 
           {/* --- RIGHT COLUMN --- */}
-          <div className="space-y-8">
+          <StaggerItem className="space-y-8">
             {/* Quick Actions */}
             <Card>
               <h2 className="text-xl font-bold text-text-primary mb-4 text-center">
@@ -662,8 +694,8 @@ const DashboardPage = () => {
                 </div>
               </div>
             </Card>
-          </div>
-        </div>
+          </StaggerItem>
+        </StaggerContainer>
       </div>
     </>
   );

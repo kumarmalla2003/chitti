@@ -21,6 +21,7 @@ import {
 } from "../../../../services/payoutsService";
 import useScrollToTop from "../../../../hooks/useScrollToTop";
 import PayoutHistoryCard from "../../../payouts/components/cards/PayoutHistoryCard";
+import Skeleton from "../../../../components/ui/Skeleton";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -170,9 +171,9 @@ const PayoutHistoryList = ({
   if (loading) {
     return (
       <Card className="flex-1 flex flex-col">
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
+          <div className="p-4">
+             <Skeleton.Table rows={5} columns={5} />
+          </div>
       </Card>
     );
   }

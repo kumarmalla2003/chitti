@@ -23,6 +23,12 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
     Inactive: {
       dot: "bg-error-accent",
     },
+    Upcoming: {
+      dot: "bg-warning-accent",
+    },
+    Completed: {
+      dot: "bg-background-tertiary",
+    },
   };
 
   const { dot } = statusStyles[chit.status] || statusStyles.Inactive;

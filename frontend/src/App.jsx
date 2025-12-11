@@ -11,7 +11,6 @@ import LoginModal from "./features/auth/components/LoginModal";
 import { AnimatePresence } from "framer-motion";
 import AnimatedPage from "./components/ui/AnimatedPage";
 import MainLayout from "./components/layout/MainLayout";
-import { Loader2 } from "lucide-react";
 
 // --- Lazy Imports ---
 const HomePage = lazy(() => import("./features/home/pages/HomePage"));
@@ -30,12 +29,6 @@ const PayoutsPage = lazy(() => import("./features/payouts/pages/PayoutsPage"));
 const PayoutDetailPage = lazy(() => import("./features/payouts/pages/PayoutDetailPage"));
 
 const NotFoundPage = lazy(() => import("./features/errors/pages/NotFoundPage"));
-
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen w-full bg-background-primary">
-    <Loader2 className="w-12 h-12 animate-spin text-accent" />
-  </div>
-);
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,7 +58,7 @@ const App = () => {
           <LoginModal isOpen={isModalOpen} onClose={handleLoginModalClose} />
           {/* Background blur managed by LoginModal's overlay usually, or keep if needed for whole app */}
           <div className={`transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none" : ""}`}>
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={null}>
               <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                   {/* Public Route */}

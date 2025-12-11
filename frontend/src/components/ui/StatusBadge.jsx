@@ -8,11 +8,12 @@
  * Payout Statuses: Paid (green), Pending (yellow)
  */
 const StatusBadge = ({ status }) => {
-  const baseClasses = "px-2.5 py-1 text-xs font-semibold rounded-full inline-block text-center min-w-[5.5rem]";
+  const baseClasses =
+    "px-2.5 py-1 text-xs font-semibold rounded-full inline-block text-center min-w-[5.5rem]";
   const statusClasses = {
     // Chit Statuses
     Active: "bg-success-bg text-success-accent",
-    Upcoming: "bg-info-bg text-info-accent",
+    Upcoming: "bg-warning-bg text-warning-accent",
     Completed: "bg-background-tertiary text-text-secondary",
     Inactive: "bg-error-bg text-error-accent",
 

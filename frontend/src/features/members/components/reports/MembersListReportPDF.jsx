@@ -170,8 +170,21 @@ const MembersListReportPDF = ({ members }) => {
     {
       header: "Active Chits",
       accessor: "active_chits",
-      style: { width: "20%", textAlign: "center" },
+      style: { width: "15%", textAlign: "center" },
       cell: (row) => row.active_chits,
+    },
+    {
+      header: "Status",
+      accessor: "status",
+      style: { width: "15%", textAlign: "center" },
+      conditionalStyle: (row) => {
+        // Active if active_chits > 0, else Inactive
+        const status = row.active_chits > 0 ? "Active" : "Inactive";
+        return status === "Active"
+          ? { color: theme.success, fontWeight: "bold" }
+          : { color: theme.textLight, fontWeight: "bold" };
+      },
+      cell: (row) => (row.active_chits > 0 ? "Active" : "Inactive"),
     },
   ];
 

@@ -8,6 +8,7 @@ import Message from "../../../../components/ui/Message";
 import { User, Check, Loader2, Calendar } from "lucide-react";
 import { getAllMembers } from "../../../../services/membersService";
 import { assignmentSchema } from "../../../assignments/schemas/assignmentSchema";
+import Skeleton from "../../../../components/ui/Skeleton";
 
 const AssignExistingMemberForm = forwardRef(
   (
@@ -90,8 +91,15 @@ const AssignExistingMemberForm = forwardRef(
         )}
 
         {loading && (
-          <div className="flex justify-center p-4">
-            <Loader2 className="animate-spin" />
+          <div className="space-y-6 p-4">
+            <div className="space-y-1">
+                 <Skeleton.Text width="w-32" />
+                 <Skeleton.Input />
+            </div>
+             <div className="space-y-1">
+                 <Skeleton.Text width="w-32" />
+                 <Skeleton.Input />
+            </div>
           </div>
         )}
 

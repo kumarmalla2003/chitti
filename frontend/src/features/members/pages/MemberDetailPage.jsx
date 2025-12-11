@@ -11,6 +11,7 @@ import { memberSchema } from "../schemas/memberSchema";
 
 import Card from "../../../components/ui/Card";
 import TabButton from "../../../components/ui/TabButton";
+import Skeleton from "../../../components/ui/Skeleton";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
 import MemberMobileContent from "../components/sections/MemberMobileContent";
@@ -384,8 +385,19 @@ const MemberDetailPage = () => {
 
   if (pageLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-10 h-10 animate-spin text-accent" />
+      <div className="container mx-auto">
+        <div className="flex justify-center items-center mb-4 relative">
+             <Skeleton.Text width="w-1/3" height="h-8" />
+        </div>
+        <hr className="my-4 border-border" />
+        <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
+            <div className="md:col-span-1">
+                 <Skeleton.Card className="h-64" />
+            </div>
+            <div className="md:col-span-1">
+                 <Skeleton.Card className="h-64" />
+            </div>
+        </div>
       </div>
     );
   }

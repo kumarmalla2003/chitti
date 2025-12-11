@@ -11,6 +11,8 @@ import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import Skeleton from "../../../components/ui/Skeleton";
+import StaggerContainer from "../../../components/ui/StaggerContainer";
+import StaggerItem from "../../../components/ui/StaggerItem";
 import EmptyState from "../../../components/ui/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
 import SearchToolbar from "../../../components/ui/SearchToolbar";
@@ -410,17 +412,18 @@ const PayoutsPage = () => {
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {paginatedPayouts.map((payout) => (
-                  <PayoutCard
-                    key={payout.id}
-                    payout={payout}
-                    onView={() => navigate(`/payouts/view/${payout.id}`)}
-                    onEdit={() => navigate(`/payouts/edit/${payout.id}`)}
-                    onDelete={() => handleDeleteClick(payout)}
-                  />
+                  <StaggerItem key={payout.id}>
+                    <PayoutCard
+                      payout={payout}
+                      onView={() => navigate(`/payouts/view/${payout.id}`)}
+                      onEdit={() => navigate(`/payouts/edit/${payout.id}`)}
+                      onDelete={() => handleDeleteClick(payout)}
+                    />
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
             )}
 
             {/* Pagination */}

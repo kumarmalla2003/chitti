@@ -1,7 +1,6 @@
-// frontend/src/components/ui/SearchToolbar.jsx
-
 import { useState, useRef, useEffect } from "react";
 import { Search, X, ArrowUpDown, Filter, LayoutGrid, List, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * SearchToolbar - Unified search bar with integrated sort, filter, and view toggle.
@@ -75,8 +74,15 @@ const SearchToolbar = ({
   const iconButtonClass =
     "p-3 text-text-secondary hover:text-text-primary hover:bg-background-tertiary rounded-full transition-colors duration-200 flex items-center justify-center cursor-pointer";
 
+  const dropdownAnimations = {
+    initial: { opacity: 0, y: -10, scale: 0.95 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -10, scale: 0.95 },
+    transition: { duration: 0.2, ease: "easeOut" },
+  };
+
   return (
-    <div className="mb-6 flex flex-row items-center gap-0 bg-background-secondary border border-border rounded-md">
+    <div className="mb-6 flex flex-row items-center gap-0 bg-background-secondary border border-border rounded-md shadow-sm">
       {/* Search Input */}
       <div className="flex-1 relative flex items-center">
         <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -90,13 +96,13 @@ const SearchToolbar = ({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full pl-12 pr-10 py-3 bg-transparent border-0 focus:outline-none focus:ring-0"
+          className="w-full pl-12 pr-2 py-3 bg-transparent border-0 focus:outline-none focus:ring-0 text-text-primary placeholder-text-secondary placeholder-opacity-70"
         />
         {searchValue && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 pl-1 text-text-secondary hover:text-text-primary transition-colors cursor-pointer bg-transparent"
             title="Clear search"
           >
             <X className="w-5 h-5" />
@@ -116,45 +122,58 @@ const SearchToolbar = ({
               setIsFilterOpen(!isFilterOpen);
               setIsSortOpen(false);
             }}
-            className={iconButtonClass}
+            className={`${iconButtonClass} ${isFilterOpen ? "text-accent bg-accent/10" : ""}`}
             title={`Filter: ${selectedFilter?.label || "All"}`}
           >
-            <Filter className={`w-5 h-5 ${filterValue ? "text-accent" : ""}`} />
+            <Filter className={`w-5 h-5 ${filterValue !== null || isFilterOpen ? "text-accent" : ""}`} />
           </button>
 
-          {isFilterOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-background-primary border border-border rounded-md shadow-floating z-50">
-              <button
-                type="button"
-                onClick={() => {
-                  onFilterChange(null);
-                  setIsFilterOpen(false);
-                }}
-                className="w-full flex items-center justify-between px-4 py-2 text-sm text-text-primary hover:bg-background-secondary transition-colors cursor-pointer rounded-t-md"
+          <AnimatePresence>
+            {isFilterOpen && (
+              <motion.div
+                {...dropdownAnimations}
+                className="absolute right-0 mt-2 w-40 bg-background-primary border border-border rounded-lg shadow-xl z-50 overflow-hidden ring-1 ring-black/5"
               >
-                <span>All</span>
-                {filterValue === null && <Check className="w-4 h-4 text-accent" />}
-              </button>
-              {filterOptions.map((option, index) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onFilterChange(option.value);
-                    setIsFilterOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-sm text-text-primary hover:bg-background-secondary transition-colors cursor-pointer ${
-                    index === filterOptions.length - 1 ? "rounded-b-md" : ""
-                  }`}
-                >
-                  <span>{option.label}</span>
-                  {filterValue === option.value && (
-                    <Check className="w-4 h-4 text-accent" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+                <div className="p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onFilterChange(null);
+                      setIsFilterOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer rounded-md ${
+                      filterValue === null
+                        ? "bg-accent/10 text-accent font-medium"
+                        : "text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <span>All</span>
+                    {filterValue === null && <Check className="w-4 h-4" />}
+                  </button>
+                  {filterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onFilterChange(option.value);
+                        setIsFilterOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer rounded-md ${
+                        filterValue === option.value
+                          ? "bg-accent/10 text-accent font-medium"
+                          : "text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {filterValue === option.value && (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
@@ -170,34 +189,43 @@ const SearchToolbar = ({
               setIsSortOpen(!isSortOpen);
               setIsFilterOpen(false);
             }}
-            className={iconButtonClass}
+            className={`${iconButtonClass} ${isSortOpen ? "text-accent bg-accent/10" : ""}`}
             title={`Sort: ${selectedSort?.label || "Default"}`}
           >
-            <ArrowUpDown className="w-5 h-5" />
+            <ArrowUpDown className={`w-5 h-5 ${isSortOpen ? "text-accent" : ""}`} />
           </button>
 
-          {isSortOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-background-primary border border-border rounded-md shadow-floating z-50">
-              {sortOptions.map((option, index) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onSortChange(option.value);
-                    setIsSortOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-sm text-text-primary hover:bg-background-secondary transition-colors cursor-pointer ${
-                    index === 0 ? "rounded-t-md" : ""
-                  } ${index === sortOptions.length - 1 ? "rounded-b-md" : ""}`}
-                >
-                  <span>{option.label}</span>
-                  {sortValue === option.value && (
-                    <Check className="w-4 h-4 text-accent" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence>
+            {isSortOpen && (
+              <motion.div
+                {...dropdownAnimations}
+                className="absolute right-0 mt-2 w-56 bg-background-primary border border-border rounded-lg shadow-xl z-50 overflow-hidden ring-1 ring-black/5"
+              >
+                <div className="p-1">
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onSortChange(option.value);
+                        setIsSortOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer rounded-md ${
+                        sortValue === option.value
+                          ? "bg-accent/10 text-accent font-medium"
+                          : "text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {sortValue === option.value && (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 

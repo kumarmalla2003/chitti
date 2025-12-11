@@ -12,6 +12,7 @@ import AssignExistingMemberForm from "../../../members/components/forms/AssignEx
 import RapidAssignForm from "../forms/RapidAssignForm";
 import AssignedMemberCard from "../../../members/components/cards/AssignedMemberCard";
 import StatusBadge from "../../../../components/ui/StatusBadge";
+import Skeleton from "../../../../components/ui/Skeleton";
 import {
   Search,
   Users,
@@ -510,8 +511,8 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
         )}
 
         {loading && !allMonthsData.length ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <div className="p-4">
+             <Skeleton.Table rows={5} columns={6} />
           </div>
         ) : (
           <>

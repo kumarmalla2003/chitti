@@ -13,6 +13,8 @@ const theme = {
   white: "#FFFFFF",
   borderLight: "#E5E7EB",
   accent: "#EF4444", // Red accent
+  success: "#10B981", // Green for paid status
+  warning: "#F59E0B", // Yellow for pending
   bgSecondary: "#F9FAFB",
 };
 
@@ -147,6 +149,7 @@ const PayoutReportPDF = ({ payouts, filters }) => {
     chit: p.chit?.name || "Unknown",
     method: p.method,
     amount: formatCurrency(p.amount),
+    status: p.status || "Pending",
   }));
 
   const columns = [
@@ -174,6 +177,18 @@ const PayoutReportPDF = ({ payouts, filters }) => {
       header: "Amount",
       accessor: "amount",
       style: { width: "20%", textAlign: "center" },
+    },
+    {
+      header: "Status",
+      accessor: "status",
+      style: { width: "15%", textAlign: "center" },
+      conditionalStyle: (row) => {
+        const status = row.status || "Pending";
+        return status === "Paid"
+          ? { color: theme.success, fontWeight: "bold" } // Use success green for paid even in red theme
+          : { color: theme.warning, fontWeight: "bold" };
+      },
+      cell: (row) => row.status,
     },
   ];
 

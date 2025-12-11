@@ -35,6 +35,7 @@ import {
 } from "../../../payouts/hooks/usePayouts";
 import { createCollection } from "../../../../services/collectionsService";
 import CollectionHistoryCard from "../../../collections/components/cards/CollectionHistoryCard";
+import Skeleton from "../../../../components/ui/Skeleton";
 import useScrollToTop from "../../../../hooks/useScrollToTop";
 
 const ITEMS_PER_PAGE = 10;
@@ -382,8 +383,8 @@ const CollectionHistoryList = ({
     // ...
     return (
       <Card className="flex-1 flex flex-col">
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <div className="p-4">
+           <Skeleton.Table rows={5} columns={6} />
         </div>
       </Card>
     );

@@ -218,7 +218,11 @@ const MemberReportPDF = ({ member, assignments, collections }) => {
       cell: (row) => (
         <Text
           style={
-            row.status === "Active" ? styles.textSuccess : styles.textError
+            row.status === "Active"
+              ? styles.textSuccess
+              : row.status === "Upcoming"
+              ? { color: theme.warning, fontWeight: "bold" }
+              : { color: theme.textLight, fontWeight: "bold" } // Completed or others
           }
         >
           {row.status}

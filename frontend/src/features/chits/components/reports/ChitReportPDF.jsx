@@ -383,12 +383,14 @@ const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
                 <Text
                   style={[
                     styles.detailValue,
-                    chit.status === "Active"
+                    (chit.calculatedStatus || chit.status) === "Active"
                       ? styles.textSuccess
-                      : styles.textError,
+                      : (chit.calculatedStatus || chit.status) === "Upcoming"
+                      ? styles.textWarning
+                      : styles.textSecondary, // Completed or others
                   ]}
                 >
-                  {chit.status}
+                  {chit.calculatedStatus || chit.status}
                 </Text>
                 <Text style={styles.detailLabel}>Cycle</Text>
                 <Text style={styles.detailValueLast}>{chit.chit_cycle}</Text>

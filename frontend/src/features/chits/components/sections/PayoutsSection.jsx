@@ -21,6 +21,7 @@ import Message from "../../../../components/ui/Message";
 import Button from "../../../../components/ui/Button";
 import Table from "../../../../components/ui/Table";
 import StatusBadge from "../../../../components/ui/StatusBadge";
+import Skeleton from "../../../../components/ui/Skeleton";
 import useCursorTracking from "../../../../hooks/useCursorTracking";
 import { updatePayout } from "../../../../services/payoutsService";
 
@@ -397,8 +398,8 @@ const PayoutsSection = ({ chitId, mode, showTitle = true }) => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="p-4">
+        <Skeleton.Table rows={5} columns={4} />
       </div>
     );
   if (!chitId)

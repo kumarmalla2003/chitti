@@ -77,4 +77,9 @@ Skeleton.Table = ({ rows = 5, columns = 5, className = "" }) => (
     </div>
 );
 
+// Input field skeleton (for forms)
+Skeleton.Input = ({ className = "" }) => (
+    <div className={`${shimmerClass} rounded-md h-10 w-full ${className}`} />
+);
+
 export default Skeleton;

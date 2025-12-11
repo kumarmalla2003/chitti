@@ -12,6 +12,8 @@ import Button from "../../../components/ui/Button";
 import Table from "../../../components/ui/Table";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import Skeleton from "../../../components/ui/Skeleton";
+import StaggerContainer from "../../../components/ui/StaggerContainer";
+import StaggerItem from "../../../components/ui/StaggerItem";
 import EmptyState from "../../../components/ui/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
 import SearchToolbar from "../../../components/ui/SearchToolbar";
@@ -414,19 +416,20 @@ const MembersPage = () => {
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {paginatedMembers.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={{ ...member, status: member.calculatedStatus }}
-                    onView={() => navigate(`/members/view/${member.id}`)}
-                    onEdit={() => navigate(`/members/edit/${member.id}`)}
-                    onDelete={() => handleDeleteClick(member)}
-                    onPrint={handlePrintMember}
-                    isPrinting={printingMemberId === member.id}
-                  />
+                  <StaggerItem key={member.id}>
+                    <MemberCard
+                      member={{ ...member, status: member.calculatedStatus }}
+                      onView={() => navigate(`/members/view/${member.id}`)}
+                      onEdit={() => navigate(`/members/edit/${member.id}`)}
+                      onDelete={() => handleDeleteClick(member)}
+                      onPrint={handlePrintMember}
+                      isPrinting={printingMemberId === member.id}
+                    />
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
             )}
 
             {/* Pagination */}

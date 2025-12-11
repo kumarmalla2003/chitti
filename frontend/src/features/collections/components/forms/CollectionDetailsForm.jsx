@@ -20,6 +20,7 @@ import {
 import CustomDateInput from "../../../../components/ui/CustomDateInput";
 import ViewOnlyField from "../../../../components/ui/ViewOnlyField";
 import FormattedInput from "../../../../components/ui/FormattedInput";
+import Skeleton from "../../../../components/ui/Skeleton";
 
 const CollectionDetailsForm = ({
   mode,
@@ -354,6 +355,11 @@ const CollectionDetailsForm = ({
               </option>
             ))}
           </select>
+          {isAssignmentsLoading && (
+            <div className="absolute inset-0 z-10">
+              <Skeleton.Input />
+            </div>
+          )}
         </div>
         {errors.chit_assignment_id && <p className="text-red-500 text-sm mt-1">{errors.chit_assignment_id.message}</p>}
       </div>
