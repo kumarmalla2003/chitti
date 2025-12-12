@@ -27,7 +27,17 @@ import {
   Trash2,
   Printer,
   TrendingUp,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  WalletMinimal,
 } from "lucide-react";
+
+import StatsCard from "../../../components/ui/StatsCard";
+import StatsCarousel from "../../../components/ui/StatsCarousel";
+import FormattedCurrency from "../../../components/ui/FormattedCurrency";
+import { useCollections } from "../../collections/hooks/useCollections";
+import { useChits } from "../../chits/hooks/useChits";
 
 import { pdf } from "@react-pdf/renderer";
 import PayoutReportPDF from "../components/reports/PayoutReportPDF";
@@ -85,6 +95,10 @@ const PayoutsPage = () => {
   } = usePayouts();
 
   const deletePayoutMutation = useDeletePayout();
+
+  // Additional data for stats
+  const { data: collectionsData } = useCollections();
+  const { data: chitsData } = useChits();
 
   // Extract payouts from query data
   const payouts = useMemo(() => {
@@ -266,6 +280,170 @@ const PayoutsPage = () => {
       year: "numeric",
     });
 
+  // Metrics Block
+  const metricsBlock = useMemo(() => {
+    if (loading) return null;
+
+    const collections = collectionsData?.collections || [];
+    const chits = chitsData?.chits || [];
+    const activeChits = chits.filter((c) => c.status === "Active");
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+
+    // Metric 1: Priority Payout
+    const priorityPayout = (() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const unpaidPayouts = payouts.filter((p) => p.status === "Pending");
+
+      if (unpaidPayouts.length === 0) {
+        const upcomingPayouts = payouts
+          .filter((p) => new Date(p.paid_date) > today && p.status === "Paid")
+          .sort((a, b) => new Date(a.paid_date) - new Date(b.paid_date));
+
+        if (upcomingPayouts.length === 0) return null;
+
+        const earliestDate = upcomingPayouts[0].paid_date;
+        const sameDate = upcomingPayouts.filter((p) => p.paid_date === earliestDate);
+
+        if (sameDate.length === 1) {
+          return { ...sameDate[0], isUpcoming: true };
+        } else {
+          return {
+            paid_date: earliestDate,
+            amount: sameDate.reduce((sum, p) => sum + p.amount, 0),
+            count: sameDate.length,
+            isUpcoming: true,
+            isAggregated: true,
+          };
+        }
+      }
+
+      const sortedUnpaid = unpaidPayouts.sort(
+        (a, b) => new Date(a.paid_date) - new Date(b.paid_date)
+      );
+
+      const earliestDate = sortedUnpaid[0].paid_date;
+      const sameDate = sortedUnpaid.filter((p) => p.paid_date === earliestDate);
+
+      if (sameDate.length === 1) {
+        return { ...sameDate[0], isUpcoming: false };
+      } else {
+        return {
+          paid_date: earliestDate,
+          amount: sameDate.reduce((sum, p) => sum + p.amount, 0),
+          count: sameDate.length,
+          isUpcoming: false,
+          isAggregated: true,
+        };
+      }
+    })();
+
+    // Metric 2: Monthly Payouts - Optimized single pass using scheduled dates
+    const payoutMetrics = payouts.reduce(
+      (metrics, p) => {
+        if (!p.chit || !p.chit.start_date) return metrics;
+        
+        const chitStartDate = new Date(p.chit.start_date);
+        const scheduledDate = new Date(chitStartDate);
+        scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+        
+        const isThisMonth =
+          scheduledDate.getMonth() === currentMonth &&
+          scheduledDate.getFullYear() === currentYear;
+        
+        if (!isThisMonth) return metrics;
+        
+        return {
+          paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+          expectedAmount: metrics.expectedAmount + (p.planned_amount || 0),
+          paidCount: metrics.paidCount + (p.paid_date ? 1 : 0),
+          totalCount: metrics.totalCount + 1,
+        };
+      },
+      { paidAmount: 0, expectedAmount: 0, paidCount: 0, totalCount: 0 }
+    );
+
+    const paidAmount = payoutMetrics.paidAmount;
+    const expectedAmount = payoutMetrics.expectedAmount;
+    const paidCount = payoutMetrics.paidCount;
+    const totalScheduledCount = payoutMetrics.totalCount;
+
+    // Metric 4: Monthly Collection
+    const collectedThisMonth = collections.reduce((sum, c) => {
+      if (!c.collection_date) return sum;
+      const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+      if (cYear === currentYear && cMonth - 1 === currentMonth) {
+        return sum + (c.amount_paid || 0);
+      }
+      return sum;
+    }, 0);
+
+    const monthlyCollectionTarget = activeChits.reduce(
+      (sum, c) => sum + c.monthly_installment * c.size,
+      0
+    );
+
+    return (
+      <StatsCarousel className="mb-8">
+        {/* Card 1: Priority Payout */}
+        <StatsCard
+          icon={priorityPayout?.isUpcoming ? Clock : AlertCircle}
+          label={priorityPayout?.isUpcoming ? "Next Payout" : "Priority Payout"}
+          value={
+            priorityPayout ? (
+              <FormattedCurrency amount={priorityPayout.amount} />
+            ) : (
+              "No payouts"
+            )
+          }
+          subtext={
+            !priorityPayout
+              ? "All clear"
+              : priorityPayout.isAggregated
+              ? `${priorityPayout.count} payouts on ${formatDate(priorityPayout.paid_date)}`
+              : formatDate(priorityPayout.paid_date)
+          }
+          color="accent"
+        />
+        {/* Card 2: Monthly Payouts */}
+        <StatsCard
+          icon={TrendingUp}
+          label="Monthly Payouts"
+          value={<FormattedCurrency amount={paidAmount} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={expectedAmount} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+        {/* Card 3: Payout Count */}
+        <StatsCard
+          icon={CheckCircle2}
+          label="Payout Count"
+          value={paidCount}
+          subtext={`Total Scheduled: ${totalScheduledCount}`}
+          color="accent"
+        />
+        {/* Card 4: Monthly Collection */}
+        <StatsCard
+          icon={WalletMinimal}
+          label="Monthly Collection"
+          value={<FormattedCurrency amount={collectedThisMonth} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={monthlyCollectionTarget} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+      </StatsCarousel>
+    );
+  }, [payouts, collectionsData, chitsData, loading]);
+
   const columns = [
     {
       header: "S.No",
@@ -332,17 +510,21 @@ const PayoutsPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
-        {/* Page Header */}
-        <PageHeader
-          title="All Payouts"
-          actionIcon={Printer}
-          actionTitle="Generate Report"
-          onAction={() => setIsReportModalOpen(true)}
-          showAction={payouts.length > 0}
-        />
+      <div className="w-full space-y-8">
+        {/* Page Header - show skeleton when loading */}
+        {loading ? (
+          <Skeleton.PageHeader showAction={true} />
+        ) : (
+          <PageHeader
+            title="All Payouts"
+            actionIcon={Printer}
+            actionTitle="Generate Report"
+            onAction={() => setIsReportModalOpen(true)}
+            showAction={payouts.length > 0}
+          />
+        )}
 
-        <hr className="my-4 border-border" />
+        <hr className="border-border" />
 
         {success && <Message type="success">{success}</Message>}
         {error && (
@@ -351,8 +533,51 @@ const PayoutsPage = () => {
           </Message>
         )}
 
+        {/* --- Loading State: Skeletons in correct visual order --- */}
+        {loading && (
+          <>
+            {/* Metrics Skeleton */}
+            <StatsCarousel isLoading className="mb-8" />
+
+            {/* SearchToolbar Skeleton */}
+            <Skeleton.SearchToolbar />
+
+            {/* Table/Card Skeleton */}
+            {viewMode === "table" ? (
+              <Skeleton.Table
+                rows={ITEMS_PER_PAGE}
+                columnWidths={[
+                  "w-16",   // S.No
+                  "w-1/6",  // Date
+                  "w-1/5",  // Member
+                  "w-1/5",  // Chit
+                  "w-1/6",  // Amount
+                  "w-24",   // Status
+                  "w-28",   // Actions (2 buttons)
+                ]}
+                serialColumnIndex={0}
+                statusColumnIndex={5}
+                actionColumnIndex={6}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                  <PayoutCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Skeleton */}
+            <Skeleton.Pagination />
+          </>
+        )}
+
+        {/* --- Loaded State: Actual content --- */}
+        {/* Overview Metrics */}
+        {!loading && payouts.length > 0 && metricsBlock}
+
         {/* Unified Search Toolbar - only show when 2+ items */}
-        {payouts.length >= 2 && (
+        {!loading && payouts.length >= 2 && (
           <SearchToolbar
             searchPlaceholder="Search by member, chit, or amount..."
             searchValue={searchQuery}
@@ -366,18 +591,6 @@ const PayoutsPage = () => {
             viewMode={viewMode}
             onViewChange={setViewMode}
           />
-        )}
-
-        {loading && (
-          viewMode === "table" ? (
-            <Skeleton.Table rows={5} columns={7} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <PayoutCardSkeleton key={i} />
-              ))}
-            </div>
-          )
         )}
 
         {!loading && sortedPayouts.length === 0 && (

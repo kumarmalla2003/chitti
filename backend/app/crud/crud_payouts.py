@@ -59,6 +59,20 @@ class CRUDPayout:
         result = await db.execute(statement)
         return result.scalars().all()
     
+    async def get_all(self, db: AsyncSession) -> List[Payout]:
+        """Get all payouts (both paid and unpaid) for schedule display."""
+        result = await db.execute(
+            select(Payout)
+            .where(Payout.chit_id.is_not(None))  # Filter out orphaned payouts
+            .options(
+                selectinload(Payout.member),
+                selectinload(Payout.chit),
+                selectinload(Payout.assignment)
+            )
+            .order_by(Payout.chit_id, Payout.month)
+        )
+        return result.scalars().all()
+        
     async def get_by_chit(self, db: AsyncSession, chit_id: int) -> List[Payout]:
         result = await db.execute(
             select(Payout)

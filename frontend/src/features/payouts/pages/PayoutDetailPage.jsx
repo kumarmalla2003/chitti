@@ -231,7 +231,7 @@ const PayoutDetailPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
+      <div className="w-full">
         <div className="relative flex justify-center items-center mb-4">
           <button
             onClick={handleBackNavigation}

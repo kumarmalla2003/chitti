@@ -29,89 +29,121 @@ const BottomNav = ({ onLoginClick }) => {
     !isPayoutsActive;
 
   return (
-    <footer className="fixed bottom-0 left-0 w-full h-16 bg-background-secondary shadow-[0_-2px_6px_rgba(0,0,0,0.1)] px-4 border-t border-border md:hidden flex items-center">
-      <div className="container mx-auto h-full flex items-center">
+    <footer className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-background-secondary/80 backdrop-blur-lg border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
+      <div className="w-full h-16 px-2">
         {isLoggedIn ? (
-          <nav className="grid h-full w-full grid-cols-5 items-center gap-2">
+          <nav className="grid h-full w-full grid-cols-5 items-center justify-items-center">
             {/* 1. CHITS */}
             <Link
               to="/chits"
-              className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isChitsActive ? "text-accent" : "text-text-primary"
-              }`}
+              className="flex items-center justify-center w-full h-full"
               aria-label="Chits"
             >
-              <Layers
-                className={`w-7 h-7 transition-transform duration-300 ${
-                  isChitsActive ? "scale-110" : ""
+              <div
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
+                  isChitsActive
+                    ? "bg-accent/15 text-accent shadow-sm"
+                    : "text-text-secondary hover:bg-background-tertiary/50"
                 }`}
-              />
+              >
+                <Layers
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isChitsActive ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </Link>
 
             {/* 2. PAYOUTS */}
             <Link
               to="/payouts"
-              className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isPayoutsActive ? "text-accent" : "text-text-primary"
-              }`}
+              className="flex items-center justify-center w-full h-full"
               aria-label="Payouts"
             >
-              <TrendingUp
-                className={`w-7 h-7 transition-transform duration-300 ${
-                  isPayoutsActive ? "scale-110" : ""
+              <div
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
+                  isPayoutsActive
+                    ? "bg-accent/15 text-accent shadow-sm"
+                    : "text-text-secondary hover:bg-background-tertiary/50"
                 }`}
-              />
+              >
+                <TrendingUp
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isPayoutsActive ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </Link>
 
             {/* 3. DASHBOARD */}
             <Link
               to="/dashboard"
-              className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isDashboardActive ? "text-accent" : "text-text-primary"
-              }`}
+              className="flex items-center justify-center w-full h-full"
               aria-label="Dashboard"
             >
-              <LayoutDashboard
-                className={`w-7 h-7 transition-transform duration-300 ${
-                  isDashboardActive ? "scale-110" : ""
+              <div
+                className={`flex items-center justify-center p-2.5 rounded-2xl transition-all duration-300 ${
+                  isDashboardActive
+                    ? "bg-accent text-white shadow-md shadow-accent/25"
+                    : "text-text-secondary hover:bg-background-tertiary/50"
                 }`}
-              />
+              >
+                <LayoutDashboard
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isDashboardActive ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </Link>
 
             {/* 4. MEMBERS */}
             <Link
               to="/members"
-              className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isMembersActive ? "text-accent" : "text-text-primary"
-              }`}
+              className="flex items-center justify-center w-full h-full"
               aria-label="Members"
             >
-              <Users
-                className={`w-7 h-7 transition-transform duration-300 ${
-                  isMembersActive ? "scale-110" : ""
+              <div
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
+                  isMembersActive
+                    ? "bg-accent/15 text-accent shadow-sm"
+                    : "text-text-secondary hover:bg-background-tertiary/50"
                 }`}
-              />
+              >
+                <Users
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isMembersActive ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </Link>
 
             {/* 5. COLLECTIONS */}
             <Link
               to="/collections"
-              className={`flex flex-col items-center justify-center transition-colors duration-300 ${
-                isCollectionsActive ? "text-accent" : "text-text-primary"
-              }`}
+              className="flex items-center justify-center w-full h-full"
               aria-label="Collections"
             >
-              <WalletMinimal
-                className={`w-7 h-7 transition-transform duration-300 ${
-                  isCollectionsActive ? "scale-110" : ""
+              <div
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
+                  isCollectionsActive
+                    ? "bg-accent/15 text-accent shadow-sm"
+                    : "text-text-secondary hover:bg-background-tertiary/50"
                 }`}
-              />
+              >
+                <WalletMinimal
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isCollectionsActive ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </Link>
           </nav>
         ) : (
-          <Button onClick={onLoginClick} className="w-full">
-            Log In to access your Dashboard!
-          </Button>
+          <div className="flex items-center justify-center h-full">
+            <Button onClick={onLoginClick} className="w-full mx-4">
+              Log In to access your Dashboard!
+            </Button>
+          </div>
         )}
       </div>
     </footer>

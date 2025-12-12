@@ -109,7 +109,7 @@ const Header = ({
           ref={linkRefs[link.id]}
           to={link.href}
           onMouseEnter={() => setHoveredLink(link.id)}
-          className={`transition-colors duration-normal ease-smooth ${
+          className={`relative z-40 transition-colors duration-normal ease-smooth ${
             isLinkActive(link.href) ? "text-accent" : "text-text-secondary"
           }`}
         >
@@ -154,9 +154,24 @@ const Header = ({
 
   return (
     <header className="sticky top-0 z-sticky bg-background-secondary/80 backdrop-blur-overlay shadow-card">
-      <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <nav className="w-full px-4 py-4 flex justify-between items-center">
         <div className="flex-shrink-0">
-          <BrandLogo className="hidden md:block text-display font-bold font-heading text-accent" />
+          {location.pathname === "/" ? (
+            <a
+              href="#home"
+              onClick={(e) => handleLinkClick(e, "home")}
+              className="hidden md:block text-display font-bold font-heading text-accent"
+            >
+              Chitti
+            </a>
+          ) : (
+            <Link
+              to="/"
+              className="hidden md:block text-display font-bold font-heading text-accent"
+            >
+              Chitti
+            </Link>
+          )}
           <div className="md:hidden">
             <button
               onClick={onMenuOpen}
@@ -169,19 +184,66 @@ const Header = ({
         </div>
 
         <div className="md:hidden">
-          <BrandLogo className="text-display font-bold font-heading text-accent" />
+          {location.pathname === "/" ? (
+            <a
+              href="#home"
+              onClick={(e) => handleLinkClick(e, "home")}
+              className="text-display font-bold font-heading text-accent"
+            >
+              Chitti
+            </a>
+          ) : (
+            <Link
+              to="/"
+              className="text-display font-bold font-heading text-accent"
+            >
+              Chitti
+            </Link>
+          )}
         </div>
 
         <div
           onMouseLeave={() => setHoveredLink(null)}
-          className="hidden md:flex items-center space-x-8 relative"
+          className="hidden md:flex items-center md:space-x-4 lg:space-x-8 relative z-30"
         >
-          <NavLinks />
+          {isLoggedIn
+            ? loggedInNavLinks.map((link) => (
+                <Link
+                  key={link.id}
+                  ref={linkRefs[link.id]}
+                  to={link.href}
+                  onMouseEnter={() => setHoveredLink(link.id)}
+                  className={`relative z-40 transition-colors duration-normal ease-smooth ${
+                    isLinkActive(link.href)
+                      ? "text-accent"
+                      : "text-text-secondary"
+                  }`}
+                >
+                  {link.text}
+                </Link>
+              ))
+            : loggedOutNavLinks.map((link) => (
+                <a
+                  key={link.id}
+                  ref={linkRefs[link.id]}
+                  href={link.href}
+                  onClick={(e) => handleLinkClick(e, link.id)}
+                  onMouseEnter={() => setHoveredLink(link.id)}
+                  className={`relative z-40 transition-colors duration-normal ease-smooth ${
+                    activeSection === link.id
+                      ? "text-accent"
+                      : "text-text-secondary"
+                  }`}
+                >
+                  {link.text}
+                </a>
+              ))}
           <span
-            className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-normal ease-smooth"
+            className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-normal ease-smooth pointer-events-none"
             style={underlineStyle}
           />
         </div>
+
 
         <div className="flex-shrink-0 flex items-center gap-4">
           <div className="hidden md:block">

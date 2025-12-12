@@ -182,7 +182,7 @@ const CollectionDetailPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
+      <div className="w-full">
         {/* --- Header Row --- */}
         <div className="relative flex justify-center items-center mb-4">
           <button

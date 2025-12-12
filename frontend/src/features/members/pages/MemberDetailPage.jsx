@@ -385,7 +385,7 @@ const MemberDetailPage = () => {
 
   if (pageLoading) {
     return (
-      <div className="container mx-auto">
+      <div className="w-full">
         <div className="flex justify-center items-center mb-4 relative">
              <Skeleton.Text width="w-1/3" height="h-8" />
         </div>

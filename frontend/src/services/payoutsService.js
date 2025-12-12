@@ -17,7 +17,8 @@ export const getAllPayouts = async (filters = {}) => {
   if (filters.endDate) params.end_date = filters.endDate;
 
   try {
-    const response = await api.get(`${BASE_URL}/all`, { params });
+    // Call base /payouts endpoint which returns ALL payouts (including unpaid)
+    const response = await api.get(`${BASE_URL}`, { params });
     return response.data;
   } catch (error) {
     handleError(error, "Failed to fetch payouts.");

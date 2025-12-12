@@ -13,7 +13,7 @@ const Hero = forwardRef(({ onLoginClick }, ref) => {
       ref={ref}
       className="flex flex-col justify-center items-center text-center py-24"
     >
-      <div className="container mx-auto px-4">
+      <div className="w-full px-4">
         <h1 className="text-4xl md:text-6xl font-bold text-text-primary mb-4">
           The Future of <span className="text-accent">Predictable</span> Chit
           Funds

@@ -14,10 +14,12 @@ const ChitCardSkeleton = () => {
                     <div className={`w-3 h-3 rounded-full ${shimmerClass}`} />
                     <div className={`w-32 h-5 rounded ${shimmerClass}`} />
                 </div>
-                <div className="flex items-center gap-1">
-                    <div className={`w-9 h-9 rounded-full ${shimmerClass}`} />
-                    <div className={`w-9 h-9 rounded-full ${shimmerClass}`} />
-                    <div className={`w-9 h-9 rounded-full ${shimmerClass}`} />
+                <div className="flex items-center gap-2">
+                    {/* Action buttons: p-2 (8px) + w-5 (20px) = 36px, visible ~24px */}
+                    {/* Using w-6 (24px) + gap-2 (8px) to match visual separation */}
+                    <div className={`w-6 h-6 rounded-full ${shimmerClass}`} />
+                    <div className={`w-6 h-6 rounded-full ${shimmerClass}`} />
+                    <div className={`w-6 h-6 rounded-full ${shimmerClass}`} />
                 </div>
             </div>
 
@@ -25,11 +27,11 @@ const ChitCardSkeleton = () => {
             <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                     <div className={`w-5 h-5 rounded ${shimmerClass}`} />
-                    <div className={`w-24 h-5 rounded ${shimmerClass}`} />
+                    <div className={`w-24 h-4 rounded ${shimmerClass}`} />
                 </div>
                 <div className="flex items-center gap-2">
                     <div className={`w-5 h-5 rounded ${shimmerClass}`} />
-                    <div className={`w-20 h-5 rounded ${shimmerClass}`} />
+                    <div className={`w-20 h-4 rounded ${shimmerClass}`} />
                 </div>
             </div>
 
@@ -40,11 +42,11 @@ const ChitCardSkeleton = () => {
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <div className={`w-4 h-4 rounded ${shimmerClass}`} />
-                    <div className={`w-28 h-4 rounded ${shimmerClass}`} />
+                    <div className={`w-28 h-3.5 rounded ${shimmerClass}`} />
                 </div>
                 <div className="flex items-center gap-2">
                     <div className={`w-4 h-4 rounded ${shimmerClass}`} />
-                    <div className={`w-16 h-4 rounded ${shimmerClass}`} />
+                    <div className={`w-16 h-3.5 rounded ${shimmerClass}`} />
                 </div>
             </div>
         </div>

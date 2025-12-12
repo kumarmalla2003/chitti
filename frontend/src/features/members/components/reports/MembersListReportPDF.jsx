@@ -75,18 +75,19 @@ const styles = StyleSheet.create({
   },
   highlightContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
+    flexWrap: "wrap",
+    gap: 12,
   },
   highlightBox: {
     flex: 1,
     backgroundColor: theme.accent,
-    padding: 16,
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
+    minWidth: "45%",
   },
   highlightLabel: {
     fontSize: 9,
@@ -97,9 +98,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   highlightValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: theme.white,
+    marginBottom: 4,
+  },
+  highlightSubtext: {
+    fontSize: 7.5,
+    color: theme.white,
+    textAlign: "center",
   },
   // --- FOOTER ---
   footerContainer: {
@@ -132,7 +139,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const MembersListReportPDF = ({ members }) => {
+const MembersListReportPDF = ({ members, collections = [], payouts = [], chits = [] }) => {
   // Helper to calculate active chits for a member
   const getActiveCount = (member) => {
     if (!member.assignments || member.assignments.length === 0) return 0;
@@ -150,6 +157,84 @@ const MembersListReportPDF = ({ members }) => {
   }));
 
   const totalMembers = members.length;
+  const activeMembers = data.filter((m) => m.active_chits > 0);
+
+  // --- Metrics Calculations ---
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const activeChitsData = chits.filter((c) => c.status === "Active");
+
+  // Monthly Collection
+  const collectedThisMonth = collections.reduce((sum, c) => {
+    if (!c.collection_date) return sum;
+    const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+    if (cYear === currentYear && cMonth - 1 === currentMonth) {
+      return sum + (c.amount_paid || 0);
+    }
+    return sum;
+  }, 0);
+
+  const monthlyCollectionTarget = activeChitsData.reduce(
+    (sum, c) => sum + c.monthly_installment * c.size,
+    0
+  );
+
+  // Optimized payout calculation - single pass
+  const payoutMetrics = payouts.reduce(
+    (metrics, p) => {
+      if (!p.chit || !p.chit.start_date) return metrics;
+      
+      const chitStartDate = new Date(p.chit.start_date);
+      const scheduledDate = new Date(chitStartDate);
+      scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+      
+      const isThisMonth =
+        scheduledDate.getMonth() === currentMonth &&
+        scheduledDate.getFullYear() === currentYear;
+      
+      if (!isThisMonth) return metrics;
+      
+      return {
+        paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+        targetAmount: metrics.targetAmount + (p.planned_amount || 0),
+      };
+    },
+    { paidAmount: 0, targetAmount: 0 }
+  );
+
+  const paidThisMonth = payoutMetrics.paidAmount;
+  const monthlyPayoutTarget = payoutMetrics.targetAmount;
+
+  // Pending This Month
+  const membersWithPending = new Set();
+  collections.forEach((c) => {
+    if (!c.collection_date) return;
+    const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+    if (cYear === currentYear && cMonth - 1 === currentMonth) {
+      if (c.collection_status === "Unpaid" || c.collection_status === "Partial") {
+        if (c.member?.id) {
+          membersWithPending.add(c.member.id);
+        }
+      }
+    }
+  });
+
+  // Collection Count - for Box 4
+  const collectionsThisMonth = collections.filter((c) => {
+    if (!c.collection_date) return false;
+    const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+    return cYear === currentYear && cMonth - 1 === currentMonth;
+  });
+
+  const collectedCount = collectionsThisMonth.filter(
+    (c) => c.collection_status === "Paid"
+  ).length;
+
+  const formatCurrency = (val) => {
+    if (val === undefined || val === null) return "";
+    const num = Number(val.toString().replace(/,/g, ""));
+    return isNaN(num) ? "Rs. 0" : `Rs. ${num.toLocaleString("en-IN")}`;
+  };
 
   const columns = [
     {
@@ -200,10 +285,41 @@ const MembersListReportPDF = ({ members }) => {
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.overviewCard}>
             <View style={styles.highlightContainer}>
-              {/* Box 1: Total Members */}
+              {/* Box 1: Monthly Collection */}
               <View style={styles.highlightBox}>
-                <Text style={styles.highlightLabel}>Total Members</Text>
-                <Text style={styles.highlightValue}>{totalMembers}</Text>
+                <Text style={styles.highlightLabel}>Monthly Collection</Text>
+                <Text style={styles.highlightValue}>
+                  {formatCurrency(collectedThisMonth)}
+                </Text>
+                <Text style={styles.highlightSubtext}>
+                  Target: {formatCurrency(monthlyCollectionTarget)}
+                </Text>
+              </View>
+              {/* Box 2: Monthly Payouts */}
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightLabel}>Monthly Payouts</Text>
+                <Text style={styles.highlightValue}>
+                  {formatCurrency(paidThisMonth)}
+                </Text>
+                <Text style={styles.highlightSubtext}>
+                  Target: {formatCurrency(monthlyPayoutTarget)}
+                </Text>
+              </View>
+              {/* Box 3: Active Members */}
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightLabel}>Active Members</Text>
+                <Text style={styles.highlightValue}>{activeMembers.length}</Text>
+                <Text style={styles.highlightSubtext}>
+                  Total Members: {totalMembers}
+                </Text>
+              </View>
+              {/* Box 4: Collection Count (from CollectionsPage Card 3) */}
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightLabel}>Collection Count</Text>
+                <Text style={styles.highlightValue}>{collectedCount}</Text>
+                <Text style={styles.highlightSubtext}>
+                  Total: {collectionsThisMonth.length} this month
+                </Text>
               </View>
             </View>
           </View>

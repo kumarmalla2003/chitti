@@ -10,10 +10,11 @@ const CollectionCardSkeleton = () => {
         <div className="rounded-lg p-4 shadow-md bg-background-secondary">
             {/* Top Row: Name and Actions */}
             <div className="flex justify-between items-center mb-3">
-                <div className={`w-32 h-6 rounded ${shimmerClass}`} />
-                <div className="flex items-center gap-1">
-                    <div className={`w-9 h-9 rounded-full ${shimmerClass}`} />
-                    <div className={`w-9 h-9 rounded-full ${shimmerClass}`} />
+            <div className={`w-32 h-6 rounded ${shimmerClass}`} />
+                <div className="flex items-center gap-2">
+                    {/* 2 action buttons: p-2 + w-5, visible ~24px */}
+                    <div className={`w-6 h-6 rounded-full ${shimmerClass}`} />
+                    <div className={`w-6 h-6 rounded-full ${shimmerClass}`} />
                 </div>
             </div>
 

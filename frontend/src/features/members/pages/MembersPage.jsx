@@ -28,7 +28,18 @@ import {
   SquarePen,
   Trash2,
   Users,
+  WalletMinimal,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+
+import StatsCard from "../../../components/ui/StatsCard";
+import StatsCarousel from "../../../components/ui/StatsCarousel";
+import FormattedCurrency from "../../../components/ui/FormattedCurrency";
+import { useCollections } from "../../collections/hooks/useCollections";
+import { usePayouts } from "../../payouts/hooks/usePayouts";
+import { useChits } from "../../chits/hooks/useChits";
 
 import MembersListReportPDF from "../components/reports/MembersListReportPDF";
 import MemberReportPDF from "../components/reports/MemberReportPDF";
@@ -100,6 +111,11 @@ const MembersPage = () => {
   } = useMembers();
 
   const deleteMemberMutation = useDeleteMember();
+
+  // Additional data for stats
+  const { data: collectionsData } = useCollections();
+  const { data: payoutsData } = usePayouts();
+  const { data: chitsData } = useChits();
 
   // Extract members from query data and add calculated status
   const members = useMemo(() => {
@@ -217,20 +233,26 @@ const MembersPage = () => {
 
     setIsPrintingAll(true);
     try {
+      const reportName = `All Members Report`;
       const blob = await pdf(
-        <MembersListReportPDF members={sortedMembers} />
+        <MembersListReportPDF
+          members={sortedMembers}
+          collections={collectionsData?.collections || []}
+          payouts={payoutsData?.payouts || []}
+          chits={chitsData?.chits || []}
+        />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "All Members Report.pdf";
+      link.download = `${reportName}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Print failed", err);
-      setLocalError("Failed to generate report.");
+      console.error("Print all failed", err);
+      setLocalError("Failed to generate report for all members.");
     } finally {
       setIsPrintingAll(false);
     }
@@ -270,6 +292,133 @@ const MembersPage = () => {
       setPrintingMemberId(null);
     }
   };
+
+  // Metrics Block
+  const metricsBlock = useMemo(() => {
+    if (loading) return null;
+
+    const collections = collectionsData?.collections || [];
+    const payouts = payoutsData?.payouts || [];
+    const chits = chitsData?.chits || [];
+    const activeChits = chits.filter((c) => c.status === "Active");
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+
+    // Metric 1: Monthly Collection (same as ChitsPage)
+    const collectedThisMonth = collections.reduce((sum, c) => {
+      if (!c.collection_date) return sum;
+      const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+      if (cYear === currentYear && cMonth - 1 === currentMonth) {
+        return sum + (c.amount_paid || 0);
+      }
+      return sum;
+    }, 0);
+
+    const monthlyCollectionTarget = activeChits.reduce(
+      (sum, c) => sum + c.monthly_installment * c.size,
+      0
+    );
+
+    // Optimized payout calculation - single pass
+    const payoutMetrics = payouts.reduce(
+      (metrics, p) => {
+        if (!p.chit || !p.chit.start_date) return metrics;
+        
+        const chitStartDate = new Date(p.chit.start_date);
+        const scheduledDate = new Date(chitStartDate);
+        scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+        
+        const isThisMonth =
+          scheduledDate.getMonth() === currentMonth &&
+          scheduledDate.getFullYear() === currentYear;
+        
+        if (!isThisMonth) return metrics;
+        
+        return {
+          paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+          targetAmount: metrics.targetAmount + (p.planned_amount || 0),
+        };
+      },
+      { paidAmount: 0, targetAmount: 0 }
+    );
+
+    const paidThisMonth = payoutMetrics.paidAmount;
+    const monthlyPayoutTarget = payoutMetrics.targetAmount;
+
+    // Collection Count - for Card 4
+    const collectionsThisMonth = collections.filter((c) => {
+      if (!c.collection_date) return false;
+      const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+      return cYear === currentYear && cMonth - 1 === currentMonth;
+    });
+
+    const collectedCount = collectionsThisMonth.filter(
+      (c) => c.collection_status === "Paid"
+    ).length;
+
+    // Metric 3: Active Members
+    const activeMembers = members.filter((m) => (m.active_chits_count || 0) > 0);
+
+    // Metric 4: Pending Collections Count (members with pending collections this month)
+    const membersWithPending = new Set();
+    collections.forEach((c) => {
+      if (!c.collection_date) return;
+      const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+      if (cYear === currentYear && cMonth - 1 === currentMonth) {
+        if (c.collection_status === "Unpaid" || c.collection_status === "Partial") {
+          if (c.member?.id) {
+            membersWithPending.add(c.member.id);
+          }
+        }
+      }
+    });
+
+    return (
+      <StatsCarousel className="mb-8">
+        {/* Card 1: Monthly Collection */}
+        <StatsCard
+          icon={WalletMinimal}
+          label="Monthly Collection"
+          value={<FormattedCurrency amount={collectedThisMonth} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={monthlyCollectionTarget} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+        {/* Card 2: Monthly Payouts */}
+        <StatsCard
+          icon={TrendingUp}
+          label="Monthly Payouts"
+          value={<FormattedCurrency amount={paidThisMonth} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={monthlyPayoutTarget} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+        {/* Card 3: Active Members */}
+        <StatsCard
+          icon={Users}
+          label="Active Members"
+          value={activeMembers.length}
+          subtext={`Total Members: ${members.length}`}
+          color="accent"
+        />
+        {/* Card 4: Collection Count (from CollectionsPage Card 3) */}
+        <StatsCard
+          icon={CheckCircle2}
+          label="Collection Count"
+          value={collectedCount}
+          subtext={`Total count: ${collectionsThisMonth.length}`}
+          color="accent"
+        />
+      </StatsCarousel>
+    );
+  }, [members, collectionsData, payoutsData, chitsData, loading]);
 
   const columns = [
     {
@@ -335,18 +484,22 @@ const MembersPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
-        {/* Page Header */}
-        <PageHeader
-          title="All Members"
-          actionIcon={Printer}
-          actionTitle="Print All Members"
-          onAction={handlePrintAll}
-          isLoading={isPrintingAll}
-          showAction={sortedMembers.length > 0}
-        />
+      <div className="w-full space-y-8">
+        {/* Page Header - show skeleton when loading */}
+        {loading ? (
+          <Skeleton.PageHeader showAction={true} />
+        ) : (
+          <PageHeader
+            title="All Members"
+            actionIcon={Printer}
+            actionTitle="Print All Members"
+            onAction={handlePrintAll}
+            isLoading={isPrintingAll}
+            showAction={sortedMembers.length > 0}
+          />
+        )}
 
-        <hr className="my-4 border-border" />
+        <hr className="border-border" />
 
         {success && <Message type="success">{success}</Message>}
         {error && (
@@ -355,8 +508,49 @@ const MembersPage = () => {
           </Message>
         )}
 
+        {/* --- Loading State: Skeletons in correct visual order --- */}
+        {loading && (
+          <>
+            {/* Metrics Skeleton */}
+            <StatsCarousel isLoading className="mb-8" />
+
+            {/* SearchToolbar Skeleton */}
+            <Skeleton.SearchToolbar />
+
+            {/* Table/Card Skeleton */}
+            {viewMode === "table" ? (
+              <Skeleton.Table
+                rows={ITEMS_PER_PAGE}
+                columnWidths={[
+                  "w-16",   // S.No
+                  "w-1/3",  // Full Name
+                  "w-1/4",  // Phone Number
+                  "w-24",   // Status
+                  "w-32",   // Actions (3 buttons)
+                ]}
+                serialColumnIndex={0}
+                statusColumnIndex={3}
+                actionColumnIndex={4}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                  <MemberCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Skeleton */}
+            <Skeleton.Pagination />
+          </>
+        )}
+
+        {/* --- Loaded State: Actual content --- */}
+        {/* Overview Metrics */}
+        {!loading && members.length > 0 && metricsBlock}
+
         {/* Unified Search Toolbar - only show when 2+ items */}
-        {members.length >= 2 && (
+        {!loading && members.length >= 2 && (
           <SearchToolbar
             searchPlaceholder="Search by name or phone number..."
             searchValue={searchQuery}
@@ -370,18 +564,6 @@ const MembersPage = () => {
             viewMode={viewMode}
             onViewChange={setViewMode}
           />
-        )}
-
-        {loading && (
-          viewMode === "table" ? (
-            <Skeleton.Table rows={5} columns={5} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <MemberCardSkeleton key={i} />
-              ))}
-            </div>
-          )
         )}
 
         {!loading && sortedMembers.length === 0 && (

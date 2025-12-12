@@ -30,7 +30,17 @@ import {
   Trash2,
   Printer,
   WalletMinimal,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  TrendingUp,
 } from "lucide-react";
+
+import StatsCard from "../../../components/ui/StatsCard";
+import StatsCarousel from "../../../components/ui/StatsCarousel";
+import FormattedCurrency from "../../../components/ui/FormattedCurrency";
+import { usePayouts } from "../../payouts/hooks/usePayouts";
+import { useChits } from "../../chits/hooks/useChits";
 
 import CollectionReportPDF from "../components/reports/CollectionReportPDF";
 import CollectionReportModal from "../components/reports/CollectionReportModal";
@@ -89,6 +99,10 @@ const CollectionsPage = () => {
   } = useCollections();
 
   const deleteCollectionMutation = useDeleteCollection();
+
+  // Additional data for stats
+  const { data: payoutsData } = usePayouts();
+  const { data: chitsData } = useChits();
 
   // Extract collections from query data
   const collections = useMemo(() => {
@@ -268,6 +282,206 @@ const CollectionsPage = () => {
       year: "numeric",
     });
 
+  // Metrics Block
+  const metricsBlock = useMemo(() => {
+    if (loading) return null;
+
+    const payouts = payoutsData?.payouts || [];
+    const chits = chitsData?.chits || [];
+    const activeChits = chits.filter((c) => c.status === "Active");
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+
+    // Calculate monthly collection target based on active chits (same as ChitsPage)
+    const monthlyCollectionTarget = activeChits.reduce(
+      (sum, c) => sum + c.monthly_installment * c.size,
+      0
+    );
+
+    // Metric 1: Priority Collection
+    const priorityCollection = (() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const unpaidCollections = collections.filter(
+        (c) => c.collection_status === "Unpaid" || c.collection_status === "Partial"
+      );
+
+      if (unpaidCollections.length === 0) {
+        const upcomingCollections = collections
+          .filter((c) => {
+            const collDate = new Date(c.collection_date);
+            return collDate > today && c.collection_status === "Paid";
+          })
+          .sort((a, b) => new Date(a.collection_date) - new Date(b.collection_date));
+
+        if (upcomingCollections.length === 0) return null;
+
+        const earliestDate = upcomingCollections[0].collection_date;
+        const sameDate = upcomingCollections.filter(
+          (c) => c.collection_date === earliestDate
+        );
+
+        if (sameDate.length === 1) {
+          return { ...sameDate[0], isUpcoming: true };
+        } else {
+          return {
+            collection_date: earliestDate,
+            amount_paid: sameDate.reduce((sum, c) => sum + c.amount_paid, 0),
+            count: sameDate.length,
+            isUpcoming: true,
+            isAggregated: true,
+          };
+        }
+      }
+
+      const sortedUnpaid = unpaidCollections.sort(
+        (a, b) => new Date(a.collection_date) - new Date(b.collection_date)
+      );
+
+      const earliestDate = sortedUnpaid[0].collection_date;
+      const sameDate = sortedUnpaid.filter((c) => c.collection_date === earliestDate);
+
+      if (sameDate.length === 1) {
+        return { ...sameDate[0], isUpcoming: false };
+      } else {
+        return {
+          collection_date: earliestDate,
+          amount_due: sameDate.reduce(
+            (sum, c) => sum + ((c.expected_amount || c.amount_paid) - c.amount_paid),
+            0
+          ),
+          count: sameDate.length,
+          isUpcoming: false,
+          isAggregated: true,
+        };
+      }
+    })();
+
+    // Metric 2: Monthly Collection - Optimized single pass using collection_date
+    // Note: Collections use actual collection_date, not scheduled dates like payouts
+    const collectionMetrics = collections.reduce(
+      (metrics, c) => {
+        if (!c.collection_date) return metrics;
+        
+        const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+        const isThisMonth = cYear === currentYear && cMonth - 1 === currentMonth;
+        
+        if (!isThisMonth) return metrics;
+        
+        return {
+          collectedAmount: metrics.collectedAmount + (c.amount_paid || 0),
+          expectedAmount: metrics.expectedAmount + (c.expected_amount || c.amount_paid || 0),
+          collectedCount: metrics.collectedCount + (c.collection_status === "Paid" ? 1 : 0),
+          totalCount: metrics.totalCount + 1,
+        };
+      },
+      { collectedAmount: 0, expectedAmount: 0, collectedCount: 0, totalCount: 0 }
+    );
+
+    const collectedAmount = collectionMetrics.collectedAmount;
+    const expectedAmount = collectionMetrics.expectedAmount;
+    const collectedCount = collectionMetrics.collectedCount;
+    const totalCollectionCount = collectionMetrics.totalCount;
+
+    // Optimized payout calculation - single pass
+    const payoutMetrics = payouts.reduce(
+      (metrics, p) => {
+        if (!p.chit || !p.chit.start_date) return metrics;
+        
+        const chitStartDate = new Date(p.chit.start_date);
+        const scheduledDate = new Date(chitStartDate);
+        scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+        
+        const isThisMonth =
+          scheduledDate.getMonth() === currentMonth &&
+          scheduledDate.getFullYear() === currentYear;
+        
+        if (!isThisMonth) return metrics;
+        
+        return {
+          paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+          targetAmount: metrics.targetAmount + (p.planned_amount || 0),
+          paidCount: metrics.paidCount + (p.paid_date ? 1 : 0),
+          totalCount: metrics.totalCount + 1,
+        };
+      },
+      { paidAmount: 0, targetAmount: 0, paidCount: 0, totalCount: 0 }
+    );
+
+    const paidThisMonth = payoutMetrics.paidAmount;
+    const monthlyPayoutTarget = payoutMetrics.targetAmount;
+    const paidCount = payoutMetrics.paidCount;
+    const totalScheduledCount = payoutMetrics.totalCount;
+
+    return (
+      <StatsCarousel className="mb-8">
+        {/* Card 1: Priority Collection */}
+        <StatsCard
+          icon={priorityCollection?.isUpcoming ? Clock : AlertCircle}
+          label={
+            priorityCollection?.isUpcoming ? "Next Collection" : "Priority Collection"
+          }
+          value={
+            priorityCollection ? (
+              <FormattedCurrency
+                amount={
+                  priorityCollection.isUpcoming
+                    ? priorityCollection.amount_paid
+                    : priorityCollection.amount_due ||
+                      (priorityCollection.expected_amount - priorityCollection.amount_paid)
+                }
+              />
+            ) : (
+              "No collections"
+            )
+          }
+          subtext={
+            !priorityCollection
+              ? "All current"
+              : priorityCollection.isAggregated
+              ? `${priorityCollection.count} collections on ${formatDate(priorityCollection.collection_date)}`
+              : formatDate(priorityCollection.collection_date)
+          }
+          color="accent"
+        />
+        {/* Card 2: Monthly Collection */}
+        <StatsCard
+          icon={WalletMinimal}
+          label="Monthly Collection"
+          value={<FormattedCurrency amount={collectedAmount} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={monthlyCollectionTarget} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+        {/* Card 3: Collection Count */}
+        <StatsCard
+          icon={CheckCircle2}
+          label="Collection Count"
+          value={collectedCount}
+          subtext={`Total Scheduled: ${totalCollectionCount}`}
+          color="accent"
+        />
+        {/* Card 4: Monthly Payouts */}
+        <StatsCard
+          icon={TrendingUp}
+          label="Monthly Payouts"
+          value={<FormattedCurrency amount={paidThisMonth} />}
+          subtext={
+            <span className="inline-flex items-center gap-1">
+              Target: <FormattedCurrency amount={monthlyPayoutTarget} showIcon={true} />
+            </span>
+          }
+          color="accent"
+        />
+      </StatsCarousel>
+    );
+  }, [collections, payoutsData, chitsData, loading]);
+
   const columns = [
     {
       header: "S.No",
@@ -334,17 +548,21 @@ const CollectionsPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
-        {/* Page Header */}
-        <PageHeader
-          title="All Collections"
-          actionIcon={Printer}
-          actionTitle="Generate Report"
-          onAction={() => setIsReportModalOpen(true)}
-          showAction={collections.length > 0}
-        />
+      <div className="w-full space-y-8">
+        {/* Page Header - show skeleton when loading */}
+        {loading ? (
+          <Skeleton.PageHeader showAction={true} />
+        ) : (
+          <PageHeader
+            title="All Collections"
+            actionIcon={Printer}
+            actionTitle="Generate Report"
+            onAction={() => setIsReportModalOpen(true)}
+            showAction={collections.length > 0}
+          />
+        )}
 
-        <hr className="my-4 border-border" />
+        <hr className="border-border" />
 
         {success && <Message type="success">{success}</Message>}
         {error && (
@@ -353,8 +571,51 @@ const CollectionsPage = () => {
           </Message>
         )}
 
+        {/* --- Loading State: Skeletons in correct visual order --- */}
+        {loading && (
+          <>
+            {/* Metrics Skeleton */}
+            <StatsCarousel isLoading className="mb-8" />
+
+            {/* SearchToolbar Skeleton */}
+            <Skeleton.SearchToolbar />
+
+            {/* Table/Card Skeleton */}
+            {viewMode === "table" ? (
+              <Skeleton.Table
+                rows={ITEMS_PER_PAGE}
+                columnWidths={[
+                  "w-16",   // S.No
+                  "w-1/6",  // Date
+                  "w-1/5",  // Member
+                  "w-1/5",  // Chit
+                  "w-1/6",  // Amount
+                  "w-24",   // Status
+                  "w-28",   // Actions (2 buttons)
+                ]}
+                serialColumnIndex={0}
+                statusColumnIndex={5}
+                actionColumnIndex={6}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                  <CollectionCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Skeleton */}
+            <Skeleton.Pagination />
+          </>
+        )}
+
+        {/* --- Loaded State: Actual content --- */}
+        {/* Overview Metrics */}
+        {!loading && collections.length > 0 && metricsBlock}
+
         {/* Unified Search Toolbar - only show when 2+ items */}
-        {collections.length >= 2 && (
+        {!loading && collections.length >= 2 && (
           <SearchToolbar
             searchPlaceholder="Search by member, chit, or amount..."
             searchValue={searchQuery}
@@ -368,18 +629,6 @@ const CollectionsPage = () => {
             viewMode={viewMode}
             onViewChange={setViewMode}
           />
-        )}
-
-        {loading && (
-          viewMode === "table" ? (
-            <Skeleton.Table rows={5} columns={7} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <CollectionCardSkeleton key={i} />
-              ))}
-            </div>
-          )
         )}
 
         {!loading && sortedCollections.length === 0 && (

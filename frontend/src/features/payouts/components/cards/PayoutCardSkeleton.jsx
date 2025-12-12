@@ -42,8 +42,9 @@ const PayoutCardSkeleton = () => {
                     <div className={`w-20 h-4 rounded ${shimmerClass}`} />
                 </div>
                 <div className="flex gap-2">
-                    <div className={`w-8 h-8 rounded-full ${shimmerClass}`} />
-                    <div className={`w-8 h-8 rounded-full ${shimmerClass}`} />
+                    {/* 2 action buttons: p-2 + w-4, visible ~16px */}
+                    <div className={`w-5 h-5 rounded-full ${shimmerClass}`} />
+                    <div className={`w-5 h-5 rounded-full ${shimmerClass}`} />
                 </div>
             </div>
         </div>

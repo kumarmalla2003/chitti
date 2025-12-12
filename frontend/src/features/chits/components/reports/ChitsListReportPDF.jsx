@@ -75,31 +75,42 @@ const styles = StyleSheet.create({
   },
   highlightContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 16,
+    gap: 12,
   },
   highlightBox: {
-    flex: 1,
+    width: "48%",
     backgroundColor: theme.accent,
-    padding: 16,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   highlightLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: theme.white,
     fontWeight: "bold",
     textTransform: "uppercase",
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   highlightValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: theme.white,
+    textAlign: "center",
+  },
+  highlightSubtext: {
+    fontSize: 7,
+    color: theme.white,
+    marginTop: 3,
+    textAlign: "center",
+    opacity: 0.9,
   },
   // --- FOOTER ---
   footerContainer: {
@@ -138,19 +149,67 @@ const formatCurrency = (val) => {
   return isNaN(num) ? "Rs. 0" : `Rs. ${num.toLocaleString("en-IN")}`;
 };
 
-const ChitsListReportPDF = ({ chits }) => {
+const ChitsListReportPDF = ({ chits, collections = [], payouts = [] }) => {
   const data = chits.map((chit, index) => ({
     ...chit,
     s_no: index + 1,
   }));
 
-  // --- Metrics ---
-  // Replaced "Total Chits" with "Active Chits"
+  // --- Metrics (Matching Live UI) ---
   const activeChits = chits.filter(
     (c) => (c.calculatedStatus || c.status) === "Active"
-  ).length;
-  const totalValue = chits.reduce(
-    (sum, chit) => sum + (Number(chit.chit_value) || 0),
+  );
+
+  const monthlyCollectionTarget = activeChits.reduce(
+    (sum, c) => sum + (c.monthly_installment || 0) * (c.size || 0),
+    0
+  );
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+
+  // Optimized payout calculation - single pass
+  const payoutMetrics = payouts.reduce(
+    (metrics, p) => {
+      if (!p.chit || !p.chit.start_date) return metrics;
+      
+      const chitStartDate = new Date(p.chit.start_date);
+      const scheduledDate = new Date(chitStartDate);
+      scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+      
+      const isThisMonth =
+        scheduledDate.getMonth() === currentMonth &&
+        scheduledDate.getFullYear() === currentYear;
+      
+      if (!isThisMonth) return metrics;
+      
+      return {
+        paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+        targetAmount: metrics.targetAmount + (p.planned_amount || 0),
+        paidCount: metrics.paidCount + (p.paid_date ? 1 : 0),
+        totalCount: metrics.totalCount + 1,
+      };
+    },
+    { paidAmount: 0, targetAmount: 0, paidCount: 0, totalCount: 0 }
+  );
+
+  const paidThisMonth = payoutMetrics.paidAmount;
+  const monthlyPayoutTarget = payoutMetrics.targetAmount;
+  const paidCount = payoutMetrics.paidCount;
+  const totalScheduledCount = payoutMetrics.totalCount;
+
+
+  const collectedThisMonth = collections.reduce((sum, p) => {
+    if (!p.collection_date) return sum;
+    const [pYear, pMonth] = p.collection_date.split("-").map(Number);
+    if (pYear === currentYear && pMonth - 1 === currentMonth) {
+      return sum + (p.amount_paid || 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalActiveMembers = activeChits.reduce(
+    (sum, c) => sum + (c.size || 0),
     0
   );
 
@@ -163,7 +222,7 @@ const ChitsListReportPDF = ({ chits }) => {
     {
       header: "Chit Name",
       accessor: "name",
-      style: { width: "25%", textAlign: "center" },
+      style: { width: "24%", textAlign: "center" },
     },
     {
       header: "Value",
@@ -186,7 +245,7 @@ const ChitsListReportPDF = ({ chits }) => {
       header: "Status",
       accessor: "status",
       // STYLE: Centers the text
-      style: { width: "13%", textAlign: "center" },
+      style: { width: "14%", textAlign: "center" },
       // CONDITIONAL: Applies colors based on status
       conditionalStyle: (row) => {
         const status = row.calculatedStatus || row.status;
@@ -217,16 +276,40 @@ const ChitsListReportPDF = ({ chits }) => {
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.overviewCard}>
             <View style={styles.highlightContainer}>
-              {/* Box 1: Active Chits (Focus on what matters) */}
+              {/* Box 1: Monthly Payouts (was Box 2) */}
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightLabel}>Monthly Payouts</Text>
+                <Text style={styles.highlightValue}>
+                  {formatCurrency(paidThisMonth)}
+                </Text>
+                <Text style={styles.highlightSubtext}>
+                  Target: {formatCurrency(monthlyPayoutTarget)}
+                </Text>
+              </View>
+              {/* Box 2: Monthly Collection (was Box 1) */}
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightLabel}>Monthly Collection</Text>
+                <Text style={styles.highlightValue}>
+                  {formatCurrency(collectedThisMonth)}
+                </Text>
+                <Text style={styles.highlightSubtext}>
+                  Target: {formatCurrency(monthlyCollectionTarget)}
+                </Text>
+              </View>
+              {/* Box 3: Active Chits (unchanged) */}
               <View style={styles.highlightBox}>
                 <Text style={styles.highlightLabel}>Active Chits</Text>
-                <Text style={styles.highlightValue}>{activeChits}</Text>
+                <Text style={styles.highlightValue}>{activeChits.length}</Text>
+                <Text style={styles.highlightSubtext}>
+                  Total Chits: {chits.length}
+                </Text>
               </View>
-              {/* Box 2: Total Valuation */}
+              {/* Box 4: Payout Count (from PayoutsPage Card 3) */}
               <View style={styles.highlightBox}>
-                <Text style={styles.highlightLabel}>Total Valuation</Text>
-                <Text style={styles.highlightValue}>
-                  {formatCurrency(totalValue)}
+                <Text style={styles.highlightLabel}>Payout Count</Text>
+                <Text style={styles.highlightValue}>{paidCount}</Text>
+                <Text style={styles.highlightSubtext}>
+                  Total Scheduled: {totalScheduledCount}
                 </Text>
               </View>
             </View>

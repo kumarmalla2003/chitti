@@ -20,8 +20,8 @@ const MainLayout = () => {
                 // For now, we'll let specific pages highlight if needed or implement active logic here later
                 />
 
-                <div className="pb-16 md:pb-0">
-                    <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary px-4 py-8">
+                <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+                    <main className="flex-grow min-h-[calc(100vh-128px)] bg-background-primary w-full px-4 py-8">
                         <Outlet />
                     </main>
                     <Footer />

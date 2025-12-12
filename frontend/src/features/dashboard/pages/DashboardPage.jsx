@@ -27,26 +27,32 @@ import TabButton from "../../../components/ui/TabButton"; // Imported shared com
 import Skeleton from "../../../components/ui/Skeleton";
 import StaggerContainer from "../../../components/ui/StaggerContainer";
 import StaggerItem from "../../../components/ui/StaggerItem";
+import StatsCard from "../../../components/ui/StatsCard";
+import StatsCarousel from "../../../components/ui/StatsCarousel";
+import FormattedCurrency from "../../../components/ui/FormattedCurrency";
 import { formatCurrency } from "../../../utils/formatters"; // Imported shared utility
 
 import api from "../../../lib/api";
 
 // API calls
 const fetchDashboardData = async () => {
-  const [chitsRes, membersRes, collectionsRes] = await Promise.all([
+  const [chitsRes, membersRes, collectionsRes, payoutsRes] = await Promise.all([
     api.get("/chits"),
     api.get("/members"),
     api.get("/collections"),
+    api.get("/payouts/all"),
   ]);
 
   const chits = chitsRes.data;
   const members = membersRes.data;
   const collections = collectionsRes.data;
+  const payouts = payoutsRes.data;
 
   return {
     chits: chits.chits || [],
     members: members.members || [],
     collections: collections.collections || [],
+    payouts: payouts.payouts || [],
   };
 };
 
@@ -58,7 +64,12 @@ const DashboardPage = () => {
 
   // isMenuOpen state removed (handled by MainLayout)
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ chits: [], members: [], collections: [] });
+  const [data, setData] = useState({
+    chits: [],
+    members: [],
+    collections: [],
+    payouts: [],
+  });
   const [stats, setStats] = useState(null);
 
   // Pending Collection State: 'chit' | 'member'
@@ -80,7 +91,7 @@ const DashboardPage = () => {
     if (isLoggedIn) loadData();
   }, [isLoggedIn]);
 
-  const calculateStats = ({ chits, members, collections }) => {
+  const calculateStats = ({ chits, members, collections, payouts }) => {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
@@ -88,16 +99,38 @@ const DashboardPage = () => {
 
     const activeChits = chits.filter((c) => c.status === "Active");
 
+    // TARGETS
     const monthlyTarget = activeChits.reduce(
       (sum, c) => sum + c.monthly_installment * c.size,
       0
     );
 
-    const monthlyPayouts = activeChits.reduce(
-      (sum, c) => sum + c.chit_value,
-      0
+    // Optimized payout calculation - single pass
+    const payoutMetrics = payouts.reduce(
+      (metrics, p) => {
+        if (!p.chit || !p.chit.start_date) return metrics;
+        
+        const chitStartDate = new Date(p.chit.start_date);
+        const scheduledDate = new Date(chitStartDate);
+        scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
+        
+        const isThisMonth =
+          scheduledDate.getMonth() === currentMonth &&
+          scheduledDate.getFullYear() === currentYear;
+        
+        if (!isThisMonth) return metrics;
+        
+        return {
+          paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
+          targetAmount: metrics.targetAmount + (p.planned_amount || 0),
+        };
+      },
+      { paidAmount: 0, targetAmount: 0 }
     );
 
+    const monthlyPayoutTarget = payoutMetrics.targetAmount;
+
+    // ACTUALS
     const collectedThisMonth = collections.reduce((sum, p) => {
       if (!p.collection_date) return sum;
       const [pYear, pMonth] = p.collection_date.split("-").map(Number);
@@ -106,6 +139,8 @@ const DashboardPage = () => {
       }
       return sum;
     }, 0);
+
+    const paidThisMonth = payoutMetrics.paidAmount;
 
     const activeMembersCount = members.filter((m) => {
       if (!m.assignments || m.assignments.length === 0) return false;
@@ -129,7 +164,8 @@ const DashboardPage = () => {
       activeMembers: activeMembersCount,
       collectedThisMonth,
       monthlyTarget,
-      monthlyPayouts,
+      paidThisMonth,
+      monthlyPayoutTarget,
       pendingAmount: monthlyTarget - collectedThisMonth,
       recentCollections,
       upcomingCount,
@@ -292,31 +328,7 @@ const DashboardPage = () => {
 
   // --- Components ---
 
-  const MetricCard = ({ icon: Icon, label, value, subtext, onClick }) => (
-    <div
-      onClick={onClick}
-      className={`relative overflow-hidden bg-gradient-to-br from-accent to-blue-600 p-6 rounded-xl shadow-card text-white flex items-center justify-between min-w-[200px] flex-1 ${onClick
-        ? "cursor-pointer hover:shadow-floating hover:-translate-y-1 transition-all duration-300"
-        : ""
-        }`}
-    >
-      <div className="flex flex-col z-10">
-        <p className="text-blue-100 text-sm font-bold uppercase tracking-wider mb-2 opacity-80">
-          {label}
-        </p>
-        <p className="text-3xl font-extrabold tracking-tight">{value}</p>
-        {subtext && (
-          <p className="text-blue-50 text-xs mt-2 font-medium opacity-90">
-            {subtext}
-          </p>
-        )}
-      </div>
-      <div className="p-3 rounded-2xl bg-white/20 backdrop-blur-md shadow-inner text-white z-10 border border-white/10">
-        <Icon className="w-7 h-7" />
-      </div>
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none" />
-    </div>
-  );
+
 
   const ActivityItem = ({ collection }) => (
     <div
@@ -370,18 +382,13 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto space-y-8">
+      <div className="w-full space-y-8">
         <div className="relative flex justify-center items-center mb-4">
            <Skeleton.Text width="w-48" height="h-8" />
         </div>
-        <hr className="my-4 border-border" />
+        <hr className="border-border" />
         {/* Metrics Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           <Skeleton.Card className="h-32" />
-           <Skeleton.Card className="h-32" />
-           <Skeleton.Card className="h-32" />
-           <Skeleton.Card className="h-32" />
-        </div>
+        <StatsCarousel isLoading className="mb-8" />
         {/* Main Grid Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 flex flex-col gap-8">
@@ -405,54 +412,58 @@ const DashboardPage = () => {
   return (
     <>
 
-      <div className="container mx-auto space-y-8">
+      <div className="w-full space-y-8">
         {/* --- 1. Page Heading --- */}
         <div className="relative flex justify-center items-center mb-4">
           <h1 className="text-2xl md:text-3xl font-bold text-text-primary text-center">
             Dashboard
           </h1>
         </div>
-        <hr className="my-4 border-border" />
+        <hr className="border-border" />
 
         {/* --- 2. Key Metrics Grid (4 Columns) --- */}
-        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StaggerItem>
-            <MetricCard
-                icon={WalletMinimal}
-                label="Monthly Collection"
-                value={formatCurrency(stats?.collectedThisMonth)}
-                subtext={`Target: ${formatCurrency(stats?.monthlyTarget)}`}
-                onClick={() => navigate("/collections")}
-            />
-          </StaggerItem>
-          <StaggerItem>
-            <MetricCard
-                icon={TrendingUp}
-                label="Monthly Payouts"
-                value={formatCurrency(stats?.monthlyPayouts)}
-                subtext="Total Liability"
-                onClick={() => navigate("/chits")}
-            />
-          </StaggerItem>
-          <StaggerItem>
-            <MetricCard
-                icon={Layers}
-                label="Active Chits"
-                value={stats?.activeChits || 0}
-                subtext={`Total Chits: ${stats?.totalChits || 0}`}
-                onClick={() => navigate("/chits")}
-            />
-          </StaggerItem>
-          <StaggerItem>
-            <MetricCard
-                icon={Users}
-                label="Active Members"
-                value={stats?.activeMembers || 0}
-                subtext={`Total Members: ${stats?.totalMembers || 0}`}
-                onClick={() => navigate("/members")}
-            />
-          </StaggerItem>
-        </StaggerContainer>
+        <StatsCarousel className="mb-8">
+          <StatsCard
+              icon={WalletMinimal}
+              label="Monthly Collection"
+              value={<FormattedCurrency amount={stats?.collectedThisMonth} />}
+              subtext={
+                <span className="inline-flex items-center gap-1">
+                  Target: <FormattedCurrency amount={stats?.monthlyTarget} showIcon={true} />
+                </span>
+              }
+              onClick={() => navigate("/collections")}
+              color="accent"
+          />
+          <StatsCard
+              icon={TrendingUp}
+              label="Monthly Payouts"
+              value={<FormattedCurrency amount={stats?.paidThisMonth} />}
+              subtext={
+                <span className="inline-flex items-center gap-1">
+                  Target: <FormattedCurrency amount={stats?.monthlyPayoutTarget} showIcon={true} />
+                </span>
+              }
+              onClick={() => navigate("/chits")}
+              color="accent" // Differentiate payouts
+          />
+          <StatsCard
+              icon={Layers}
+              label="Active Chits"
+              value={stats?.activeChits || 0}
+              subtext={`Total Chits: ${stats?.totalChits || 0}`}
+              onClick={() => navigate("/chits")}
+              color="accent"
+          />
+          <StatsCard
+              icon={Users}
+              label="Active Members"
+              value={stats?.activeMembers || 0}
+              subtext={`Total Members: ${stats?.totalMembers || 0}`}
+              onClick={() => navigate("/members")}
+              color="accent"
+          />
+        </StatsCarousel>
 
         {/* --- 3. Main Layout Grid --- */}
         <StaggerContainer className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     // UPDATED: Added /opacity-overlay and backdrop-blur-overlay to match Header
     <footer className="py-4 bg-background-secondary backdrop-blur-overlay">
-      <div className="container mx-auto px-4 text-center text-text-secondary">
+      <div className="w-full px-4 text-center text-text-secondary">
         {/* Mobile Text */}
         <p className="md:hidden">
           Made with &#9829; by{" "}

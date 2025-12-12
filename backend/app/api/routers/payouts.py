@@ -13,6 +13,15 @@ from app.schemas.payouts import PayoutResponse, PayoutListResponse, PayoutUpdate
 
 router = APIRouter(prefix="/payouts", tags=["payouts"])
 
+@router.get("", response_model=PayoutListResponse)
+async def read_all_payouts_including_unpaid(
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Get all payouts (both paid and unpaid) for schedule display."""
+    payouts_list = await crud_payouts.payouts.get_all(session)
+    return {"payouts": payouts_list}
+
 @router.get("/all", response_model=PayoutListResponse)
 async def read_all_payouts(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],

@@ -9,7 +9,7 @@ const Features = forwardRef((props, ref) => {
       ref={ref}
       className="flex flex-col justify-center py-20"
     >
-      <div className="container mx-auto px-4">
+      <div className="w-full px-4">
         <div className="text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-text-primary">
             Everything You Need to Manage
