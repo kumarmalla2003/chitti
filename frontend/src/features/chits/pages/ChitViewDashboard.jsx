@@ -122,11 +122,40 @@ const ChitViewDashboard = ({
                 value={formatCurrency(chitData.chit_value)}
                 icon={IndianRupee}
               />
-              <MetricCard
-                label="Installment"
-                value={formatCurrency(chitData.monthly_installment)}
-                icon={PieChart}
-              />
+              {chitData.chit_type === "variable" ? (
+                <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1 text-text-secondary">
+                    <PieChart className="w-3.5 h-3.5" />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Installment
+                    </span>
+                  </div>
+                  <div className="flex items-center text-text-primary font-bold text-base">
+                    <IndianRupee className="w-3.5 h-3.5 mr-0.5" />
+                    {formatCurrency(chitData.installment_before_payout)}
+                    <span className="mx-1 text-text-secondary">/</span>
+                    {formatCurrency(chitData.installment_after_payout)}
+                  </div>
+                </div>
+              ) : chitData.chit_type === "auction" ? (
+                <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1 text-text-secondary">
+                    <PieChart className="w-3.5 h-3.5" />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Installment
+                    </span>
+                  </div>
+                  <div className="flex items-center text-text-secondary font-medium text-sm">
+                    Auction pending
+                  </div>
+                </div>
+              ) : (
+                <MetricCard
+                  label="Installment"
+                  value={formatCurrency(chitData.monthly_installment)}
+                  icon={PieChart}
+                />
+              )}
             </div>
 
             {/* List Details */}

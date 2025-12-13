@@ -118,7 +118,10 @@ const ChitDetailPage = () => {
       name: "",
       chit_value: "",
       size: "",
+      chit_type: "fixed",
       monthly_installment: "",
+      installment_before_payout: "",
+      installment_after_payout: "",
       duration_months: "",
       start_date: "",
       end_date: "",
@@ -198,16 +201,19 @@ const ChitDetailPage = () => {
         const chit = await getChitById(id);
         const fetchedData = {
           name: chit.name,
-          chit_value: chit.chit_value, // Schema handles number
+          chit_value: chit.chit_value,
           size: chit.size,
-          monthly_installment: chit.monthly_installment,
+          chit_type: chit.chit_type || "fixed",
+          monthly_installment: chit.monthly_installment || 0,
+          installment_before_payout: chit.installment_before_payout || 0,
+          installment_after_payout: chit.installment_after_payout || 0,
           duration_months: chit.duration_months,
           start_date: toYearMonth(chit.start_date),
           end_date: toYearMonth(chit.end_date),
           collection_day: chit.collection_day,
           payout_day: chit.payout_day,
         };
-        reset(fetchedData); // Populate form
+        reset(fetchedData);
         setOriginalData(chit);
       } catch (err) {
         setError(err.message);

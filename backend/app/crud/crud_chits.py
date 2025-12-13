@@ -30,7 +30,6 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
         name=db_chit.name,
         chit_value=db_chit.chit_value,
         size=db_chit.size, 
-        monthly_installment=db_chit.monthly_installment,
         duration_months=db_chit.duration_months,
         start_date=db_chit.start_date,
         end_date=db_chit.end_date,
@@ -38,6 +37,11 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
         chit_cycle=chit_cycle,
         collection_day=db_chit.collection_day,
         payout_day=db_chit.payout_day,
+        # Chit type fields
+        chit_type=db_chit.chit_type,
+        monthly_installment=db_chit.monthly_installment,
+        installment_before_payout=db_chit.installment_before_payout,
+        installment_after_payout=db_chit.installment_after_payout,
     )
 
 async def delete_chit_by_id(session: AsyncSession, db_chit: Chit):

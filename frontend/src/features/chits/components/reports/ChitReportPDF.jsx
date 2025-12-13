@@ -370,9 +370,16 @@ const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
                 </Text>
               </View>
               <View style={styles.highlightBox}>
-                <Text style={styles.highlightLabel}>Monthly Installment</Text>
+                <Text style={styles.highlightLabel}>
+                  {chit.chit_type === "variable" ? "Installment (Before/After)" : 
+                   chit.chit_type === "auction" ? "Installment" : "Monthly Installment"}
+                </Text>
                 <Text style={styles.highlightValue}>
-                  {formatCurrency(chit.monthly_installment)}
+                  {chit.chit_type === "variable" 
+                    ? `${formatCurrency(chit.installment_before_payout)} / ${formatCurrency(chit.installment_after_payout)}`
+                    : chit.chit_type === "auction" 
+                    ? "Varies"
+                    : formatCurrency(chit.monthly_installment)}
                 </Text>
               </View>
             </View>

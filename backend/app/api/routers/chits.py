@@ -46,12 +46,16 @@ async def create_chit(
         name=trimmed_name,
         chit_value=chit.chit_value,
         size=chit.size,
-        monthly_installment=chit.monthly_installment,
         duration_months=chit.duration_months,
         start_date=chit.start_date,
         end_date=end_date,
         collection_day=chit.collection_day,
         payout_day=chit.payout_day,
+        # Chit type fields
+        chit_type=chit.chit_type,
+        monthly_installment=chit.monthly_installment,
+        installment_before_payout=chit.installment_before_payout,
+        installment_after_payout=chit.installment_after_payout,
     )
     session.add(db_chit)
     
@@ -100,6 +104,9 @@ async def get_chit_assignments(
         
     assignments = await crud_assignments.get_assignments_by_chit_id(session, chit_id=chit_id)
     
+    # Fetch all payouts for this chit to check member payout status (for Variable chits)
+    all_payouts = await crud_payouts.payouts.get_by_chit(session, chit_id=chit_id)
+    
     response_assignments = []
     for assignment in assignments:
         chit_with_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=assignment.chit_id)
@@ -108,13 +115,39 @@ async def get_chit_assignments(
             full_name=assignment.member.full_name,
             phone_number=assignment.member.phone_number,
         )
-        monthly_installment = assignment.chit.monthly_installment
         
-        # --- FIXED CALL HERE ---
+        # Calculate expected installment based on chit type
+        chit = assignment.chit
+        if chit.chit_type == "fixed":
+            expected_installment = chit.monthly_installment
+        elif chit.chit_type == "variable":
+            # Check if member has received a payout in a PREVIOUS month
+            # installment_after_payout applies from the month AFTER the payout month
+            from datetime import date
+            today = date.today()
+            current_year_month = (today.year, today.month)
+            
+            member_payout = next(
+                (p for p in all_payouts if p.member_id == assignment.member.id and p.paid_date is not None),
+                None
+            )
+            
+            if member_payout and member_payout.paid_date:
+                payout_year_month = (member_payout.paid_date.year, member_payout.paid_date.month)
+                # Use after_payout amount only if payout was in a previous month
+                use_after_payout = current_year_month > payout_year_month
+            else:
+                use_after_payout = False
+            
+            expected_installment = chit.installment_after_payout if use_after_payout else chit.installment_before_payout
+        else:  # auction
+            # Auction chits: amount varies, use 0 as placeholder (set manually during collection)
+            expected_installment = 0
+        
         collections = await crud_collections.collections.get_by_assignment(session, assignment.id)
         
         total_paid = sum(p.amount_paid for p in collections)
-        due_amount = monthly_installment - total_paid
+        due_amount = expected_installment - total_paid
 
         if total_paid == 0: collection_status = "Unpaid"
         elif due_amount > 0: collection_status = "Partial"

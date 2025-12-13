@@ -100,11 +100,39 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             {chit.chit_value.toLocaleString("en-IN")}
           </span>
         </div>
-        <div className="flex items-center gap-2" title="Monthly Installment">
+        <div
+          className="flex items-center gap-2"
+          title={
+            chit.chit_type === "variable"
+              ? `Before: ₹${chit.installment_before_payout?.toLocaleString(
+                  "en-IN"
+                )} / After: ₹${chit.installment_after_payout?.toLocaleString(
+                  "en-IN"
+                )}`
+              : chit.chit_type === "auction"
+              ? "Auction (varies monthly)"
+              : "Monthly Installment"
+          }
+        >
           <PieChart className="w-5 h-5 flex-shrink-0" />
           <span className="font-semibold inline-flex items-center">
-            <IndianRupee className="w-[1em] h-[1em]" />
-            {chit.monthly_installment.toLocaleString("en-IN")}
+            {chit.chit_type === "auction" ? (
+              <span className="text-sm text-text-secondary">
+                Auction pending
+              </span>
+            ) : chit.chit_type === "variable" ? (
+              <>
+                <IndianRupee className="w-[1em] h-[1em]" />
+                {chit.installment_before_payout?.toLocaleString("en-IN")}
+                <span className="mx-1 text-text-secondary">/</span>
+                {chit.installment_after_payout?.toLocaleString("en-IN")}
+              </>
+            ) : (
+              <>
+                <IndianRupee className="w-[1em] h-[1em]" />
+                {chit.monthly_installment?.toLocaleString("en-IN")}
+              </>
+            )}
           </span>
         </div>
       </div>

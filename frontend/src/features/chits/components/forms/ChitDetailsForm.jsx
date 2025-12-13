@@ -2,10 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Controller } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import Message from "../../../../components/ui/Message";
 import CustomMonthInput from "../../../../components/ui/CustomMonthInput";
 import FormattedInput from "../../../../components/ui/FormattedInput";
+import SegmentedControl from "../../../../components/ui/SegmentedControl";
 import {
   Layers,
   Users,
@@ -13,6 +14,9 @@ import {
   WalletMinimal,
   TrendingUp,
   IndianRupee,
+  Lock,
+  Shuffle,
+  Gavel,
 } from "lucide-react";
 
 /**
@@ -33,6 +37,13 @@ const parseNumber = (value) => {
   return rawValue ? Number(rawValue) : "";
 };
 
+// Chit Type Options for Segmented Control
+const CHIT_TYPE_OPTIONS = [
+  { value: "fixed", label: "Fixed", icon: Lock },
+  { value: "variable", label: "Variable", icon: Shuffle },
+  { value: "auction", label: "Auction", icon: Gavel },
+];
+
 const ChitDetailsForm = ({
   mode,
   control,
@@ -45,6 +56,9 @@ const ChitDetailsForm = ({
   const nameInputRef = useRef(null);
   const isFormDisabled = mode === "view";
   const isEditMode = mode === "edit";
+
+  // Watch chit_type to conditionally render installment fields
+  const watchedChitType = useWatch({ control, name: "chit_type" }) || "fixed";
 
   // Auto-focus name field on create
   useEffect(() => {
@@ -122,6 +136,22 @@ const ChitDetailsForm = ({
           )}
         </div>
 
+        {/* --- CHIT TYPE SELECTOR --- */}
+        <div>
+          <label className="block text-lg font-medium text-text-secondary mb-2">
+            Chit Type
+          </label>
+          <SegmentedControl
+            control={control}
+            name="chit_type"
+            options={CHIT_TYPE_OPTIONS}
+            disabled={isFormDisabled || isEditMode}
+          />
+          {errors.chit_type && (
+            <p className="mt-1 text-sm text-red-500">{errors.chit_type.message}</p>
+          )}
+        </div>
+
         {/* --- CHIT VALUE & SIZE --- */}
         <div className="grid sm:grid-cols-2 gap-6">
           {/* Chit Value (Formatted) */}
@@ -187,72 +217,222 @@ const ChitDetailsForm = ({
           </div>
         </div>
 
-        {/* --- INSTALLMENT & DURATION --- */}
-        <div className="grid sm:grid-cols-2 gap-6">
-          {/* Monthly Installment (Formatted) */}
-          <div>
-            <label
-              htmlFor="monthly_installment"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Monthly Installment
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <IndianRupee className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <FormattedInput
-                name="monthly_installment"
-                control={control}
-                format={formatNumber}
-                parse={parseNumber}
-                id="monthly_installment"
-                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.monthly_installment ? "border-red-500" : "border-border"
-                  }`}
-                placeholder="5,000"
-                disabled={isFormDisabled}
-              />
+        {/* --- CONDITIONAL INSTALLMENT FIELDS --- */}
+        {watchedChitType === "fixed" && (
+          <div className="grid sm:grid-cols-2 gap-6">
+            {/* Monthly Installment (Fixed Chit) */}
+            <div>
+              <label
+                htmlFor="monthly_installment"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Monthly Installment
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <IndianRupee className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <FormattedInput
+                  name="monthly_installment"
+                  control={control}
+                  format={formatNumber}
+                  parse={parseNumber}
+                  id="monthly_installment"
+                  className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.monthly_installment ? "border-red-500" : "border-border"
+                    }`}
+                  placeholder="5,000"
+                  disabled={isFormDisabled}
+                />
+              </div>
+              {errors.monthly_installment && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.monthly_installment.message}
+                </p>
+              )}
             </div>
-            {errors.monthly_installment && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.monthly_installment.message}
-              </p>
-            )}
-          </div>
 
-          {/* Duration */}
-          <div>
-            <label
-              htmlFor="duration_months"
-              className="block text-lg font-medium text-text-secondary mb-1"
-            >
-              Duration (months)
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <Clock className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <input
-                {...register("duration_months", { valueAsNumber: true })}
-                type="number"
-                id="duration_months"
-                autoComplete="off"
-                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
-                  }`}
-                min="1"
-                placeholder="20"
-                disabled={isFormDisabled}
-              />
+            {/* Duration */}
+            <div>
+              <label
+                htmlFor="duration_months"
+                className="block text-lg font-medium text-text-secondary mb-1"
+              >
+                Duration (months)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Clock className="w-5 h-5 text-text-secondary" />
+                </span>
+                <div className="absolute left-10 h-6 w-px bg-border"></div>
+                <input
+                  {...register("duration_months", { valueAsNumber: true })}
+                  type="number"
+                  id="duration_months"
+                  autoComplete="off"
+                  className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
+                    }`}
+                  min="1"
+                  placeholder="20"
+                  disabled={isFormDisabled}
+                />
+              </div>
+              {errors.duration_months && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.duration_months.message}
+                </p>
+              )}
             </div>
-            {errors.duration_months && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.duration_months.message}
-              </p>
-            )}
           </div>
-        </div>
+        )}
+
+        {watchedChitType === "variable" && (
+          <>
+            {/* Variable Chit Installment Fields */}
+            <div className="grid sm:grid-cols-2 gap-6">
+              {/* Before Payout Amount */}
+              <div>
+                <label
+                  htmlFor="installment_before_payout"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  Before Payout Amount
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <IndianRupee className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <FormattedInput
+                    name="installment_before_payout"
+                    control={control}
+                    format={formatNumber}
+                    parse={parseNumber}
+                    id="installment_before_payout"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.installment_before_payout ? "border-red-500" : "border-border"
+                      }`}
+                    placeholder="13,000"
+                    disabled={isFormDisabled}
+                  />
+                </div>
+                {errors.installment_before_payout && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.installment_before_payout.message}
+                  </p>
+                )}
+              </div>
+
+              {/* After Payout Amount */}
+              <div>
+                <label
+                  htmlFor="installment_after_payout"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  After Payout Amount
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <IndianRupee className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <FormattedInput
+                    name="installment_after_payout"
+                    control={control}
+                    format={formatNumber}
+                    parse={parseNumber}
+                    id="installment_after_payout"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.installment_after_payout ? "border-red-500" : "border-border"
+                      }`}
+                    placeholder="15,000"
+                    disabled={isFormDisabled}
+                  />
+                </div>
+                {errors.installment_after_payout && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.installment_after_payout.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Duration for Variable Chit */}
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <label
+                  htmlFor="duration_months"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  Duration (months)
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Clock className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <input
+                    {...register("duration_months", { valueAsNumber: true })}
+                    type="number"
+                    id="duration_months"
+                    autoComplete="off"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
+                      }`}
+                    min="1"
+                    placeholder="20"
+                    disabled={isFormDisabled}
+                  />
+                </div>
+                {errors.duration_months && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.duration_months.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {watchedChitType === "auction" && (
+          <>
+            {/* Auction Chit Info */}
+            <Message type="info">
+              Auction chit amounts are entered manually each month after the auction.
+            </Message>
+
+            {/* Duration for Auction Chit */}
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <label
+                  htmlFor="duration_months"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  Duration (months)
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Clock className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <input
+                    {...register("duration_months", { valueAsNumber: true })}
+                    type="number"
+                    id="duration_months"
+                    autoComplete="off"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.duration_months ? "border-red-500" : "border-border"
+                      }`}
+                    min="1"
+                    placeholder="20"
+                    disabled={isFormDisabled}
+                  />
+                </div>
+                {errors.duration_months && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.duration_months.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* --- DATES --- */}
         <div className="grid sm:grid-cols-2 gap-6">
@@ -293,12 +473,11 @@ const ChitDetailsForm = ({
               render={({ field }) => (
                 <CustomMonthInput
                   {...field}
-                  disabled={isFormDisabled} // Logic for disabling end date if calculated automatically?
+                  disabled={isFormDisabled}
                   className={errors.end_date ? "border-red-500" : ""}
                 />
               )}
             />
-            {/* End date is usually read-only/calculated, but we allow edits if needed or keep enabled */}
           </div>
         </div>
 

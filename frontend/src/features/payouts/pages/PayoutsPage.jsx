@@ -381,10 +381,28 @@ const PayoutsPage = () => {
       return sum;
     }, 0);
 
-    const monthlyCollectionTarget = activeChits.reduce(
-      (sum, c) => sum + c.monthly_installment * c.size,
-      0
-    );
+    // Calculate monthly collection target (handle different chit types)
+    const monthlyCollectionTarget = activeChits.reduce((sum, c) => {
+      let chitTotal = 0;
+      if (c.chit_type === "fixed" || !c.chit_type) {
+        chitTotal = (c.monthly_installment || 0) * (c.size || 0);
+      } else if (c.chit_type === "variable") {
+        // Calculate current cycle from chit start date
+        const startDate = new Date(c.start_date);
+        const today = new Date();
+        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
+                          (today.getMonth() - startDate.getMonth()) + 1;
+        const currentCycle = Math.max(1, Math.min(monthsDiff, c.duration_months || 1));
+        const totalCycle = c.duration_months || 1;
+        
+        // Formula: (total - current + 1) × before + (current - 1) × after
+        const membersBefore = totalCycle - currentCycle + 1;
+        const membersAfter = currentCycle - 1;
+        chitTotal = membersBefore * (c.installment_before_payout || 0) + 
+                   membersAfter * (c.installment_after_payout || 0);
+      }
+      return sum + chitTotal;
+    }, 0);
 
     return (
       <StatsCarousel className="mb-8">

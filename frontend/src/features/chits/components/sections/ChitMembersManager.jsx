@@ -310,11 +310,30 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       header: "Monthly Payable",
       className: "text-center",
       headerClassName: "text-center",
-      cell: () => (
-        <span className="text-text-primary">
-          ₹{formatAmount(chitDetails?.monthly_installment)}
-        </span>
-      ),
+      cell: (row) => {
+        // For Variable chits, the backend provides expected_installment per assignment
+        // For Fixed chits, use monthly_installment
+        // For Auction chits, show "Varies"
+        const chit = chitDetails;
+        if (!chit) return <span className="text-text-secondary">-</span>;
+        
+        if (chit.chit_type === "auction") {
+          return <span className="text-text-secondary text-sm">Auction pending</span>;
+        } else if (chit.chit_type === "variable") {
+          // Use the expected_installment from the assignment if available
+          const installment = row.assignment?.expected_installment || chit.installment_before_payout;
+          return (
+            <span className="text-text-primary">
+              ₹{formatAmount(installment)}
+            </span>
+          );
+        }
+        return (
+          <span className="text-text-primary">
+            ₹{formatAmount(chit.monthly_installment)}
+          </span>
+        );
+      },
     },
     // --- Collection Columns ---
     {
