@@ -19,6 +19,7 @@ import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
 import ChitMobileContent from "../components/sections/ChitMobileContent";
+import AuctionsSection from "../components/sections/AuctionsSection";
 import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
 import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
@@ -33,6 +34,7 @@ import {
   Printer,
   WalletMinimal,
   TrendingUp,
+  Gavel,
 } from "lucide-react";
 import { createChit, getChitById, patchChit } from "../../../services/chitsService";
 import { chitKeys } from "../hooks/useChits";
@@ -74,6 +76,12 @@ const DetailsSectionComponent = ({
 const PayoutsSectionComponent = ({ mode, chitId }) => (
   <Card className="flex-1 flex flex-col">
     <PayoutsSection mode={mode} chitId={chitId} />
+  </Card>
+);
+
+const AuctionsSectionComponent = ({ mode, chitId }) => (
+  <Card className="flex-1 flex flex-col">
+    <AuctionsSection mode={mode} chitId={chitId} />
   </Card>
 );
 
@@ -120,8 +128,8 @@ const ChitDetailPage = () => {
       size: "",
       chit_type: "fixed",
       monthly_installment: "",
-      installment_before_payout: "",
-      installment_after_payout: "",
+      payout_premium_percent: 0,
+      foreman_commission_percent: 0,
       duration_months: "",
       start_date: "",
       end_date: "",
@@ -180,7 +188,17 @@ const ChitDetailPage = () => {
 
   useScrollToTop(success || error);
 
+  const watchedChitType = useWatch({ control, name: "chit_type" });
+  
   const TABS = ["details", "payouts", "members", "collections"];
+  if (watchedChitType === "auction") {
+      // Insert 'auctions' after 'details'
+      // Order: Details -> Auctions -> Payouts -> Members -> Collections
+      if (!TABS.includes("auctions")) {
+          TABS.splice(1, 0, "auctions");
+      }
+  }
+  
   const activeTabIndex = TABS.indexOf(activeTab);
 
   useEffect(() => {
@@ -205,8 +223,7 @@ const ChitDetailPage = () => {
           size: chit.size,
           chit_type: chit.chit_type || "fixed",
           monthly_installment: chit.monthly_installment || 0,
-          installment_before_payout: chit.installment_before_payout || 0,
-          installment_after_payout: chit.installment_after_payout || 0,
+          payout_premium_percent: chit.payout_premium_percent || 0,
           duration_months: chit.duration_months,
           start_date: toYearMonth(chit.start_date),
           end_date: toYearMonth(chit.end_date),
@@ -638,6 +655,15 @@ const ChitDetailPage = () => {
                       </div>
                     )}
 
+                    {activeTab === "auctions" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <AuctionsSectionComponent
+                          mode={mode}
+                          chitId={id || createdChitId}
+                        />
+                      </div>
+                    )}
+
                     {activeTab === "payouts" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PayoutsSectionComponent
@@ -690,6 +716,16 @@ const ChitDetailPage = () => {
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                       />
+                      {watchedChitType === "auction" && (
+                        <TabButton
+                          name="auctions"
+                          icon={Gavel}
+                          label="Auctions"
+                          activeTab={activeTab}
+                          setActiveTab={setActiveTab}
+                          disabled={mode === "create" && !createdChitId}
+                        />
+                      )}
                       <TabButton
                         name="payouts"
                         icon={TrendingUp}

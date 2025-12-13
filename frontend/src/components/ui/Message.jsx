@@ -42,7 +42,7 @@ const Message = ({ type = "info", title, children, onClose }) => {
       </div>
       <div className="flex-grow">
         <p className={`font-semibold text-sm ${config.textColor}`}>{title}</p>
-        <p className={`text-xs ${config.textColor} opacity-90`}>{children}</p>
+        <div className={`text-xs ${config.textColor} opacity-90`}>{children}</div>
       </div>
       {onClose && (
         <button

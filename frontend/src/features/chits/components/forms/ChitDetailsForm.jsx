@@ -288,75 +288,43 @@ const ChitDetailsForm = ({
 
         {watchedChitType === "variable" && (
           <>
-            {/* Variable Chit Installment Fields */}
+            {/* Variable Chit Payout Premium Percent */}
             <div className="grid sm:grid-cols-2 gap-6">
-              {/* Before Payout Amount */}
+              {/* Payout Premium Percent */}
               <div>
                 <label
-                  htmlFor="installment_before_payout"
+                  htmlFor="payout_premium_percent"
                   className="block text-lg font-medium text-text-secondary mb-1"
                 >
-                  Before Payout Amount
+                  Payout Premium (%)
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <IndianRupee className="w-5 h-5 text-text-secondary" />
+                    <TrendingUp className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
-                  <FormattedInput
-                    name="installment_before_payout"
-                    control={control}
-                    format={formatNumber}
-                    parse={parseNumber}
-                    id="installment_before_payout"
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.installment_before_payout ? "border-red-500" : "border-border"
+                  <input
+                    {...register("payout_premium_percent", { valueAsNumber: true })}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    id="payout_premium_percent"
+                    autoComplete="off"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.payout_premium_percent ? "border-red-500" : "border-border"
                       }`}
-                    placeholder="13,000"
+                    placeholder="2"
                     disabled={isFormDisabled}
                   />
                 </div>
-                {errors.installment_before_payout && (
+                {errors.payout_premium_percent && (
                   <p className="mt-1 text-sm text-red-500">
-                    {errors.installment_before_payout.message}
+                    {errors.payout_premium_percent.message}
                   </p>
                 )}
               </div>
 
-              {/* After Payout Amount */}
-              <div>
-                <label
-                  htmlFor="installment_after_payout"
-                  className="block text-lg font-medium text-text-secondary mb-1"
-                >
-                  After Payout Amount
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <IndianRupee className="w-5 h-5 text-text-secondary" />
-                  </span>
-                  <div className="absolute left-10 h-6 w-px bg-border"></div>
-                  <FormattedInput
-                    name="installment_after_payout"
-                    control={control}
-                    format={formatNumber}
-                    parse={parseNumber}
-                    id="installment_after_payout"
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.installment_after_payout ? "border-red-500" : "border-border"
-                      }`}
-                    placeholder="15,000"
-                    disabled={isFormDisabled}
-                  />
-                </div>
-                {errors.installment_after_payout && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.installment_after_payout.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Duration for Variable Chit */}
-            <div className="grid sm:grid-cols-2 gap-6">
+              {/* Duration for Variable Chit */}
               <div>
                 <label
                   htmlFor="duration_months"
@@ -388,6 +356,15 @@ const ChitDetailsForm = ({
                 )}
               </div>
             </div>
+
+            {/* Calculated Installments Info */}
+            <Message type="info">
+              <div className="space-y-1">
+                <p><strong>Installments will be calculated as:</strong></p>
+                <p>• Before Payout: Chit Value ÷ Size</p>
+                <p>• After Payout: (Chit Value ÷ Size) + (Chit Value × {control._formValues?.payout_premium_percent || 0}%)</p>
+              </div>
+            </Message>
           </>
         )}
 
@@ -398,8 +375,43 @@ const ChitDetailsForm = ({
               Auction chit amounts are entered manually each month after the auction.
             </Message>
 
-            {/* Duration for Auction Chit */}
+            {/* Auction Specific Fields */}
             <div className="grid sm:grid-cols-2 gap-6">
+              {/* Foreman Commission Percent */}
+              <div>
+                <label
+                  htmlFor="foreman_commission_percent"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  Foreman Commission (%)
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <TrendingUp className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <input
+                    {...register("foreman_commission_percent", { valueAsNumber: true })}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    id="foreman_commission_percent"
+                    autoComplete="off"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.foreman_commission_percent ? "border-red-500" : "border-border"
+                      }`}
+                    placeholder="5"
+                    disabled={isFormDisabled}
+                  />
+                </div>
+                {errors.foreman_commission_percent && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.foreman_commission_percent.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Duration for Auction Chit */}
               <div>
                 <label
                   htmlFor="duration_months"

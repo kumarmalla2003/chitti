@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Info, TrendingUp, Users, WalletMinimal } from "lucide-react";
+import { Info, TrendingUp, Users, WalletMinimal, Gavel } from "lucide-react";
 import Card from "../../../../components/ui/Card";
 import TabButton from "../../../../components/ui/TabButton";
 import StepperButtons from "../../../../components/ui/StepperButtons";
 import ChitDetailsForm from "../forms/ChitDetailsForm";
 import PayoutsSection from "./PayoutsSection";
+import AuctionsSection from "./AuctionsSection";
 import ChitMembersManager from "./ChitMembersManager";
 import CollectionHistoryList from "../../../members/components/sections/CollectionHistoryList";
 
@@ -61,6 +62,17 @@ const ChitMobileContent = ({
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                 />
+                {TABS.includes("auctions") && (
+                   <TabButton
+                    ref={(el) => (tabRefs.current["auctions"] = el)}
+                    name="auctions"
+                    icon={Gavel}
+                    label="Auctions"
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    disabled={mode === "create" && !chitId}
+                  />
+                )}
                 <TabButton
                     ref={(el) => (tabRefs.current["payouts"] = el)}
                     name="payouts"
@@ -120,6 +132,27 @@ const ChitMobileContent = ({
                         />
                     )}
                 </form>
+            )}
+
+            {activeTab === "auctions" && (
+                <>
+                    <Card className="flex-1 flex flex-col">
+                        <AuctionsSection mode={mode} chitId={chitId} />
+                    </Card>
+                    {mode !== "view" && (
+                        <StepperButtons
+                            currentStep={activeTabIndex}
+                            totalSteps={TABS.length}
+                            onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
+                            onNext={handleNext}
+                            onMiddle={handleMiddle}
+                            isNextDisabled={false}
+                            loading={loading}
+                            mode={mode}
+                            isPostCreation={isPostCreation}
+                        />
+                    )}
+                </>
             )}
 
             {activeTab === "payouts" && (

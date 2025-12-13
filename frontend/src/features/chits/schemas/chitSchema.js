@@ -13,6 +13,12 @@ const optionalNumber = z.preprocess(
     z.number().int().nonnegative()
 );
 
+// Helper for percentage input (0-100)
+const percentNumber = z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? 0 : Number(val)),
+    z.number().min(0, "Must be 0 or greater").max(100, "Must be 100 or less")
+);
+
 export const chitSchema = z.object({
     name: z.string().min(3, "Chit name must be at least 3 characters").max(50, "Chit name too long"),
     chit_value: z.number({ invalid_type_error: "Chit value is required" }).positive("Chit value must be positive"),
@@ -23,8 +29,10 @@ export const chitSchema = z.object({
     
     // Installment fields - use preprocess to handle empty strings gracefully
     monthly_installment: optionalNumber,
-    installment_before_payout: optionalNumber,
-    installment_after_payout: optionalNumber,
+    // Variable Chit: payout premium percentage (0-100)
+    payout_premium_percent: percentNumber,
+    // Auction Chit: foreman commission percentage (0-100)
+    foreman_commission_percent: percentNumber,
     
     duration_months: z.number({ invalid_type_error: "Duration is required" }).int().positive("Duration must be positive"),
     start_date: z.string().regex(/^\d{4}-\d{2}$/, "Start date must be in YYYY-MM format"),
@@ -42,20 +50,30 @@ export const chitSchema = z.object({
             });
         }
     } else if (data.chit_type === "variable") {
-        if (!data.installment_before_payout || data.installment_before_payout <= 0) {
+        if (data.payout_premium_percent < 0 || data.payout_premium_percent > 100) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Pre-payout installment is required for Variable chits",
-                path: ["installment_before_payout"],
-            });
-        }
-        if (!data.installment_after_payout || data.installment_after_payout <= 0) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Post-payout installment is required for Variable chits",
-                path: ["installment_after_payout"],
+                message: "Payout premium must be between 0 and 100%",
+                path: ["payout_premium_percent"],
             });
         }
     }
-    // Auction chits: No installment validation needed (amounts vary monthly)
+    // Auction chits: Validate foreman commission
+    else if (data.chit_type === "auction") {
+        if (data.foreman_commission_percent < 0 || data.foreman_commission_percent > 100) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Foreman commission must be between 0 and 100%",
+                path: ["foreman_commission_percent"],
+            });
+        }
+    }
 });
+
+// Helper function to calculate installments for variable chits
+export const calculateInstallments = (chitValue, size, payoutPremiumPercent) => {
+    if (!size || size <= 0) return { before: 0, after: 0 };
+    const before = Math.floor(chitValue / size);
+    const after = Math.floor(before + (chitValue * payoutPremiumPercent / 100));
+    return { before, after };
+};
