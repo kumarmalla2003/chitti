@@ -1,15 +1,13 @@
 // frontend/src/features/chits/pages/ChitDetailPage.jsx
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { chitSchema } from "../schemas/chitSchema";
 
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import useMediaQuery from "../../../hooks/useMediaQuery";
+import { useChitForm } from "../hooks/useChitForm";
+import { useChitReport } from "../hooks/useChitReport";
 import Message from "../../../components/ui/Message";
 
 import Card from "../../../components/ui/Card";
@@ -23,8 +21,6 @@ import AuctionsSection from "../components/sections/AuctionsSection";
 import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
 import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
-import ChitReportPDF from "../components/reports/ChitReportPDF";
-import { pdf } from "@react-pdf/renderer";
 import {
   Info,
   Users,
@@ -36,17 +32,6 @@ import {
   TrendingUp,
   Gavel,
 } from "lucide-react";
-import { createChit, getChitById, patchChit } from "../../../services/chitsService";
-import { chitKeys } from "../hooks/useChits";
-import { getPayoutsByChitId } from "../../../services/payoutsService";
-import { getAssignmentsForChit } from "../../../services/assignmentsService";
-import { getCollectionsByChitId } from "../../../services/collectionsService";
-import {
-  calculateEndDate,
-  calculateStartDate,
-  calculateDuration,
-} from "../../../utils/calculations";
-import { toYearMonth, getFirstDayOfMonth } from "../../../utils/formatters";
 
 // --- Helper Components for Desktop View ---
 const DetailsSectionComponent = ({
@@ -100,107 +85,66 @@ const MembersSectionComponent = ({ mode, chitId, onLogCollectionClick }) => (
  */
 const ChitDetailPage = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
 
-  const [mode, setMode] = useState("view");
-  const [activeTab, setActiveTab] = useState("details");
-  const [originalData, setOriginalData] = useState(null);
+  // --- Mode Detection ---
+  const mode = useMemo(() => {
+    const path = location.pathname;
+    if (path.includes("create")) return "create";
+    if (path.includes("edit")) return "edit";
+    return "view";
+  }, [location.pathname]);
 
-  // --- React Hook Form Setup ---
+  // --- Custom Form Hook ---
   const {
     register,
-    handleSubmit: handleRHSubmit,
     control,
-    setValue,
-    reset,
+    errors,
+    isValid,
+    handleSubmit,
     trigger,
-    formState: { errors, isValid },
     getValues,
-  } = useForm({
-    resolver: zodResolver(chitSchema),
-    defaultValues: {
-      name: "",
-      chit_value: "",
-      size: "",
-      chit_type: "fixed",
-      monthly_installment: "",
-      payout_premium_percent: 0,
-      foreman_commission_percent: 0,
-      duration_months: "",
-      start_date: "",
-      end_date: "",
-      collection_day: "",
-      payout_day: "",
-    },
-    mode: "onTouched",
-  });
+    originalData,
+    createdChitId,
+    createdChitName,
+    isPostCreation,
+    pageLoading,
+    isSubmitting,
+    error,
+    success,
+    setError,
+    setSuccess,
+    TABS,
+    watchedChitType,
+    onSubmit,
+  } = useChitForm(id, mode);
 
-  // Watch fields for calculations
-  const wSize = useWatch({ control, name: "size" });
-  const wDuration = useWatch({ control, name: "duration_months" });
-  const wStartDate = useWatch({ control, name: "start_date" });
-  const wEndDate = useWatch({ control, name: "end_date" });
-
-  // --- Auto-Calculation Effects ---
-
-  // Sync Size <-> Duration
-  useEffect(() => {
-    if (wSize && Number(wSize) !== Number(wDuration)) {
-      setValue("duration_months", Number(wSize), { shouldValidate: true });
-    }
-  }, [wSize, setValue]); // Avoid wDuration dept to prevent loop
-
-  useEffect(() => {
-    if (wDuration && Number(wDuration) !== Number(wSize)) {
-      setValue("size", Number(wDuration), { shouldValidate: true });
-    }
-  }, [wDuration, setValue]);
-
-  // Calculate End Date from Start Date + Duration
-  useEffect(() => {
-    if (wStartDate && wStartDate.match(/^\d{4}-\d{2}$/) && wDuration) {
-      const newEndDate = calculateEndDate(wStartDate, wDuration);
-      if (newEndDate !== wEndDate) {
-        setValue("end_date", newEndDate, { shouldValidate: true });
-      }
-    }
-  }, [wStartDate, wDuration, setValue]); // Remove wEndDate to break loop
-
-  // Calculate Start Date from End Date + Duration (if Start Date empty or user changing end)
-  // Or calculate Duration if Start & End exist (less common in this flow, usually size drives duration)
-  // For simplicity, we prioritize Start + Duration -> End.
-
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [createdChitId, setCreatedChitId] = useState(null);
-  const [createdChitName, setCreatedChitName] = useState(null);
-
+  // --- Local UI State ---
+  const [activeTab, setActiveTab] = useState("details");
   const [collectionDefaults, setCollectionDefaults] = useState(null);
 
-  // --- REPORT STATE ---
-  const [isReportLoading, setIsReportLoading] = useState(false);
+  // --- Report Generation Hook ---
+  const currentChitData = getValues();
+  const {
+    isLoading: isReportLoading,
+    generateReport: handlePrintReport,
+  } = useChitReport({
+    chitId: id,
+    chitData: currentChitData,
+    originalData,
+  });
 
+  // --- Derived Values ---
+  const activeTabIndex = useMemo(() => TABS.indexOf(activeTab), [TABS, activeTab]);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  // --- Scroll to Top on Messages ---
   useScrollToTop(success || error);
 
-  const watchedChitType = useWatch({ control, name: "chit_type" });
-  
-  const TABS = ["details", "payouts", "members", "collections"];
-  if (watchedChitType === "auction") {
-      // Insert 'auctions' after 'details'
-      // Order: Details -> Auctions -> Payouts -> Members -> Collections
-      if (!TABS.includes("auctions")) {
-          TABS.splice(1, 0, "auctions");
-      }
-  }
-  
-  const activeTabIndex = TABS.indexOf(activeTab);
-
+  // --- Handle Initial Tab from Navigation State ---
   useEffect(() => {
     if (location.state?.initialTab) {
       setActiveTab(location.state.initialTab);
@@ -208,197 +152,86 @@ const ChitDetailPage = () => {
     }
   }, [location.state]);
 
-  useEffect(() => {
-    const path = location.pathname;
-    const isCreate = path.includes("create");
-    const isEdit = path.includes("edit");
-
-    const fetchChit = async () => {
-      setPageLoading(true);
-      try {
-        const chit = await getChitById(id);
-        const fetchedData = {
-          name: chit.name,
-          chit_value: chit.chit_value,
-          size: chit.size,
-          chit_type: chit.chit_type || "fixed",
-          monthly_installment: chit.monthly_installment || 0,
-          payout_premium_percent: chit.payout_premium_percent || 0,
-          duration_months: chit.duration_months,
-          start_date: toYearMonth(chit.start_date),
-          end_date: toYearMonth(chit.end_date),
-          collection_day: chit.collection_day,
-          payout_day: chit.payout_day,
-        };
-        reset(fetchedData);
-        setOriginalData(chit);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setPageLoading(false);
-      }
-    };
-
-    if (isCreate) {
-      setMode("create");
-      setPageLoading(false);
-    } else if (isEdit) {
-      setMode("edit");
-      fetchChit();
-    } else {
-      setMode("view");
-      fetchChit();
-    }
-  }, [id, location.pathname, isLoggedIn, reset]);
-
+  // --- Handle Success Message from Navigation State ---
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, setSuccess]);
 
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
-
+  // --- Focus Title on Tab Change ---
   useEffect(() => {
     if (titleRef.current) {
       titleRef.current.focus({ preventScroll: true });
     }
   }, [activeTab]);
 
-  const handleMobileFormSubmit = async (e) => {
-    // Mobile stepper submit wrapper
-    // We need to trigger handleRHSubmit(onSubmit)(e) but only if it's the right time
-    if (activeTab !== "details") return;
-
-    if (activeTabIndex === TABS.length - 1) {
-      handleFinalAction();
-    } else if (mode === "create" && activeTabIndex === 0) {
-      // Validate and Submit
-      await handleRHSubmit(onSubmit)(e);
-    } else {
-      // Just next step
-      if (activeTabIndex < TABS.length - 1) {
-        setActiveTab(TABS[activeTabIndex + 1]);
-      }
-    }
-  };
-
-  const onSubmit = async (data) => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    // data is already validated and converted numbers by Zod
-
-    try {
-      if (mode === "create" && !createdChitId) {
-        const dataToSend = {
-          ...data,
-          start_date: getFirstDayOfMonth(data.start_date),
-        };
-        delete dataToSend.end_date; // Backend calculates or keys mismatched? Usually backend ignores or re-calcs.
-
-        const newChit = await createChit(dataToSend);
-        queryClient.invalidateQueries({ queryKey: chitKeys.lists() });
-        setCreatedChitId(newChit.id);
-        setCreatedChitName(newChit.name);
-        setOriginalData(newChit);
-        setActiveTab("payouts");
-        setSuccess("Chit details saved. You can now manage payouts.");
-      } else if (mode === "create" && createdChitId) {
-        // Patching existing logic
-        // ... (Existing PATCH Logic for post-creation updates if any)
-        const changes = {};
-        // Compare with originalData
-        // Note: originalData has fields like 'monthly_installment', data has 'monthly_installment'.
-        // Ensure types match for comparison.
-        for (const key in data) {
-          if (originalData[key] !== undefined && data[key] != originalData[key]) {
-            changes[key] = data[key];
+  // --- Form Submission Wrapper for Details Tab ---
+  const handleFormSubmit = useCallback(
+    async (data) => {
+      await onSubmit(data, {
+        onSuccessCallback: () => {
+          // Move to next tab after successful submission
+          if (mode === "create" && !createdChitId) {
+            setActiveTab("payouts");
+          } else if (mode === "edit" && activeTabIndex < TABS.length - 1) {
+            setActiveTab(TABS[activeTabIndex + 1]);
           }
-        }
-        // ... Logic similar to below ...
-        if (Object.keys(changes).length > 0) {
-          const patchData = { ...changes };
-          if (patchData.start_date) patchData.start_date = getFirstDayOfMonth(patchData.start_date);
-          // ...
-          const updatedChit = await patchChit(createdChitId, patchData);
-          setCreatedChitName(updatedChit.name);
-          setOriginalData(updatedChit);
-        }
-        setActiveTab("payouts");
-        setSuccess("Chit details updated successfully!");
+        },
+      });
+    },
+    [onSubmit, mode, createdChitId, activeTabIndex, TABS]
+  );
 
-      } else if (mode === "edit") {
-        const patchData = {
-          ...data,
-          start_date: getFirstDayOfMonth(data.start_date),
-        };
-        delete patchData.end_date;
+  // --- Mobile Form Submit Handler ---
+  const handleMobileFormSubmit = useCallback(
+    async (e) => {
+      if (activeTab !== "details") return;
 
-        await patchChit(id, patchData);
-        setSuccess("Chit updated successfully!");
+      if (activeTabIndex === TABS.length - 1) {
+        handleFinalAction();
+      } else if (mode === "create" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else {
         if (activeTabIndex < TABS.length - 1) {
           setActiveTab(TABS[activeTabIndex + 1]);
         }
       }
-    } catch (err) {
-      console.error("Submit Error:", err);
-      let errorMessage = err.message;
-      if (err.response && err.response.data && err.response.data.detail) {
-        if (Array.isArray(err.response.data.detail)) {
-          errorMessage = err.response.data.detail
-            .map((e) => `${e.loc[1]}: ${e.msg}`)
-            .join(", ");
-        } else {
-          errorMessage = err.response.data.detail;
-        }
-      }
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [activeTab, activeTabIndex, TABS, mode, handleSubmit, handleFormSubmit]
+  );
 
-  const getTitle = () => {
+  // --- Page Title ---
+  const getTitle = useCallback(() => {
     const currentName = getValues("name");
     if (mode === "create") {
       return createdChitName || "Create New Chit";
     }
     if (mode === "edit") return currentName || "Edit Chit";
     return currentName || "Chit Details";
-  };
+  }, [mode, createdChitName, getValues]);
 
-  const handleBackNavigation = () => {
+  // --- Navigation Handlers ---
+  const handleBackNavigation = useCallback(() => {
     if (activeTabIndex > 0 && mode !== "view") {
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
       navigate("/chits");
     }
-  };
+  }, [activeTabIndex, mode, TABS, navigate]);
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
-  };
+  }, [activeTabIndex, TABS]);
 
-  const handleNext = async () => {
-    // If on details tab and creating/editing, trigger validation/submit
+  const handleNext = useCallback(async () => {
     if ((mode === "create" || mode === "edit") && activeTabIndex === 0) {
-      // Trigger validation
       const isValidForm = await trigger();
       if (isValidForm) {
-        // Submit form
-        await handleRHSubmit(onSubmit)();
+        await handleSubmit(handleFormSubmit)();
       }
       return;
     }
@@ -406,17 +239,17 @@ const ChitDetailPage = () => {
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
-  };
+  }, [mode, activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
 
-  const handleMiddle = () => {
+  const handleMiddle = useCallback(() => {
     if (activeTabIndex === TABS.length - 1) {
       handleFinalAction();
     } else {
       handleSkip();
     }
-  };
+  }, [activeTabIndex, TABS.length, handleSkip]);
 
-  const handleFinalAction = () => {
+  const handleFinalAction = useCallback(() => {
     const currentName = getValues("name");
     if (mode === "edit") {
       navigate("/chits", {
@@ -435,98 +268,43 @@ const ChitDetailPage = () => {
     } else {
       navigate("/chits");
     }
-  };
+  }, [mode, createdChitId, createdChitName, getValues, navigate]);
 
-  const handleLogCollectionClick = (assignment) => {
-    setCollectionDefaults({
-      assignmentId: assignment.id,
-      chitId: assignment.chit.id,
-      memberId: assignment.member.id,
-    });
-    if (mode !== "view") {
-      setActiveTab("collections");
-    }
-  };
-
-  // --- ONE-CLICK REPORT GENERATION ---
-  const handlePrintReport = async () => {
-    if (!id || mode !== "view") return;
-
-    setIsReportLoading(true);
-    setError(null);
-
-    try {
-      const [payoutsData, assignmentsData, collectionsData] = await Promise.all(
-        [
-          getPayoutsByChitId(id),
-          getAssignmentsForChit(id),
-          getCollectionsByChitId(id),
-        ]
-      );
-
-      const formVals = getValues();
-      const reportProps = {
-        chit: {
-          ...originalData,
-          ...formVals,
-          id: id,
-        },
-        payouts: payoutsData.payouts,
-        assignments: assignmentsData.assignments,
-        collections: collectionsData.collections,
-      };
-
-      let reportName = formVals.name;
-      if (!reportName.toLowerCase().endsWith("chit")) {
-        reportName += " Chit";
+  const handleLogCollectionClick = useCallback(
+    (assignment) => {
+      setCollectionDefaults({
+        assignmentId: assignment.id,
+        chitId: assignment.chit.id,
+        memberId: assignment.member.id,
+      });
+      if (mode !== "view") {
+        setActiveTab("collections");
       }
-      reportName += " Report";
+    },
+    [mode]
+  );
 
-      const blob = await pdf(<ChitReportPDF {...reportProps} />).toBlob();
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${reportName}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Failed to generate report", err);
-      setError("Failed to generate report. Please try again.");
-    } finally {
-      setIsReportLoading(false);
-    }
-  };
-
-  // --- VIEW MODE ---
-  // View helper to decide if we show mobile or desktop
-  // We use useMediaQuery to prevent duplicate DOM with same IDs
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-
+  // --- Loading State ---
   if (pageLoading) {
     return (
       <div className="w-full">
         <div className="flex justify-center items-center mb-4 relative">
-             <Skeleton.Text width="w-1/3" height="h-8" />
+          <Skeleton.Text width="w-1/3" height="h-8" />
         </div>
         <hr className="my-4 border-border" />
         <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-            <div className="md:col-span-1">
-                 <Skeleton.Card className="h-64" />
-            </div>
-            <div className="md:col-span-1">
-                 <Skeleton.Card className="h-64" />
-            </div>
+          <div className="md:col-span-1">
+            <Skeleton.Card className="h-64" />
+          </div>
+          <div className="md:col-span-1">
+            <Skeleton.Card className="h-64" />
+          </div>
         </div>
       </div>
     );
   }
 
-  // View Mode passes values from getValues() to Dashboard? 
-  const currentChitData = getValues();
+  const effectiveChitId = id || createdChitId;
 
   return (
     <>
@@ -596,7 +374,7 @@ const ChitDetailPage = () => {
         {mode === "view" ? (
           <div>
             <ChitViewDashboard
-              chitData={currentChitData} // Passing form values as data
+              chitData={currentChitData}
               chitId={id}
               onLogCollectionClick={handleLogCollectionClick}
               collectionDefaults={collectionDefaults}
@@ -605,7 +383,6 @@ const ChitDetailPage = () => {
           </div>
         ) : (
           /* --- CREATE/EDIT MODE --- */
-          /* Conditionally render based on screen size to prevent ID conflicts */
           <>
             {!isDesktop && (
               <div className="md:hidden">
@@ -614,18 +391,17 @@ const ChitDetailPage = () => {
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
                   mode={mode}
-                  chitId={id || createdChitId}
+                  chitId={effectiveChitId}
                   activeTabIndex={activeTabIndex}
                   isValid={isValid}
-                  loading={loading}
+                  loading={isSubmitting}
                   handleNext={handleNext}
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={!!(mode === "create" && createdChitId)}
+                  isPostCreation={isPostCreation}
                   onLogCollectionClick={handleLogCollectionClick}
                   collectionDefaults={collectionDefaults}
                   setCollectionDefaults={setCollectionDefaults}
-                  // RHForm Props
                   control={control}
                   register={register}
                   errors={errors}
@@ -637,7 +413,7 @@ const ChitDetailPage = () => {
               <div className="hidden md:block">
                 <form
                   id="chit-details-form-desktop"
-                  onSubmit={handleRHSubmit(onSubmit)}
+                  onSubmit={handleSubmit(handleFormSubmit)}
                 >
                   <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
                     {activeTab === "details" && (
@@ -647,10 +423,8 @@ const ChitDetailPage = () => {
                           control={control}
                           register={register}
                           errors={errors}
-                          isPostCreation={
-                            !!(mode === "create" && createdChitId)
-                          }
-                          onEnterKeyOnLastInput={() => handleRHSubmit(onSubmit)()}
+                          isPostCreation={isPostCreation}
+                          onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
                         />
                       </div>
                     )}
@@ -659,7 +433,7 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <AuctionsSectionComponent
                           mode={mode}
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                         />
                       </div>
                     )}
@@ -668,7 +442,7 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                         />
                       </div>
                     )}
@@ -677,7 +451,7 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <MembersSectionComponent
                           mode={mode}
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                           onLogCollectionClick={handleLogCollectionClick}
                         />
                       </div>
@@ -686,7 +460,7 @@ const ChitDetailPage = () => {
                     {activeTab === "collections" && (
                       <div className="md:col-span-2 flex flex-col gap-8">
                         <CollectionHistoryList
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                           mode={mode}
                           collectionDefaults={collectionDefaults}
                           setCollectionDefaults={setCollectionDefaults}
@@ -698,11 +472,11 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-1 flex flex-col gap-8">
                         <PayoutsSectionComponent
                           mode={mode}
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                         />
                         <MembersSectionComponent
                           mode={mode}
-                          chitId={id || createdChitId}
+                          chitId={effectiveChitId}
                           onLogCollectionClick={handleLogCollectionClick}
                         />
                       </div>
@@ -756,10 +530,8 @@ const ChitDetailPage = () => {
                       <div className="md:col-span-2">
                         <ChitDesktopActionButton
                           mode={mode}
-                          loading={loading}
-                          isPostCreation={
-                            !!(mode === "create" && createdChitId)
-                          }
+                          loading={isSubmitting}
+                          isPostCreation={isPostCreation}
                         />
                       </div>
                     )}

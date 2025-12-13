@@ -85,6 +85,18 @@ class CRUDPayout:
             .order_by(Payout.month)
         )
         return result.scalars().all()
+
+    async def get_by_chit_and_month(self, db: AsyncSession, chit_id: int, month: int) -> Optional[Payout]:
+        result = await db.execute(
+            select(Payout)
+            .where(Payout.chit_id == chit_id, Payout.month == month)
+            .options(
+                selectinload(Payout.member),
+                selectinload(Payout.chit),
+                selectinload(Payout.assignment)
+            )
+        )
+        return result.scalar_one_or_none()
         
     async def get_by_member(self, db: AsyncSession, member_id: int) -> List[Payout]:
         result = await db.execute(

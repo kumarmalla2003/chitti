@@ -1,13 +1,13 @@
 // frontend/src/features/members/pages/MemberDetailPage.jsx
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import useMediaQuery from "../../../hooks/useMediaQuery";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { memberSchema } from "../schemas/memberSchema";
+import { useMemberForm } from "../hooks/useMemberForm";
+import { useMemberReport } from "../hooks/useMemberReport";
+import Message from "../../../components/ui/Message";
 
 import Card from "../../../components/ui/Card";
 import TabButton from "../../../components/ui/TabButton";
@@ -17,18 +17,6 @@ import MemberChitsManager from "../components/sections/MemberChitsManager";
 import MemberMobileContent from "../components/sections/MemberMobileContent";
 import MemberDesktopActionButton from "../components/ui/MemberDesktopActionButton";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
-import Message from "../../../components/ui/Message";
-import {
-  getMemberById,
-  createMember,
-  patchMember,
-} from "../../../services/membersService";
-import { getAssignmentsForMember } from "../../../services/assignmentsService";
-import { getCollectionsByMemberId } from "../../../services/collectionsService";
-
-import MemberReportPDF from "../components/reports/MemberReportPDF";
-import { pdf } from "@react-pdf/renderer";
-
 import MemberViewDashboard from "./MemberViewDashboard";
 
 import {
@@ -71,339 +59,216 @@ const DetailsSection = ({
  */
 const MemberDetailPage = () => {
   const navigate = useNavigate();
-  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
 
-  const [mode, setMode] = useState("view");
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-  const [activeTab, setActiveTab] = useState("details");
-  const [originalData, setOriginalData] = useState(null);
+  // --- Mode Detection ---
+  const mode = useMemo(() => {
+    const path = location.pathname;
+    if (path.includes("create")) return "create";
+    if (path.includes("edit")) return "edit";
+    return "view";
+  }, [location.pathname]);
 
-  // --- React Hook Form Setup ---
+  // --- Custom Form Hook ---
   const {
     register,
-    handleSubmit: handleRHSubmit,
     control,
-    reset,
+    errors,
+    isValid,
+    handleSubmit,
     trigger,
-    formState: { errors, isValid },
     getValues,
-  } = useForm({
-    resolver: zodResolver(memberSchema),
-    defaultValues: {
-      full_name: "",
-      phone_number: "",
-    },
-    mode: "onTouched",
+    originalData,
+    createdMemberId,
+    createdMemberName,
+    isPostCreation,
+    pageLoading,
+    isSubmitting,
+    error,
+    success,
+    setError,
+    setSuccess,
+    onSubmit,
+  } = useMemberForm(id, mode);
+
+  // --- Local UI State ---
+  const [activeTab, setActiveTab] = useState("details");
+  const [collectionDefaults, setCollectionDefaults] = useState(null);
+
+  // --- Report Generation Hook ---
+  const currentMemberData = getValues();
+  const {
+    isLoading: isPrinting,
+    generateReport: handlePrint,
+  } = useMemberReport({
+    memberId: id || createdMemberId,
+    memberData: currentMemberData,
   });
 
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [createdMemberId, setCreatedMemberId] = useState(null);
-  const [createdMemberName, setCreatedMemberName] = useState(null);
+  // --- Derived Values ---
+  const TABS = ["details", "chits", "collections"];
+  const activeTabIndex = useMemo(() => TABS.indexOf(activeTab), [activeTab]);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  const [collectionDefaults, setCollectionDefaults] = useState(null);
-  const [isPrinting, setIsPrinting] = useState(false);
-
+  // --- Scroll to Top on Messages ---
   useScrollToTop(success || error);
 
-  const TABS = ["details", "chits", "collections"];
-  const activeTabIndex = TABS.indexOf(activeTab);
-
+  // --- Handle Initial Tab from Navigation State ---
   useEffect(() => {
-    const path = location.pathname;
-    const isCreate = path.includes("create");
-    const isEdit = path.includes("edit");
-
-    const fetchMember = async () => {
-      setPageLoading(true);
-      try {
-        const memberData = await getMemberById(id);
-        const fetchedData = {
-          full_name: memberData.full_name,
-          phone_number: memberData.phone_number,
-        };
-        reset(fetchedData);
-        setOriginalData(memberData); // Use full member object for originalData to be safe
-      } catch (err) {
-        setError({ message: err.message, context: "page" });
-      } finally {
-        setPageLoading(false);
-      }
-    };
-
-    if (isCreate) {
-      setMode("create");
-      setPageLoading(false);
-    } else if (isEdit) {
-      setMode("edit");
-      fetchMember();
-      // Handle Initial Tab Navigation
-      if (location.state?.initialTab) {
-        setActiveTab(location.state.initialTab);
-        // Clear state to prevent stuck navigation
-        window.history.replaceState({}, document.title);
-      }
-    } else {
-      setMode("view");
-      fetchMember();
+    if (location.state?.initialTab) {
+      setActiveTab(location.state.initialTab);
+      window.history.replaceState({}, document.title);
     }
-  }, [id, location.pathname, isLoggedIn, location.state, reset]);
+  }, [location.state]);
 
+  // --- Handle Success Message from Navigation State ---
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, setSuccess]);
 
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
-
+  // --- Focus Title on Tab Change ---
   useEffect(() => {
     if (titleRef.current) {
       titleRef.current.focus({ preventScroll: true });
     }
   }, [activeTab]);
 
-  const handleMobileFormSubmit = async (e) => {
-    if (activeTab !== "details") return;
+  // --- Form Submission Wrapper ---
+  const handleFormSubmit = useCallback(
+    async (data) => {
+      await onSubmit(data, {
+        onSuccessCallback: () => {
+          if (mode === "create" && !createdMemberId) {
+            setActiveTab("chits");
+          } else if (mode === "edit" && activeTabIndex < TABS.length - 1) {
+            setActiveTab(TABS[activeTabIndex + 1]);
+          }
+        },
+      });
+    },
+    [onSubmit, mode, createdMemberId, activeTabIndex, TABS]
+  );
 
-    if (activeTabIndex === TABS.length - 1) {
-      handleFinalAction();
-    } else if (mode === "create" && activeTabIndex === 0) {
-      await handleRHSubmit(onSubmit)(e);
-    } else {
-      if (mode === "edit" && activeTabIndex === 0) {
-        // Trigger save on next or just next? 
-        // Original logic: await handleDetailsSubmit()
-        await handleRHSubmit(onSubmit)(e);
+  // --- Mobile Form Submit Handler ---
+  const handleMobileFormSubmit = useCallback(
+    async (e) => {
+      if (activeTab !== "details") return;
+
+      if (activeTabIndex === TABS.length - 1) {
+        handleFinalAction();
+      } else if (mode === "create" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else if (mode === "edit" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
       } else if (activeTabIndex < TABS.length - 1) {
         setActiveTab(TABS[activeTabIndex + 1]);
       }
-    }
-  };
+    },
+    [activeTab, activeTabIndex, TABS, mode, handleSubmit, handleFormSubmit]
+  );
 
-  const onSubmit = async (data) => {
-    setError(null);
-    setSuccess(null);
-    setDetailsLoading(true);
-    try {
-      if (mode === "create" && !createdMemberId) {
-        const newMember = await createMember(data);
-        setCreatedMemberId(newMember.id);
-        setCreatedMemberName(newMember.full_name);
-        setOriginalData(newMember);
-        setActiveTab("chits");
-        setSuccess("Member details saved. You can now assign them to a chit.");
-      } else if (mode === "create" && createdMemberId) {
-        const changes = {};
-        for (const key in data) {
-          if (data[key] !== originalData[key]) {
-            changes[key] = data[key];
-          }
-        }
-        if (Object.keys(changes).length > 0) {
-          const updatedMember = await patchMember(
-            createdMemberId,
-            changes
-          );
-          setCreatedMemberName(updatedMember.full_name);
-          setOriginalData(updatedMember);
-          setSuccess("Member details updated.");
-        }
-        setActiveTab("chits");
-      } else if (mode === "edit") {
-        const changes = {};
-        for (const key in data) {
-          if (data[key] !== originalData[key]) {
-            changes[key] = data[key];
-          }
-        }
-        if (Object.keys(changes).length > 0) {
-          // originalData might lack id if fetchedData was just fields.
-          // But getMemberById returns object with id.
-          // Logic above setOriginalData(fetchedData) which lacks ID.
-          // Let's ensure originalData has everything for patching? No patch needs ID from param.
-          await patchMember(id, changes);
-          // Update original data
-          setOriginalData({ ...originalData, ...data });
-          setSuccess("Member details updated.");
-        }
-        if (activeTabIndex < TABS.length - 1) {
-          setActiveTab(TABS[activeTabIndex + 1]);
-        }
-      }
-    } catch (err) {
-      setError({ context: "details", message: err.message });
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const getTitle = () => {
+  // --- Page Title ---
+  const getTitle = useCallback(() => {
     const fullName = getValues("full_name");
     if (mode === "create") {
       return createdMemberName || "Create New Member";
     }
-    return (
-      fullName || (mode === "edit" ? "Edit Member" : "Member Details")
-    );
-  };
+    return fullName || (mode === "edit" ? "Edit Member" : "Member Details");
+  }, [mode, createdMemberName, getValues]);
 
-  const handleBackNavigation = () => {
+  // --- Navigation Handlers ---
+  const handleBackNavigation = useCallback(() => {
     if (activeTabIndex > 0) {
       setActiveTab(TABS[activeTabIndex - 1]);
     } else {
       navigate("/members");
     }
-  };
+  }, [activeTabIndex, TABS, navigate]);
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
-  };
+  }, [activeTabIndex, TABS]);
 
-  const handleNext = async () => {
+  const handleNext = useCallback(async () => {
     if (activeTabIndex === 0) {
-      // Validate and Submit if details tab
       const isValidForm = await trigger();
       if (isValidForm) {
-        await handleRHSubmit(onSubmit)();
+        await handleSubmit(handleFormSubmit)();
       }
       return;
     }
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
-  };
+  }, [activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
 
-  const handleMiddle = () => {
+  const handleMiddle = useCallback(() => {
     if (activeTabIndex === TABS.length - 1) {
       handleFinalAction();
     } else {
       handleSkip();
     }
-  };
+  }, [activeTabIndex, TABS.length, handleSkip]);
 
-  const handleFinalAction = () => {
+  const handleFinalAction = useCallback(() => {
     const memberIdToView = mode === "create" ? createdMemberId : id;
-    const memberName =
-      mode === "create" ? createdMemberName : getValues("full_name");
+    const memberName = mode === "create" ? createdMemberName : getValues("full_name");
 
     const successMessage =
       mode === "create"
         ? `Member "${memberName}" has been created successfully!`
         : `Member "${memberName}" has been updated successfully!`;
 
-    // In original code, if edit mode, it triggered submit again if changes?
-    // "if (mode === "edit" && originalData) ..."
-    // onSubmit logic already handles patch. If user clicks "Finish" (handleFinalAction),
-    // usually we just navigate. 
-    // BUT if the form is dirty we might want to save.
-    // Simplifying: Assume handleNext/onSubmit saved data step-by-step.
-
     navigate(`/members/view/${memberIdToView}`, {
       state: { success: successMessage },
     });
-  };
+  }, [mode, createdMemberId, createdMemberName, id, getValues, navigate]);
 
-  const handleLogCollectionClick = (assignment) => {
+  const handleLogCollectionClick = useCallback((assignment) => {
     setCollectionDefaults({
       assignmentId: assignment.id,
       chitId: assignment.chit.id,
       memberId: assignment.member.id,
     });
     setActiveTab("collections");
-  };
+  }, []);
 
-  const handlePrint = async () => {
-    const targetId = mode === "create" ? createdMemberId : id;
-    if (!targetId) return;
-
-    setIsPrinting(true);
-    setError(null);
-
-    try {
-      const vals = getValues();
-      const memberObj = {
-        id: targetId,
-        full_name: vals.full_name,
-        phone_number: vals.phone_number,
-      };
-
-      const [assignmentsData, collectionsData] = await Promise.all([
-        getAssignmentsForMember(targetId),
-        getCollectionsByMemberId(targetId),
-      ]);
-
-      const reportProps = {
-        member: memberObj,
-        assignments: assignmentsData,
-        collections: collectionsData.collections,
-      };
-
-      const reportName = `${memberObj.full_name} Report`;
-      const blob = await pdf(<MemberReportPDF {...reportProps} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${reportName}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Print failed", err);
-      setError({
-        context: "page",
-        message: "Failed to generate member report.",
-      });
-    } finally {
-      setIsPrinting(false);
-    }
-  };
-
-  const handleManageChits = () => {
+  const handleManageChits = useCallback(() => {
     navigate(`/members/edit/${id}`, { state: { initialTab: "chits" } });
-  };
+  }, [id, navigate]);
 
-  const handleManageCollections = () => {
+  const handleManageCollections = useCallback(() => {
     navigate(`/members/edit/${id}`, { state: { initialTab: "collections" } });
-  };
+  }, [id, navigate]);
 
+  // --- Loading State ---
   if (pageLoading) {
     return (
       <div className="w-full">
         <div className="flex justify-center items-center mb-4 relative">
-             <Skeleton.Text width="w-1/3" height="h-8" />
+          <Skeleton.Text width="w-1/3" height="h-8" />
         </div>
         <hr className="my-4 border-border" />
         <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-            <div className="md:col-span-1">
-                 <Skeleton.Card className="h-64" />
-            </div>
-            <div className="md:col-span-1">
-                 <Skeleton.Card className="h-64" />
-            </div>
+          <div className="md:col-span-1">
+            <Skeleton.Card className="h-64" />
+          </div>
+          <div className="md:col-span-1">
+            <Skeleton.Card className="h-64" />
+          </div>
         </div>
       </div>
     );
   }
 
-  const isPostCreation = !!(mode === "create" && createdMemberId);
-  const currentMemberData = getValues();
+  const effectiveMemberId = id || createdMemberId;
 
   return (
     <>
@@ -426,7 +291,6 @@ const MemberDetailPage = () => {
           {/* --- Header Actions (Edit, Print) --- */}
           {mode === "view" && (
             <div className="absolute right-0 flex items-center">
-              {/* Edit Button */}
               <button
                 onClick={() => navigate(`/members/edit/${id}`)}
                 className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
@@ -434,7 +298,6 @@ const MemberDetailPage = () => {
               >
                 <SquarePen className="w-6 h-6" />
               </button>
-              {/* Print Button */}
               <button
                 onClick={handlePrint}
                 disabled={isPrinting}
@@ -478,14 +341,12 @@ const MemberDetailPage = () => {
               onLogCollectionClick={handleLogCollectionClick}
               collectionDefaults={collectionDefaults}
               setCollectionDefaults={setCollectionDefaults}
-              // --- Pass Manage Handlers ---
               onManageChits={handleManageChits}
               onManageCollections={handleManageCollections}
             />
           </div>
         ) : (
           /* --- EDIT / CREATE MODE --- */
-          /* Conditionally render based on screen size to prevent ID conflicts */
           <>
             {!isDesktop && (
               <div className="md:hidden">
@@ -494,10 +355,10 @@ const MemberDetailPage = () => {
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
                   mode={mode}
-                  createdMemberId={createdMemberId || id}
+                  createdMemberId={effectiveMemberId}
                   activeTabIndex={activeTabIndex}
                   isValid={isValid}
-                  detailsLoading={detailsLoading}
+                  detailsLoading={isSubmitting}
                   handleNext={handleNext}
                   handleMiddle={handleMiddle}
                   handleMobileFormSubmit={handleMobileFormSubmit}
@@ -505,7 +366,6 @@ const MemberDetailPage = () => {
                   onLogCollectionClick={handleLogCollectionClick}
                   collectionDefaults={collectionDefaults}
                   setCollectionDefaults={setCollectionDefaults}
-                  // RHForm
                   control={control}
                   register={register}
                   errors={errors}
@@ -516,99 +376,98 @@ const MemberDetailPage = () => {
             {isDesktop && (
               <div className="hidden md:block">
                 <form
-                id="member-details-form-desktop"
-                onSubmit={handleRHSubmit(onSubmit)}
-              >
-                <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-                  {activeTab === "details" && (
-                    <div className="md:col-span-1">
-                      <DetailsSection
-                        mode={mode}
-                        control={control}
-                        register={register}
-                        errors={errors}
-                        onEnterKeyOnLastInput={() => handleRHSubmit(onSubmit)()}
-                        isPostCreation={isPostCreation}
+                  id="member-details-form-desktop"
+                  onSubmit={handleSubmit(handleFormSubmit)}
+                >
+                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1">
+                        <DetailsSection
+                          mode={mode}
+                          control={control}
+                          register={register}
+                          errors={errors}
+                          onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                          isPostCreation={isPostCreation}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "chits" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <MemberChitsManager
+                          mode={mode}
+                          memberId={effectiveMemberId}
+                          onLogCollectionClick={handleLogCollectionClick}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "collections" && (
+                      <div className="md:col-span-2 flex flex-col gap-8">
+                        <CollectionHistoryList
+                          memberId={effectiveMemberId}
+                          mode={mode}
+                          collectionDefaults={collectionDefaults}
+                          setCollectionDefaults={setCollectionDefaults}
+                        />
+                      </div>
+                    )}
+
+                    {activeTab === "details" && (
+                      <div className="md:col-span-1 flex flex-col gap-8">
+                        <MemberChitsManager
+                          mode={mode}
+                          memberId={effectiveMemberId}
+                          onLogCollectionClick={handleLogCollectionClick}
+                        />
+                        <CollectionHistoryList
+                          memberId={effectiveMemberId}
+                          mode={mode}
+                          collectionDefaults={collectionDefaults}
+                          setCollectionDefaults={setCollectionDefaults}
+                        />
+                      </div>
+                    )}
+
+                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
+                      <TabButton
+                        name="details"
+                        icon={User}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                      />
+                      <TabButton
+                        name="chits"
+                        icon={Layers}
+                        label="Chits"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdMemberId}
+                      />
+                      <TabButton
+                        name="collections"
+                        icon={IndianRupee}
+                        label="Collections"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        disabled={mode === "create" && !createdMemberId}
                       />
                     </div>
-                  )}
 
-                  {activeTab === "chits" && (
-                    <div className="md:col-span-2 flex flex-col gap-8">
-                      <MemberChitsManager
-                        mode={mode}
-                        memberId={createdMemberId || id}
-                        onLogCollectionClick={handleLogCollectionClick}
-                      />
-                    </div>
-                  )}
-
-                  {activeTab === "collections" && (
-                    <div className="md:col-span-2 flex flex-col gap-8">
-                      <CollectionHistoryList
-                        memberId={createdMemberId || id}
-                        mode={mode}
-                        collectionDefaults={collectionDefaults}
-                        setCollectionDefaults={setCollectionDefaults}
-                      />
-                    </div>
-                  )}
-
-                  {activeTab === "details" && (
-                    <div className="md:col-span-1 flex flex-col gap-8">
-                      <MemberChitsManager
-                        mode={mode}
-                        memberId={createdMemberId || id}
-                        onLogCollectionClick={handleLogCollectionClick}
-                      />
-                      <CollectionHistoryList
-                        memberId={createdMemberId || id}
-                        mode={mode}
-                        collectionDefaults={collectionDefaults}
-                        setCollectionDefaults={setCollectionDefaults}
-                      />
-                    </div>
-                  )}
-
-                  <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                    <TabButton
-                      name="details"
-                      icon={User}
-                      label="Details"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                    />
-                    <TabButton
-                      name="chits"
-                      icon={Layers}
-                      label="Chits"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                      disabled={mode === "create" && !createdMemberId}
-                    />
-                    <TabButton
-                      name="collections"
-                      icon={IndianRupee}
-                      label="Collections"
-                      activeTab={activeTab}
-                      setActiveTab={setActiveTab}
-                      disabled={mode === "create" && !createdMemberId}
-                    />
+                    {mode !== "view" && activeTab === "details" && (
+                      <div className="md:col-span-2">
+                        <MemberDesktopActionButton
+                          mode={mode}
+                          loading={isSubmitting}
+                          isPostCreation={isPostCreation}
+                        />
+                      </div>
+                    )}
                   </div>
-
-                  {mode !== "view" && activeTab === "details" && (
-                    <div className="md:col-span-2">
-                      <MemberDesktopActionButton
-                        mode={mode}
-                        loading={detailsLoading}
-                        isPostCreation={isPostCreation}
-                      />
-                    </div>
-                  )}
-                </div>
-              </form>
-            </div>
-
+                </form>
+              </div>
             )}
           </>
         )}

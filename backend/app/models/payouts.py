@@ -14,7 +14,9 @@ class Payout(SQLModel, table=True):
     month: int
     
     # Scheduled/Planned Data
-    planned_amount: float = Field(default=0.0) 
+    # Scheduled/Planned Data
+    planned_amount: float = Field(default=0.0)
+    bid_amount: Optional[int] = Field(default=None) # Auction Bid Amount 
     
     # Actual Transaction Data (Nullable until paid)
     amount: Optional[float] = Field(default=None) # Actual paid amount

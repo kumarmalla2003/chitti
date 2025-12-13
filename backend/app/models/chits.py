@@ -34,10 +34,32 @@ class Chit(SQLModel, table=True):
     # Fixed Chit: standard monthly installment
     monthly_installment: int = Field(default=0)
     
-    # Variable Chit: different amounts before and after receiving payout
-    installment_before_payout: int = Field(default=0)
-    installment_after_payout: int = Field(default=0)
+    # Variable Chit: percentage applied to chit_value after payout
+    # Before payout: chit_value / size
+    # After payout: (chit_value / size) + (chit_value * payout_premium_percent / 100)
+    # Variable Chit: percentage applied to chit_value after payout
+    # Before payout: chit_value / size
+    # After payout: (chit_value / size) + (chit_value * payout_premium_percent / 100)
+    payout_premium_percent: float = Field(default=0.0)
+
+    # Auction Chit: Foreman Commission percentage
+    foreman_commission_percent: float = Field(default=0.0)
     
     # Relationships
     payouts: List["Payout"] = Relationship(back_populates="chit")
     collections: List["Collection"] = Relationship(back_populates="chit")
+    
+    # Helper methods for variable chit calculations
+    def get_installment_before_payout(self) -> int:
+        """Calculate installment for members who haven't received payout."""
+        if self.chit_type == "variable":
+            return int(self.chit_value / self.size) if self.size > 0 else 0
+        return self.monthly_installment
+    
+    def get_installment_after_payout(self) -> int:
+        """Calculate installment for members who have received payout."""
+        if self.chit_type == "variable":
+            base = self.chit_value / self.size if self.size > 0 else 0
+            premium = self.chit_value * self.payout_premium_percent / 100
+            return int(base + premium)
+        return self.monthly_installment

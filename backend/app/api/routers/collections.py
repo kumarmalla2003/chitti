@@ -12,7 +12,7 @@ from app.models.collections import Collection
 from app.models.assignments import ChitAssignment 
 from app.security.dependencies import get_current_user
 from app.crud.crud_collections import collections as crud_collections
-from app.crud import crud_chits, crud_members
+from app.crud import crud_chits, crud_members, crud_payouts
 from app.schemas.collections import CollectionPublic, CollectionListResponse, CollectionCreate, CollectionUpdate
 from app.schemas.members import MemberPublic
 
@@ -60,6 +60,29 @@ async def create_collection(
         )
     
     monthly_installment = assignment.chit.monthly_installment
+    
+    # --- AUCTION LOGIC: Dynamic Installment Calculation ---
+    if assignment.chit.chit_type == "auction":
+        chit = assignment.chit
+        # Calculate month index (1-based)
+        month_index = (assignment.chit_month.year - chit.start_date.year) * 12 + \
+                      (assignment.chit_month.month - chit.start_date.month) + 1
+        
+        # Fetch the payout schedule for this month to get the bid amount
+        payout = await crud_payouts.payouts.get_by_chit_and_month(session, chit_id=chit.id, month=month_index)
+        
+        if payout and payout.bid_amount is not None:
+            commission = chit.chit_value * (chit.foreman_commission_percent or 0) / 100
+            dividend = payout.bid_amount - commission
+            if dividend < 0: dividend = 0 # Should not happen if bid >= commission
+            
+            # Net Dividend per member
+            net_dividend_per_member = dividend / chit.size if chit.size > 0 else 0
+            
+            # New Installment = Base Installment - Dividend
+            base_installment = chit.chit_value / chit.size if chit.size > 0 else 0
+            monthly_installment = int(base_installment - net_dividend_per_member)
+    # ------------------------------------------------------
     
     existing_collections = await crud_collections.get_by_assignment(
         session, 

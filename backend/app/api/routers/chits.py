@@ -54,8 +54,8 @@ async def create_chit(
         # Chit type fields
         chit_type=chit.chit_type,
         monthly_installment=chit.monthly_installment,
-        installment_before_payout=chit.installment_before_payout,
-        installment_after_payout=chit.installment_after_payout,
+        payout_premium_percent=chit.payout_premium_percent,
+        foreman_commission_percent=chit.foreman_commission_percent,
     )
     session.add(db_chit)
     
@@ -122,7 +122,7 @@ async def get_chit_assignments(
             expected_installment = chit.monthly_installment
         elif chit.chit_type == "variable":
             # Check if member has received a payout in a PREVIOUS month
-            # installment_after_payout applies from the month AFTER the payout month
+            # After payout installment applies from the month AFTER the payout month
             from datetime import date
             today = date.today()
             current_year_month = (today.year, today.month)
@@ -139,7 +139,8 @@ async def get_chit_assignments(
             else:
                 use_after_payout = False
             
-            expected_installment = chit.installment_after_payout if use_after_payout else chit.installment_before_payout
+            # Calculate installments using the new formula
+            expected_installment = chit.get_installment_after_payout() if use_after_payout else chit.get_installment_before_payout()
         else:  # auction
             # Auction chits: amount varies, use 0 as placeholder (set manually during collection)
             expected_installment = 0

@@ -1,8 +1,7 @@
 // frontend/src/features/collections/pages/CollectionDetailPage.jsx
 
-import { useState, useEffect, useRef } from "react";
+import { useRef, useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
-import { useSelector } from "react-redux";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
@@ -16,162 +15,80 @@ import {
   Save,
   Info,
   SquarePen,
-  IndianRupee,
 } from "lucide-react";
-import {
-  getCollectionById,
-  createCollection,
-  patchCollection,
-} from "../../../services/collectionsService";
+import { useCollectionForm } from "../hooks/useCollectionForm";
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate();
-  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
 
+  // --- URL Query Params ---
   const queryParams = new URLSearchParams(location.search);
   const defaultAssignmentId = queryParams.get("assignmentId");
 
-  const [mode, setMode] = useState("view");
-  // isMenuOpen removed (handled by MainLayout)
-  const [formData, setFormData] = useState({
-    chit_assignment_id: defaultAssignmentId || "",
-    amount_paid: "",
-    collection_date: new Date().toISOString().split("T")[0],
-    collection_method: "Cash",
-    notes: "",
-  });
-  const [originalData, setOriginalData] = useState(null);
+  // --- Mode Detection ---
+  const mode = useMemo(() => {
+    const path = location.pathname;
+    if (path.includes("create")) return "create";
+    if (path.includes("edit")) return "edit";
+    return "view";
+  }, [location.pathname]);
 
-  const [collectionDetails, setCollectionDetails] = useState(null);
+  // --- Custom Form Hook ---
+  const {
+    register,
+    control,
+    errors,
+    handleSubmit,
+    setValue,
+    collectionDetails,
+    pageLoading,
+    isSubmitting,
+    error,
+    success,
+    setError,
+    setSuccess,
+    onSubmit,
+  } = useCollectionForm(id, mode, defaultAssignmentId);
 
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
+  // --- Scroll to Top on Messages ---
   useScrollToTop(success || error);
 
-  useEffect(() => {
-    const path = location.pathname;
-    const isCreate = path.includes("create");
-    const isEdit = path.includes("edit");
-
-    const fetchCollection = async () => {
-      setPageLoading(true);
-      try {
-        const collection = await getCollectionById(id);
-        const fetchedData = {
-          chit_assignment_id: collection.chit_assignment_id,
-          amount_paid: collection.amount_paid.toString(),
-          collection_date: collection.collection_date,
-          collection_method: collection.collection_method,
-          notes: collection.notes || "",
-        };
-        setFormData(fetchedData);
-        setOriginalData(fetchedData);
-        setCollectionDetails(collection);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setPageLoading(false);
-      }
-    };
-
-    if (isCreate) {
-      setMode("create");
-      setPageLoading(false);
-    } else if (isEdit) {
-      setMode("edit");
-      fetchCollection();
-    } else {
-      setMode("view");
-      fetchCollection();
-    }
-  }, [id, location.pathname, isLoggedIn]);
-
+  // --- Handle Success Message from Navigation State ---
   useEffect(() => {
     if (location.state?.success) {
       setSuccess(location.state.success);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, setSuccess]);
 
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
+  // --- Form Submission Wrapper ---
+  const handleFormSubmit = useCallback(
+    async (data) => {
+      await onSubmit(data, { navigate });
+    },
+    [onSubmit, navigate]
+  );
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setError(null);
-    setSuccess(null);
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const dataToSend = {
-        ...formData,
-        amount_paid: parseFloat(formData.amount_paid.replace(/,/g, "")),
-        chit_assignment_id: parseInt(formData.chit_assignment_id),
-      };
-
-      if (mode === "create") {
-        const newCollection = await createCollection(dataToSend);
-        navigate(`/collections/view/${newCollection.id}`, {
-          state: { success: "Collection logged successfully!" },
-        });
-      } else if (mode === "edit") {
-        const changes = {};
-        for (const key in dataToSend) {
-          if (String(formData[key]) !== String(originalData[key])) {
-            changes[key] = dataToSend[key];
-          }
-        }
-
-        if (Object.keys(changes).length > 0) {
-          const updatedCollection = await patchCollection(id, changes);
-          setOriginalData(formData);
-          setSuccess("Collection updated successfully!");
-          setCollectionDetails(updatedCollection);
-        } else {
-          setSuccess("No changes to save.");
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getTitle = () => {
+  // --- Page Title ---
+  const getTitle = useCallback(() => {
     if (mode === "create") return "Log New Collection";
     if (mode === "edit") return "Edit Collection";
     return "Collection Details";
-  };
+  }, [mode]);
 
-  const handleBackNavigation = () => {
+  // --- Back Navigation ---
+  const handleBackNavigation = useCallback(() => {
     if (location.key !== "default") {
       navigate(-1);
     } else {
       navigate("/collections");
     }
-  };
+  }, [location.key, navigate]);
 
+  // --- Loading State ---
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -236,7 +153,7 @@ const CollectionDetailPage = () => {
         ) : (
           /* --- CREATE / EDIT MODE: Form --- */
           <div className="max-w-2xl mx-auto">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit(handleFormSubmit)}>
               <Card>
                 <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
                   <Info className="w-6 h-6" /> Details
@@ -245,22 +162,24 @@ const CollectionDetailPage = () => {
 
                 <CollectionDetailsForm
                   mode={mode}
-                  formData={formData}
-                  onFormChange={handleFormChange}
+                  control={control}
+                  register={register}
+                  setValue={setValue}
+                  errors={errors}
                   defaultAssignmentId={
                     mode === "create" ? defaultAssignmentId : null
                   }
-                  collectionData={collectionDetails}
+                  paymentData={collectionDetails}
                 />
                 {mode !== "view" && (
                   <div className="flex justify-end mt-6">
                     <Button
                       type="submit"
                       variant={mode === "create" ? "success" : "warning"}
-                      disabled={loading}
+                      disabled={isSubmitting}
                       className="w-full"
                     >
-                      {loading ? (
+                      {isSubmitting ? (
                         <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                       ) : mode === "create" ? (
                         <>

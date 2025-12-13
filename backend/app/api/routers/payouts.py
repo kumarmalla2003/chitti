@@ -89,6 +89,22 @@ async def update_payout(
     if not db_payout:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
     
+    # --- AUCTION LOGIC: Auto-calculate Payout Amount if Bid Amount is present ---
+    if payout_in.bid_amount is not None:
+        # Load Chit to check type and value
+        await session.refresh(db_payout, ["chit"])
+        if db_payout.chit and db_payout.chit.chit_type == "auction":
+            # Payout = Chit Value - Bid Amount
+            calculated_amount = db_payout.chit.chit_value - payout_in.bid_amount
+            if calculated_amount < 0:
+                 raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                    detail="Bid amount cannot be greater than Chit value."
+                )
+            # Auto-set the amount
+            payout_in.amount = float(calculated_amount)
+    # --------------------------------------------------------------------------
+
     # 1. Update the record
     await crud_payouts.payouts.update(db=session, db_obj=db_payout, obj_in=payout_in)
     

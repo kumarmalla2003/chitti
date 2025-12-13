@@ -10,6 +10,7 @@ from app.schemas.assignments import ChitAssignmentSimple # <-- Import this
 class PayoutBase(BaseModel):
     month: int
     planned_amount: float 
+    bid_amount: Optional[int] = None 
 
 class PayoutUpdate(BaseModel):
     planned_amount: Optional[float] = None
@@ -19,6 +20,7 @@ class PayoutUpdate(BaseModel):
     notes: Optional[str] = None
     member_id: Optional[int] = None
     chit_assignment_id: Optional[int] = None
+    bid_amount: Optional[int] = None
 
 class PayoutResponse(PayoutBase):
     id: int
@@ -30,6 +32,7 @@ class PayoutResponse(PayoutBase):
     notes: Optional[str] = None
     member_id: Optional[int] = None
     chit_assignment_id: Optional[int] = None
+    bid_amount: Optional[int] = None
     
     # Nested Info
     member: Optional[MemberPublic] = None

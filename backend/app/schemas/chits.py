@@ -1,6 +1,6 @@
 # backend/app/schemas/chits.py
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from typing import List, Optional
 from datetime import date
 from enum import Enum
@@ -19,9 +19,30 @@ class ChitNested(BaseModel):
     end_date: date
     name: str
     chit_type: str = "fixed"
+    chit_value: int = 0
+    size: int = 0
     monthly_installment: int = 0
-    installment_before_payout: int = 0
-    installment_after_payout: int = 0
+    payout_premium_percent: float = 0.0
+    foreman_commission_percent: float = 0.0
+    
+    @computed_field
+    @property
+    def installment_before_payout(self) -> int:
+        """Calculate installment for members who haven't received payout."""
+        if self.chit_type == "variable":
+            return int(self.chit_value / self.size) if self.size > 0 else 0
+        return self.monthly_installment
+    
+    @computed_field
+    @property
+    def installment_after_payout(self) -> int:
+        """Calculate installment for members who have received payout."""
+        if self.chit_type == "variable":
+            base = self.chit_value / self.size if self.size > 0 else 0
+            premium = self.chit_value * self.payout_premium_percent / 100
+            return int(base + premium)
+        return self.monthly_installment
+    
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -41,8 +62,26 @@ class ChitRead(BaseModel):
     # Chit type and installment fields (no validation)
     chit_type: str = "fixed"
     monthly_installment: int = 0
-    installment_before_payout: int = 0
-    installment_after_payout: int = 0
+    payout_premium_percent: float = 0.0
+    foreman_commission_percent: float = 0.0
+    
+    @computed_field
+    @property
+    def installment_before_payout(self) -> int:
+        """Calculate installment for members who haven't received payout."""
+        if self.chit_type == "variable":
+            return int(self.chit_value / self.size) if self.size > 0 else 0
+        return self.monthly_installment
+    
+    @computed_field
+    @property
+    def installment_after_payout(self) -> int:
+        """Calculate installment for members who have received payout."""
+        if self.chit_type == "variable":
+            base = self.chit_value / self.size if self.size > 0 else 0
+            premium = self.chit_value * self.payout_premium_percent / 100
+            return int(base + premium)
+        return self.monthly_installment
 
 
 # ============================================
@@ -63,8 +102,8 @@ class ChitBase(BaseModel):
     
     # Installment fields (validated based on chit_type)
     monthly_installment: int = Field(default=0)
-    installment_before_payout: int = Field(default=0)
-    installment_after_payout: int = Field(default=0)
+    payout_premium_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    foreman_commission_percent: float = Field(default=0.0, ge=0.0, le=100.0)
 
     @model_validator(mode='after')
     def validate_chit(self) -> 'ChitBase':
@@ -78,11 +117,11 @@ class ChitBase(BaseModel):
             if self.monthly_installment <= 0:
                 raise ValueError('Monthly installment is required for Fixed chits.')
         elif self.chit_type == "variable":
-            if self.installment_before_payout <= 0:
-                raise ValueError('Pre-payout installment is required for Variable chits.')
-            if self.installment_after_payout <= 0:
-                raise ValueError('Post-payout installment is required for Variable chits.')
-        # Auction chits: no installment validation needed
+            if self.payout_premium_percent < 0:
+                raise ValueError('Payout premium percent must be non-negative for Variable chits.')
+        elif self.chit_type == "auction":
+            if self.foreman_commission_percent < 0:
+                raise ValueError('Foreman commission percent must be non-negative for Auction chits.')
         
         return self
 
@@ -107,8 +146,8 @@ class ChitPatch(BaseModel):
     # Chit type and installment fields
     chit_type: Optional[str] = None
     monthly_installment: Optional[int] = None
-    installment_before_payout: Optional[int] = None
-    installment_after_payout: Optional[int] = None
+    payout_premium_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    foreman_commission_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
 
     @model_validator(mode='after')
     def check_collection_before_payout_patch(self) -> 'ChitPatch':
