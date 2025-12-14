@@ -256,13 +256,10 @@ const MemberDetailPage = () => {
           <Skeleton.Text width="w-1/3" height="h-8" />
         </div>
         <hr className="my-4 border-border" />
-        <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-          <div className="md:col-span-1">
-            <Skeleton.Card className="h-64" />
-          </div>
-          <div className="md:col-span-1">
-            <Skeleton.Card className="h-64" />
-          </div>
+        <div className="w-full space-y-6">
+          <Skeleton.Card className="h-40" />
+          <Skeleton.Card className="h-48" />
+          <Skeleton.Card className="h-48" />
         </div>
       </div>
     );
@@ -379,92 +376,40 @@ const MemberDetailPage = () => {
                   id="member-details-form-desktop"
                   onSubmit={handleSubmit(handleFormSubmit)}
                 >
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-4xl mx-auto">
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1">
-                        <DetailsSection
-                          mode={mode}
-                          control={control}
-                          register={register}
-                          errors={errors}
-                          onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
-                          isPostCreation={isPostCreation}
-                        />
-                      </div>
-                    )}
+                  {/* Stacked Full-Width Sections Layout */}
+                  <div className="w-full space-y-6">
+                    {/* Details Form Section */}
+                    <DetailsSection
+                      mode={mode}
+                      control={control}
+                      register={register}
+                      errors={errors}
+                      onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                      isPostCreation={isPostCreation}
+                    />
 
-                    {activeTab === "chits" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <MemberChitsManager
-                          mode={mode}
-                          memberId={effectiveMemberId}
-                          onLogCollectionClick={handleLogCollectionClick}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "collections" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <CollectionHistoryList
-                          memberId={effectiveMemberId}
-                          mode={mode}
-                          collectionDefaults={collectionDefaults}
-                          setCollectionDefaults={setCollectionDefaults}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <MemberChitsManager
-                          mode={mode}
-                          memberId={effectiveMemberId}
-                          onLogCollectionClick={handleLogCollectionClick}
-                        />
-                        <CollectionHistoryList
-                          memberId={effectiveMemberId}
-                          mode={mode}
-                          collectionDefaults={collectionDefaults}
-                          setCollectionDefaults={setCollectionDefaults}
-                        />
-                      </div>
-                    )}
-
-                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                      <TabButton
-                        name="details"
-                        icon={User}
-                        label="Details"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
+                    {mode !== "view" && (
+                      <MemberDesktopActionButton
+                        mode={mode}
+                        loading={isSubmitting}
+                        isPostCreation={isPostCreation}
                       />
-                      <TabButton
-                        name="chits"
-                        icon={Layers}
-                        label="Chits"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdMemberId}
-                      />
-                      <TabButton
-                        name="collections"
-                        icon={IndianRupee}
-                        label="Collections"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdMemberId}
-                      />
-                    </div>
-
-                    {mode !== "view" && activeTab === "details" && (
-                      <div className="md:col-span-2">
-                        <MemberDesktopActionButton
-                          mode={mode}
-                          loading={isSubmitting}
-                          isPostCreation={isPostCreation}
-                        />
-                      </div>
                     )}
+
+                    {/* Chits Section */}
+                    <MemberChitsManager
+                      mode={mode}
+                      memberId={effectiveMemberId}
+                      onLogCollectionClick={handleLogCollectionClick}
+                    />
+
+                    {/* Collections Section */}
+                    <CollectionHistoryList
+                      memberId={effectiveMemberId}
+                      mode={mode}
+                      collectionDefaults={collectionDefaults}
+                      setCollectionDefaults={setCollectionDefaults}
+                    />
                   </div>
                 </form>
               </div>

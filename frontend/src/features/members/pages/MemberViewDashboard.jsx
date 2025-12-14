@@ -8,10 +8,11 @@ import MemberChitsManager from "../components/sections/MemberChitsManager";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import PayoutHistoryList from "../../chits/components/sections/PayoutHistoryList";
 
-const MetricCard = ({ label, value, icon: Icon }) => (
+// eslint-disable-next-line no-unused-vars
+const MetricCard = ({ label, value, icon: IconComponent }) => (
   <div className="bg-background-secondary/50 p-4 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors h-full">
     <div className="flex items-center gap-1.5 mb-2 text-text-secondary">
-      <Icon className="w-4 h-4" />
+      <IconComponent className="w-4 h-4" />
       <span className="text-xs font-bold uppercase tracking-wider">
         {label}
       </span>
@@ -48,7 +49,9 @@ const MemberViewDashboard = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* --- Row 1: Details (Horizontal Phone Number Box) --- */}
+      {/* Stacked Full-Width Sections Layout */}
+
+      {/* Details Section */}
       <div className="grid grid-cols-1">
         <Card>
           <div className="relative flex justify-center items-center mb-4">
@@ -79,7 +82,7 @@ const MemberViewDashboard = ({
         </Card>
       </div>
 
-      {/* --- Row 2: Chits (Component renders its own Card) --- */}
+      {/* Chits Section */}
       <div className="grid grid-cols-1">
         <MemberChitsManager
           memberId={memberId}
@@ -90,7 +93,7 @@ const MemberViewDashboard = ({
         />
       </div>
 
-      {/* --- Row 3: Collections Made --- */}
+      {/* Collections Section */}
       <div ref={collectionsRef} className="grid grid-cols-1">
         <CollectionHistoryList
           memberId={memberId}
@@ -102,7 +105,7 @@ const MemberViewDashboard = ({
         />
       </div>
 
-      {/* --- Row 4: Payouts Received --- */}
+      {/* Payouts Section */}
       <div className="grid grid-cols-1">
         <PayoutHistoryList memberId={memberId} mode="view" forceTable={true} />
       </div>

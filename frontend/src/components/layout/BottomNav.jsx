@@ -2,7 +2,8 @@
 
 import { useSelector } from "react-redux";
 import Button from "../ui/Button";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { NavigationLink } from "../routing";
 import {
   LayoutDashboard,
   Users,
@@ -34,7 +35,7 @@ const BottomNav = ({ onLoginClick }) => {
         {isLoggedIn ? (
           <nav className="grid h-full w-full grid-cols-5 items-center justify-items-center">
             {/* 1. CHITS */}
-            <Link
+            <NavigationLink
               to="/chits"
               className="flex items-center justify-center w-full h-full"
               aria-label="Chits"
@@ -52,10 +53,10 @@ const BottomNav = ({ onLoginClick }) => {
                   }`}
                 />
               </div>
-            </Link>
+            </NavigationLink>
 
             {/* 2. PAYOUTS */}
-            <Link
+            <NavigationLink
               to="/payouts"
               className="flex items-center justify-center w-full h-full"
               aria-label="Payouts"
@@ -73,10 +74,10 @@ const BottomNav = ({ onLoginClick }) => {
                   }`}
                 />
               </div>
-            </Link>
+            </NavigationLink>
 
             {/* 3. DASHBOARD */}
-            <Link
+            <NavigationLink
               to="/dashboard"
               className="flex items-center justify-center w-full h-full"
               aria-label="Dashboard"
@@ -94,10 +95,10 @@ const BottomNav = ({ onLoginClick }) => {
                   }`}
                 />
               </div>
-            </Link>
+            </NavigationLink>
 
             {/* 4. MEMBERS */}
-            <Link
+            <NavigationLink
               to="/members"
               className="flex items-center justify-center w-full h-full"
               aria-label="Members"
@@ -115,10 +116,10 @@ const BottomNav = ({ onLoginClick }) => {
                   }`}
                 />
               </div>
-            </Link>
+            </NavigationLink>
 
             {/* 5. COLLECTIONS */}
-            <Link
+            <NavigationLink
               to="/collections"
               className="flex items-center justify-center w-full h-full"
               aria-label="Collections"
@@ -136,7 +137,7 @@ const BottomNav = ({ onLoginClick }) => {
                   }`}
                 />
               </div>
-            </Link>
+            </NavigationLink>
           </nav>
         ) : (
           <div className="flex items-center justify-center h-full">

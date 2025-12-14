@@ -6,6 +6,7 @@ import Button from "../ui/Button";
 import ThemeToggle from "../ui/ThemeToggle";
 import { ArrowLeft, LogIn, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { NavigationLink } from "../routing";
 
 const MobileNav = ({
   isOpen,
@@ -141,7 +142,7 @@ const MobileNav = ({
           <nav className="flex flex-col space-y-2 mt-6">
             {isLoggedIn
               ? loggedInNavLinks.map((link, index) => (
-                <Link
+                <NavigationLink
                   key={link.href}
                   to={link.href}
                   onClick={onClose}
@@ -156,7 +157,7 @@ const MobileNav = ({
                   }}
                 >
                   {link.text}
-                </Link>
+                </NavigationLink>
               ))
               : loggedOutNavLinks.map((link, index) => (
                 <a

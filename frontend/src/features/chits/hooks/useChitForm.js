@@ -11,6 +11,7 @@ import {
   normalizeFormDataForApi,
   getChangedFields,
 } from "../utils/normalizeChit";
+import { calculateEndDate } from "../../../utils/calculations";
 
 /**
  * Default form values for chit creation
@@ -103,7 +104,6 @@ export const useChitForm = (id, mode) => {
   // Calculate End Date from Start Date + Duration
   useEffect(() => {
     if (wStartDate && wStartDate.match(/^\d{4}-\d{2}$/) && wDuration) {
-      const { calculateEndDate } = require("../../../utils/calculations");
       const newEndDate = calculateEndDate(wStartDate, wDuration);
       if (newEndDate !== wEndDate) {
         setValue("end_date", newEndDate, { shouldValidate: true });

@@ -1,7 +1,26 @@
 // frontend/src/components/ui/ErrorBoundary.jsx
 
 import { Component } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+
+/**
+ * GoHomeButton - Functional component to use React Router navigation.
+ * Class components can't use hooks, so we create this wrapper.
+ */
+const GoHomeButton = () => {
+    const navigate = useNavigate();
+
+    return (
+        <button
+            onClick={() => navigate("/", { replace: true })}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-background-secondary text-text-primary rounded-lg hover:bg-background-tertiary transition-colors duration-200 font-medium border border-border"
+        >
+            <Home className="w-5 h-5" />
+            Go Home
+        </button>
+    );
+};
 
 /**
  * ErrorBoundary - Catches JavaScript errors anywhere in the child component tree
@@ -53,12 +72,7 @@ class ErrorBoundary extends Component {
                                 Try Again
                             </button>
 
-                            <button
-                                onClick={() => window.location.href = "/"}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-background-secondary text-text-primary rounded-lg hover:bg-background-tertiary transition-colors duration-200 font-medium border border-border"
-                            >
-                                Go Home
-                            </button>
+                            <GoHomeButton />
                         </div>
 
                         {process.env.NODE_ENV === "development" && this.state.error && (

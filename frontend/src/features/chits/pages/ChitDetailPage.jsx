@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
 
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import useMediaQuery from "../../../hooks/useMediaQuery";
@@ -85,7 +84,6 @@ const MembersSectionComponent = ({ mode, chitId, onLogCollectionClick }) => (
  */
 const ChitDetailPage = () => {
   const navigate = useNavigate();
-  const { isLoggedIn } = useSelector((state) => state.auth);
   const { id } = useParams();
   const location = useLocation();
   const titleRef = useRef(null);
@@ -241,14 +239,6 @@ const ChitDetailPage = () => {
     }
   }, [mode, activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
 
-  const handleMiddle = useCallback(() => {
-    if (activeTabIndex === TABS.length - 1) {
-      handleFinalAction();
-    } else {
-      handleSkip();
-    }
-  }, [activeTabIndex, TABS.length, handleSkip]);
-
   const handleFinalAction = useCallback(() => {
     const currentName = getValues("name");
     if (mode === "edit") {
@@ -269,6 +259,14 @@ const ChitDetailPage = () => {
       navigate("/chits");
     }
   }, [mode, createdChitId, createdChitName, getValues, navigate]);
+
+  const handleMiddle = useCallback(() => {
+    if (activeTabIndex === TABS.length - 1) {
+      handleFinalAction();
+    } else {
+      handleSkip();
+    }
+  }, [activeTabIndex, TABS.length, handleSkip, handleFinalAction]);
 
   const handleLogCollectionClick = useCallback(
     (assignment) => {
@@ -292,13 +290,10 @@ const ChitDetailPage = () => {
           <Skeleton.Text width="w-1/3" height="h-8" />
         </div>
         <hr className="my-4 border-border" />
-        <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-          <div className="md:col-span-1">
-            <Skeleton.Card className="h-64" />
-          </div>
-          <div className="md:col-span-1">
-            <Skeleton.Card className="h-64" />
-          </div>
+        <div className="w-full space-y-6">
+          <Skeleton.Card className="h-64" />
+          <Skeleton.Card className="h-48" />
+          <Skeleton.Card className="h-48" />
         </div>
       </div>
     );
@@ -307,8 +302,7 @@ const ChitDetailPage = () => {
   const effectiveChitId = id || createdChitId;
 
   return (
-    <>
-      <div className="container mx-auto">
+    <div className="container mx-auto">
         <div className="relative flex justify-center items-center mb-4">
           <button
             onClick={handleBackNavigation}
@@ -353,7 +347,7 @@ const ChitDetailPage = () => {
         </div>
 
         <hr className="my-4 border-border" />
-        <div className="w-full max-w-2xl mx-auto print:hidden">
+        <div className="w-full max-w-2xl mx-auto print:hidden" role="alert" aria-live="polite">
           {success && (
             <Message type="success" title="Success">
               {success}
@@ -415,134 +409,59 @@ const ChitDetailPage = () => {
                   id="chit-details-form-desktop"
                   onSubmit={handleSubmit(handleFormSubmit)}
                 >
-                  <div className="grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 max-w-5xl mx-auto">
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <DetailsSectionComponent
-                          mode={mode}
-                          control={control}
-                          register={register}
-                          errors={errors}
-                          isPostCreation={isPostCreation}
-                          onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
-                        />
-                      </div>
-                    )}
+                  {/* Stacked Full-Width Sections Layout */}
+                  <div className="w-full space-y-6">
+                    {/* Details Form Section */}
+                    <DetailsSectionComponent
+                      mode={mode}
+                      control={control}
+                      register={register}
+                      errors={errors}
+                      isPostCreation={isPostCreation}
+                      onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                    />
 
-                    {activeTab === "auctions" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <AuctionsSectionComponent
-                          mode={mode}
-                          chitId={effectiveChitId}
-                        />
-                      </div>
-                    )}
+                    <ChitDesktopActionButton
+                      mode={mode}
+                      loading={isSubmitting}
+                      isPostCreation={isPostCreation}
+                    />
 
-                    {activeTab === "payouts" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <PayoutsSectionComponent
-                          mode={mode}
-                          chitId={effectiveChitId}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "members" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <MembersSectionComponent
-                          mode={mode}
-                          chitId={effectiveChitId}
-                          onLogCollectionClick={handleLogCollectionClick}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "collections" && (
-                      <div className="md:col-span-2 flex flex-col gap-8">
-                        <CollectionHistoryList
-                          chitId={effectiveChitId}
-                          mode={mode}
-                          collectionDefaults={collectionDefaults}
-                          setCollectionDefaults={setCollectionDefaults}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "details" && (
-                      <div className="md:col-span-1 flex flex-col gap-8">
-                        <PayoutsSectionComponent
-                          mode={mode}
-                          chitId={effectiveChitId}
-                        />
-                        <MembersSectionComponent
-                          mode={mode}
-                          chitId={effectiveChitId}
-                          onLogCollectionClick={handleLogCollectionClick}
-                        />
-                      </div>
-                    )}
-
-                    <div className="md:col-span-2 flex items-center border-b border-border -mt-8">
-                      <TabButton
-                        name="details"
-                        icon={Info}
-                        label="Details"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
+                    {/* Auctions Section (if auction type) */}
+                    {watchedChitType === "auction" && (
+                      <AuctionsSectionComponent
+                        mode={mode}
+                        chitId={effectiveChitId}
                       />
-                      {watchedChitType === "auction" && (
-                        <TabButton
-                          name="auctions"
-                          icon={Gavel}
-                          label="Auctions"
-                          activeTab={activeTab}
-                          setActiveTab={setActiveTab}
-                          disabled={mode === "create" && !createdChitId}
-                        />
-                      )}
-                      <TabButton
-                        name="payouts"
-                        icon={TrendingUp}
-                        label="Payouts"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                      <TabButton
-                        name="members"
-                        icon={Users}
-                        label="Members"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                      <TabButton
-                        name="collections"
-                        icon={WalletMinimal}
-                        label="Collections"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        disabled={mode === "create" && !createdChitId}
-                      />
-                    </div>
-
-                    {mode !== "view" && activeTab === "details" && (
-                      <div className="md:col-span-2">
-                        <ChitDesktopActionButton
-                          mode={mode}
-                          loading={isSubmitting}
-                          isPostCreation={isPostCreation}
-                        />
-                      </div>
                     )}
+
+                    {/* Payouts Section */}
+                    <PayoutsSectionComponent
+                      mode={mode}
+                      chitId={effectiveChitId}
+                    />
+
+                    {/* Members Section */}
+                    <MembersSectionComponent
+                      mode={mode}
+                      chitId={effectiveChitId}
+                      onLogCollectionClick={handleLogCollectionClick}
+                    />
+
+                    {/* Collections Section */}
+                    <CollectionHistoryList
+                      chitId={effectiveChitId}
+                      mode={mode}
+                      collectionDefaults={collectionDefaults}
+                      setCollectionDefaults={setCollectionDefaults}
+                    />
                   </div>
                 </form>
               </div>
             )}
           </>
         )}
-      </div>
-    </>
+    </div>
   );
 };
 

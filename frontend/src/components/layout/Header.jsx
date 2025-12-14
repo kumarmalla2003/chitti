@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { NavigationLink } from "../routing";
 import { useSelector } from "react-redux";
 import ThemeToggle from "../ui/ThemeToggle";
 import ProfileDropdown from "../ui/ProfileDropdown";
@@ -104,7 +105,7 @@ const Header = ({
   const NavLinks = () => {
     if (isLoggedIn) {
       return loggedInNavLinks.map((link) => (
-        <Link
+        <NavigationLink
           key={link.id}
           ref={linkRefs[link.id]}
           to={link.href}
@@ -114,7 +115,7 @@ const Header = ({
           }`}
         >
           {link.text}
-        </Link>
+        </NavigationLink>
       ));
     }
     return loggedOutNavLinks.map((link) => (
@@ -208,7 +209,7 @@ const Header = ({
         >
           {isLoggedIn
             ? loggedInNavLinks.map((link) => (
-                <Link
+                <NavigationLink
                   key={link.id}
                   ref={linkRefs[link.id]}
                   to={link.href}
@@ -220,7 +221,7 @@ const Header = ({
                   }`}
                 >
                   {link.text}
-                </Link>
+                </NavigationLink>
               ))
             : loggedOutNavLinks.map((link) => (
                 <a

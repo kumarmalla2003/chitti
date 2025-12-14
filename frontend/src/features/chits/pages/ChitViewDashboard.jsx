@@ -39,13 +39,14 @@ const formatDateShort = (dateString) => {
   return dateString;
 };
 
-const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
+// eslint-disable-next-line no-unused-vars
+const DetailRow = ({ icon: IconComponent, label, value, className = "" }) => (
   <div
     className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
   >
     <div className="flex items-center gap-3 w-56 flex-shrink-0">
       <div className="p-2 bg-background-secondary rounded-full text-text-secondary">
-        <Icon className="w-4 h-4" />
+        <IconComponent className="w-4 h-4" />
       </div>
       <span className="text-sm font-bold text-text-primary">{label}</span>
     </div>
@@ -55,10 +56,11 @@ const DetailRow = ({ icon: Icon, label, value, className = "" }) => (
   </div>
 );
 
-const MetricCard = ({ label, value, icon: Icon }) => (
+// eslint-disable-next-line no-unused-vars
+const MetricCard = ({ label, value, icon: IconComponent }) => (
   <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors">
     <div className="flex items-center gap-1.5 mb-1 text-text-secondary">
-      <Icon className="w-3.5 h-3.5" />
+      <IconComponent className="w-3.5 h-3.5" />
       <span className="text-xs font-bold uppercase tracking-wider">
         {label}
       </span>
@@ -73,15 +75,15 @@ const MetricCard = ({ label, value, icon: Icon }) => (
 const ChitViewDashboard = ({
   chitData,
   chitId,
-  onLogPaymentClick,
-  paymentDefaults,
-  setPaymentDefaults,
+  onLogCollectionClick,
+  collectionDefaults,
+  setCollectionDefaults,
 }) => {
   const collectionsRef = useRef(null);
   const navigate = useNavigate();
 
   const handleLogCollection = (assignment) => {
-    onLogPaymentClick(assignment);
+    onLogCollectionClick(assignment);
     if (collectionsRef.current) {
       collectionsRef.current.scrollIntoView({
         behavior: "smooth",
@@ -96,7 +98,9 @@ const ChitViewDashboard = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Row 1: Details */}
+      {/* Stacked Full-Width Sections Layout */}
+
+      {/* Details Section */}
       <div className="grid grid-cols-1">
         <Card className="h-full">
           <div className="relative flex justify-center items-center mb-2">
@@ -195,14 +199,14 @@ const ChitViewDashboard = ({
         </Card>
       </div>
 
-      {/* Row 2: Payout Schedule (Restored) */}
+      {/* Payouts Section */}
       <div className="grid grid-cols-1">
         <Card>
           <PayoutsSection chitId={chitId} mode="view" showTitle={true} />
         </Card>
       </div>
 
-      {/* Row 3: Members (Merged with Status) */}
+      {/* Members Section */}
       <div className="grid grid-cols-1">
         <Card>
           <ChitMembersManager
@@ -213,13 +217,13 @@ const ChitViewDashboard = ({
         </Card>
       </div>
 
-      {/* Row 4: Transactions (Collections + Payouts) */}
+      {/* Collections Section */}
       <div ref={collectionsRef} className="grid grid-cols-1">
         <CollectionHistoryList
           chitId={chitId}
           mode="view"
-          collectionDefaults={paymentDefaults}
-          setCollectionDefaults={setPaymentDefaults}
+          collectionDefaults={collectionDefaults}
+          setCollectionDefaults={setCollectionDefaults}
         />
       </div>
     </div>
