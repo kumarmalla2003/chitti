@@ -37,6 +37,11 @@ const ChitMobileContent = ({
     register,
     errors,
     isValid,
+    onNameBlur,
+    onSizeChange,
+    onDurationChange,
+    onStartDateChange,
+    onEndDateChange,
 }) => {
     const tabRefs = useRef({});
 
@@ -52,55 +57,54 @@ const ChitMobileContent = ({
     }, [activeTab]);
 
     return (
-        <div className="w-full max-w-2xl mx-auto md:hidden">
-            <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-                <TabButton
-                    ref={(el) => (tabRefs.current["details"] = el)}
-                    name="details"
-                    icon={Info}
-                    label="Details"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                />
-                {TABS.includes("auctions") && (
-                   <TabButton
-                    ref={(el) => (tabRefs.current["auctions"] = el)}
-                    name="auctions"
-                    icon={Gavel}
-                    label="Auctions"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !chitId}
-                  />
-                )}
-                <TabButton
-                    ref={(el) => (tabRefs.current["payouts"] = el)}
-                    name="payouts"
-                    icon={TrendingUp}
-                    label="Payouts"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !chitId}
-                />
-                <TabButton
-                    ref={(el) => (tabRefs.current["members"] = el)}
-                    name="members"
-                    icon={Users}
-                    label="Members"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !chitId}
-                />
-                <TabButton
-                    ref={(el) => (tabRefs.current["collections"] = el)}
-                    name="collections"
-                    icon={WalletMinimal}
-                    label="Collections"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !chitId}
-                />
-            </div>
+        <div className="w-full max-w-2xl mx-auto">
+            {/* Only show tab bar after chit is created (or not in create mode) */}
+            {(mode !== "create" || chitId) && (
+                <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
+                    <TabButton
+                        ref={(el) => (tabRefs.current["details"] = el)}
+                        name="details"
+                        icon={Info}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                    {TABS.includes("auctions") && (
+                        <TabButton
+                            ref={(el) => (tabRefs.current["auctions"] = el)}
+                            name="auctions"
+                            icon={Gavel}
+                            label="Auctions"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                        />
+                    )}
+                    <TabButton
+                        ref={(el) => (tabRefs.current["payouts"] = el)}
+                        name="payouts"
+                        icon={TrendingUp}
+                        label="Payouts"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                    <TabButton
+                        ref={(el) => (tabRefs.current["members"] = el)}
+                        name="members"
+                        icon={Users}
+                        label="Members"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                    <TabButton
+                        ref={(el) => (tabRefs.current["collections"] = el)}
+                        name="collections"
+                        icon={WalletMinimal}
+                        label="Collections"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                </div>
+            )}
 
             {activeTab === "details" && (
                 <form onSubmit={handleMobileFormSubmit}>
@@ -116,6 +120,11 @@ const ChitMobileContent = ({
                             errors={errors}
                             isPostCreation={isPostCreation}
                             onEnterKeyOnLastInput={handleNext}
+                            onNameBlur={onNameBlur}
+                            onSizeChange={onSizeChange}
+                            onDurationChange={onDurationChange}
+                            onStartDateChange={onStartDateChange}
+                            onEndDateChange={onEndDateChange}
                         />
                     </Card>
                     {mode !== "view" && (
@@ -248,6 +257,11 @@ ChitMobileContent.propTypes = {
     register: PropTypes.func.isRequired,
     errors: PropTypes.object.isRequired,
     isValid: PropTypes.bool.isRequired,
+    onNameBlur: PropTypes.func,
+    onSizeChange: PropTypes.func,
+    onDurationChange: PropTypes.func,
+    onStartDateChange: PropTypes.func,
+    onEndDateChange: PropTypes.func,
 };
 
 export default ChitMobileContent;

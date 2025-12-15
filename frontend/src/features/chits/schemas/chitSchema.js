@@ -23,22 +23,25 @@ export const chitSchema = z.object({
     name: z.string().min(3, "Chit name must be at least 3 characters").max(50, "Chit name too long"),
     chit_value: z.number({ invalid_type_error: "Chit value is required" }).positive("Chit value must be positive"),
     size: z.number({ invalid_type_error: "Size is required" }).int().positive("Size must be positive"),
-    
+
     // Chit Type
     chit_type: z.enum(["fixed", "variable", "auction"]).default("fixed"),
-    
+
     // Installment fields - use preprocess to handle empty strings gracefully
     monthly_installment: optionalNumber,
     // Variable Chit: payout premium percentage (0-100)
     payout_premium_percent: percentNumber,
     // Auction Chit: foreman commission percentage (0-100)
     foreman_commission_percent: percentNumber,
-    
+
     duration_months: z.number({ invalid_type_error: "Duration is required" }).int().positive("Duration must be positive"),
     start_date: z.string().regex(/^\d{4}-\d{2}$/, "Start date must be in YYYY-MM format"),
     end_date: z.string().regex(/^\d{4}-\d{2}$/, "End date must be in YYYY-MM format").optional(),
     collection_day: z.number().int().min(1, "Day must be between 1 and 28").max(28, "Day must be between 1 and 28"),
     payout_day: z.number().int().min(1, "Day must be between 1 and 28").max(28, "Day must be between 1 and 28"),
+
+    // Optional notes field
+    notes: z.string().optional().or(z.literal('')),
 }).superRefine((data, ctx) => {
     // Conditional validation based on chit_type
     if (data.chit_type === "fixed") {

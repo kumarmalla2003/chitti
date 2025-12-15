@@ -53,7 +53,7 @@ const MemberMobileContent = ({
     }, [activeTab]);
 
     return (
-        <div className="w-full max-w-2xl mx-auto md:hidden">
+        <div className="w-full max-w-2xl mx-auto">
             <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
                 <TabButton
                     ref={(el) => (tabRefs.current["details"] = el)}

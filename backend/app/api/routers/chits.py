@@ -56,6 +56,8 @@ async def create_chit(
         monthly_installment=chit.monthly_installment,
         payout_premium_percent=chit.payout_premium_percent,
         foreman_commission_percent=chit.foreman_commission_percent,
+        # Optional notes field
+        notes=chit.notes,
     )
     session.add(db_chit)
     

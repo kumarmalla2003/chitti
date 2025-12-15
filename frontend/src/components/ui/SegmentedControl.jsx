@@ -26,7 +26,7 @@ const SegmentedControl = ({
       name={name}
       render={({ field }) => (
         <div
-          className={`flex flex-wrap gap-3 ${className}`}
+          className={`flex gap-2 sm:gap-3 ${className}`}
           role="radiogroup"
           aria-label="Select option"
         >
@@ -38,8 +38,9 @@ const SegmentedControl = ({
               <label
                 key={option.value}
                 className={`
-                  relative flex items-center gap-2.5 px-4 py-2.5 rounded-full cursor-pointer
+                  relative flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-full cursor-pointer
                   border-2 transition-all duration-200 select-none
+                  has-[:focus]:ring-2 has-[:focus]:ring-accent has-[:focus]:ring-offset-2
                   ${
                     isSelected
                       ? "bg-accent text-white border-accent shadow-md"
@@ -54,17 +55,17 @@ const SegmentedControl = ({
                   value={option.value}
                   checked={isSelected}
                   disabled={disabled}
-                  className="sr-only"
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer m-0 p-0"
                   onChange={() => field.onChange(option.value)}
                 />
                 {Icon && (
                   <Icon
-                    className={`w-4 h-4 flex-shrink-0 ${
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${
                       isSelected ? "text-white" : "text-text-secondary"
                     }`}
                   />
                 )}
-                <span className="font-medium text-sm whitespace-nowrap">
+                <span className="font-medium text-xs sm:text-sm whitespace-nowrap">
                   {option.label}
                 </span>
               </label>

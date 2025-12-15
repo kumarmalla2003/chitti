@@ -1,6 +1,12 @@
 // frontend/src/features/chits/pages/ChitDetailPage.jsx
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
 
 import useScrollToTop from "../../../hooks/useScrollToTop";
@@ -20,17 +26,8 @@ import AuctionsSection from "../components/sections/AuctionsSection";
 import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
 import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
-import {
-  Info,
-  Users,
-  Loader2,
-  ArrowLeft,
-  SquarePen,
-  Printer,
-  WalletMinimal,
-  TrendingUp,
-  Gavel,
-} from "lucide-react";
+import { capitalizeFirstLetter } from "../utils/normalizeChit";
+import { Info, Loader2, ArrowLeft, SquarePen, Printer } from "lucide-react";
 
 // --- Helper Components for Desktop View ---
 const DetailsSectionComponent = ({
@@ -39,7 +36,13 @@ const DetailsSectionComponent = ({
   register,
   errors,
   isPostCreation,
+  setValue, // Received from parent
   onEnterKeyOnLastInput,
+  onNameBlur,
+  onSizeChange,
+  onDurationChange,
+  onStartDateChange,
+  onEndDateChange,
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
@@ -52,7 +55,13 @@ const DetailsSectionComponent = ({
       register={register}
       errors={errors}
       isPostCreation={isPostCreation}
+      setValue={setValue} // Passed to form
       onEnterKeyOnLastInput={onEnterKeyOnLastInput}
+      onNameBlur={onNameBlur}
+      onSizeChange={onSizeChange}
+      onDurationChange={onDurationChange}
+      onStartDateChange={onStartDateChange}
+      onEndDateChange={onEndDateChange}
     />
   </Card>
 );
@@ -105,6 +114,7 @@ const ChitDetailPage = () => {
     handleSubmit,
     trigger,
     getValues,
+    setValue, // Extracted here
     originalData,
     createdChitId,
     createdChitName,
@@ -117,26 +127,33 @@ const ChitDetailPage = () => {
     setSuccess,
     TABS,
     watchedChitType,
+    watchedName,
     onSubmit,
+    handleSizeChange,
+    handleDurationChange,
+    handleStartDateChange,
+    handleEndDateChange,
   } = useChitForm(id, mode);
 
   // --- Local UI State ---
   const [activeTab, setActiveTab] = useState("details");
   const [collectionDefaults, setCollectionDefaults] = useState(null);
+  const [displayedTitle, setDisplayedTitle] = useState(null);
 
   // --- Report Generation Hook ---
   const currentChitData = getValues();
-  const {
-    isLoading: isReportLoading,
-    generateReport: handlePrintReport,
-  } = useChitReport({
-    chitId: id,
-    chitData: currentChitData,
-    originalData,
-  });
+  const { isLoading: isReportLoading, generateReport: handlePrintReport } =
+    useChitReport({
+      chitId: id,
+      chitData: currentChitData,
+      originalData,
+    });
 
   // --- Derived Values ---
-  const activeTabIndex = useMemo(() => TABS.indexOf(activeTab), [TABS, activeTab]);
+  const activeTabIndex = useMemo(
+    () => TABS.indexOf(activeTab),
+    [TABS, activeTab]
+  );
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   // --- Scroll to Top on Messages ---
@@ -182,33 +199,22 @@ const ChitDetailPage = () => {
     [onSubmit, mode, createdChitId, activeTabIndex, TABS]
   );
 
-  // --- Mobile Form Submit Handler ---
-  const handleMobileFormSubmit = useCallback(
-    async (e) => {
-      if (activeTab !== "details") return;
-
-      if (activeTabIndex === TABS.length - 1) {
-        handleFinalAction();
-      } else if (mode === "create" && activeTabIndex === 0) {
-        await handleSubmit(handleFormSubmit)(e);
-      } else {
-        if (activeTabIndex < TABS.length - 1) {
-          setActiveTab(TABS[activeTabIndex + 1]);
-        }
-      }
-    },
-    [activeTab, activeTabIndex, TABS, mode, handleSubmit, handleFormSubmit]
-  );
+  // --- Handle Name Field Blur - Update Title ---
+  const handleNameBlur = useCallback(() => {
+    const currentName = getValues("name")?.trim();
+    if (currentName) {
+      setDisplayedTitle(capitalizeFirstLetter(currentName));
+    }
+  }, [getValues]);
 
   // --- Page Title ---
   const getTitle = useCallback(() => {
-    const currentName = getValues("name");
     if (mode === "create") {
-      return createdChitName || "Create New Chit";
+      return capitalizeFirstLetter(displayedTitle) || "Create New Chit";
     }
-    if (mode === "edit") return currentName || "Edit Chit";
-    return currentName || "Chit Details";
-  }, [mode, createdChitName, getValues]);
+    if (mode === "edit") return capitalizeFirstLetter(displayedTitle) || capitalizeFirstLetter(watchedName?.trim()) || "Edit Chit";
+    return capitalizeFirstLetter(displayedTitle) || capitalizeFirstLetter(watchedName?.trim()) || "Chit Details";
+  }, [mode, displayedTitle, watchedName]);
 
   // --- Navigation Handlers ---
   const handleBackNavigation = useCallback(() => {
@@ -268,6 +274,32 @@ const ChitDetailPage = () => {
     }
   }, [activeTabIndex, TABS.length, handleSkip, handleFinalAction]);
 
+  // --- Mobile Form Submit Handler ---
+  const handleMobileFormSubmit = useCallback(
+    async (e) => {
+      if (activeTab !== "details") return;
+
+      if (activeTabIndex === TABS.length - 1) {
+        handleFinalAction();
+      } else if (mode === "create" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else {
+        if (activeTabIndex < TABS.length - 1) {
+          setActiveTab(TABS[activeTabIndex + 1]);
+        }
+      }
+    },
+    [
+      activeTab,
+      activeTabIndex,
+      TABS,
+      mode,
+      handleSubmit,
+      handleFormSubmit,
+      handleFinalAction,
+    ]
+  );
+
   const handleLogCollectionClick = useCallback(
     (assignment) => {
       setCollectionDefaults({
@@ -302,131 +334,142 @@ const ChitDetailPage = () => {
   const effectiveChitId = id || createdChitId;
 
   return (
-    <div className="container mx-auto">
-        <div className="relative flex justify-center items-center mb-4">
-          <button
-            onClick={handleBackNavigation}
-            className="absolute left-0 text-text-primary hover:text-accent transition-colors print:hidden"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
+    <div className="w-full">
+      <div className="relative flex justify-center items-center mb-4">
+        <button
+          onClick={handleBackNavigation}
+          className="absolute left-0 text-text-primary hover:text-accent transition-colors print:hidden"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
 
-          <h1
-            ref={titleRef}
-            tabIndex="-1"
-            className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
-          >
-            {getTitle()}
-          </h1>
+        <h1
+          ref={titleRef}
+          tabIndex="-1"
+          className="text-2xl md:text-3xl font-bold text-text-primary text-center outline-none"
+        >
+          {getTitle()}
+        </h1>
 
-          {/* --- HEADER ACTIONS --- */}
-          {mode === "view" && (
-            <div className="absolute right-0 flex print:hidden items-center">
-              <Link
-                to={`/chits/edit/${id}`}
-                className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
-                title="Edit Chit"
-              >
-                <SquarePen className="w-6 h-6" />
-              </Link>
-
-              <button
-                onClick={handlePrintReport}
-                disabled={isReportLoading}
-                className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200"
-                title="Download PDF Report"
-              >
-                {isReportLoading ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : (
-                  <Printer className="w-6 h-6" />
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <hr className="my-4 border-border" />
-        <div className="w-full max-w-2xl mx-auto print:hidden" role="alert" aria-live="polite">
-          {success && (
-            <Message type="success" title="Success">
-              {success}
-            </Message>
-          )}
-          {error && (
-            <Message
-              type="error"
-              title="Error"
-              onClose={() => setError(null)}
+        {/* --- HEADER ACTIONS --- */}
+        {mode === "view" && (
+          <div className="absolute right-0 flex print:hidden items-center">
+            <Link
+              to={`/chits/edit/${id}`}
+              className="p-2 text-warning-accent hover:bg-warning-bg rounded-full transition-colors duration-200"
+              title="Edit Chit"
             >
-              {error}
-            </Message>
-          )}
-        </div>
+              <SquarePen className="w-6 h-6" />
+            </Link>
 
-        {/* --- VIEW MODE --- */}
-        {mode === "view" ? (
-          <div>
-            <ChitViewDashboard
-              chitData={currentChitData}
-              chitId={id}
+            <button
+              onClick={handlePrintReport}
+              disabled={isReportLoading}
+              className="p-2 text-info-accent hover:bg-info-bg rounded-full transition-colors duration-200"
+              title="Download PDF Report"
+            >
+              {isReportLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <Printer className="w-6 h-6" />
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <hr className="my-4 border-border" />
+      <div
+        className="w-full max-w-2xl mx-auto print:hidden"
+        role="alert"
+        aria-live="polite"
+      >
+        {success && (
+          <Message type="success" title="Success">
+            {success}
+          </Message>
+        )}
+        {error && (
+          <Message type="error" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Message>
+        )}
+      </div>
+
+      {/* --- VIEW MODE --- */}
+      {mode === "view" ? (
+        <div>
+          <ChitViewDashboard
+            chitData={currentChitData}
+            chitId={id}
+            onLogCollectionClick={handleLogCollectionClick}
+            collectionDefaults={collectionDefaults}
+            setCollectionDefaults={setCollectionDefaults}
+          />
+        </div>
+      ) : (
+        /* --- CREATE/EDIT MODE --- */
+        <>
+          {!isDesktop && (
+            <ChitMobileContent
+              TABS={TABS}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              mode={mode}
+              chitId={effectiveChitId}
+              activeTabIndex={activeTabIndex}
+              isValid={isValid}
+              loading={isSubmitting}
+              handleNext={handleNext}
+              handleMiddle={handleMiddle}
+              handleMobileFormSubmit={handleMobileFormSubmit}
+              isPostCreation={isPostCreation}
               onLogCollectionClick={handleLogCollectionClick}
               collectionDefaults={collectionDefaults}
               setCollectionDefaults={setCollectionDefaults}
+              control={control}
+              register={register}
+              errors={errors}
+              onNameBlur={handleNameBlur}
+              onSizeChange={handleSizeChange}
+              onDurationChange={handleDurationChange}
+              onStartDateChange={handleStartDateChange}
+              onEndDateChange={handleEndDateChange}
             />
-          </div>
-        ) : (
-          /* --- CREATE/EDIT MODE --- */
-          <>
-            {!isDesktop && (
-              <div className="md:hidden">
-                <ChitMobileContent
-                  TABS={TABS}
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
+          )}
+
+          {isDesktop && (
+            <form
+              id="chit-details-form-desktop"
+              onSubmit={handleSubmit(handleFormSubmit)}
+            >
+              {/* Stacked Full-Width Sections Layout */}
+              <div className="w-full space-y-6">
+                {/* Details Form Section */}
+                <DetailsSectionComponent
                   mode={mode}
-                  chitId={effectiveChitId}
-                  activeTabIndex={activeTabIndex}
-                  isValid={isValid}
-                  loading={isSubmitting}
-                  handleNext={handleNext}
-                  handleMiddle={handleMiddle}
-                  handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={isPostCreation}
-                  onLogCollectionClick={handleLogCollectionClick}
-                  collectionDefaults={collectionDefaults}
-                  setCollectionDefaults={setCollectionDefaults}
                   control={control}
                   register={register}
                   errors={errors}
+                  isPostCreation={isPostCreation}
+                  setValue={setValue} // Passed down
+                  onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                  onNameBlur={handleNameBlur}
+                  onSizeChange={handleSizeChange}
+                  onDurationChange={handleDurationChange}
+                  onStartDateChange={handleStartDateChange}
+                  onEndDateChange={handleEndDateChange}
                 />
-              </div>
-            )}
 
-            {isDesktop && (
-              <div className="hidden md:block">
-                <form
-                  id="chit-details-form-desktop"
-                  onSubmit={handleSubmit(handleFormSubmit)}
-                >
-                  {/* Stacked Full-Width Sections Layout */}
-                  <div className="w-full space-y-6">
-                    {/* Details Form Section */}
-                    <DetailsSectionComponent
-                      mode={mode}
-                      control={control}
-                      register={register}
-                      errors={errors}
-                      isPostCreation={isPostCreation}
-                      onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
-                    />
+                <ChitDesktopActionButton
+                  mode={mode}
+                  loading={isSubmitting}
+                  isPostCreation={isPostCreation}
+                />
 
-                    <ChitDesktopActionButton
-                      mode={mode}
-                      loading={isSubmitting}
-                      isPostCreation={isPostCreation}
-                    />
-
+                {/* Only show these sections after chit exists */}
+                {effectiveChitId && (
+                  <>
                     {/* Auctions Section (if auction type) */}
                     {watchedChitType === "auction" && (
                       <AuctionsSectionComponent
@@ -436,10 +479,7 @@ const ChitDetailPage = () => {
                     )}
 
                     {/* Payouts Section */}
-                    <PayoutsSectionComponent
-                      mode={mode}
-                      chitId={effectiveChitId}
-                    />
+                    <PayoutsSectionComponent mode={mode} chitId={effectiveChitId} />
 
                     {/* Members Section */}
                     <MembersSectionComponent
@@ -455,12 +495,13 @@ const ChitDetailPage = () => {
                       collectionDefaults={collectionDefaults}
                       setCollectionDefaults={setCollectionDefaults}
                     />
-                  </div>
-                </form>
+                  </>
+                )}
               </div>
-            )}
-          </>
-        )}
+            </form>
+          )}
+        </>
+      )}
     </div>
   );
 };

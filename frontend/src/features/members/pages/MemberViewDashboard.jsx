@@ -8,7 +8,6 @@ import MemberChitsManager from "../components/sections/MemberChitsManager";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import PayoutHistoryList from "../../chits/components/sections/PayoutHistoryList";
 
-// eslint-disable-next-line no-unused-vars
 const MetricCard = ({ label, value, icon: IconComponent }) => (
   <div className="bg-background-secondary/50 p-4 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors h-full">
     <div className="flex items-center gap-1.5 mb-2 text-text-secondary">

@@ -3,7 +3,7 @@
 import { useRef, useLayoutEffect } from "react";
 import { Calendar } from "lucide-react";
 
-const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
+const CustomMonthInput = ({ name, value, onChange, disabled, required, onFocus }) => {
   const hiddenInputRef = useRef(null);
   const textInputRef = useRef(null); // <--- Ref
   const cursorState = useRef({ capture: false, digitCount: 0 });
@@ -123,6 +123,7 @@ const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
         value={displayValue()}
         onChange={handleTextChange}
         onKeyDown={handleKeyDown}
+        onFocus={onFocus}
         className="w-full pl-12 pr-10 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
         disabled={disabled}
         placeholder="MM/YYYY"
@@ -133,11 +134,10 @@ const CustomMonthInput = ({ name, value, onChange, disabled, required }) => {
 
       <span className="absolute inset-y-0 right-0 flex items-center pr-3">
         <div
-          className={`p-2 rounded-full bg-background-tertiary transition-all duration-200 ${
-            !disabled
-              ? "hover:bg-accent hover:text-white cursor-pointer"
-              : "opacity-50 cursor-not-allowed"
-          }`}
+          className={`p-2 rounded-full bg-background-tertiary transition-all duration-200 ${!disabled
+            ? "hover:bg-accent hover:text-white cursor-pointer"
+            : "opacity-50 cursor-not-allowed"
+            }`}
           onClick={() => !disabled && handleIconClick()}
         >
           <Calendar className="w-5 h-5" />

@@ -23,7 +23,18 @@ export const normalizeChitForForm = (chit) => {
     end_date: toYearMonth(chit.end_date),
     collection_day: chit.collection_day || "",
     payout_day: chit.payout_day || "",
+    notes: chit.notes || "",
   };
+};
+
+/**
+ * Capitalizes the first letter of a string.
+ * @param {string} str - Input string
+ * @returns {string} String with first letter capitalized
+ */
+export const capitalizeFirstLetter = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
 /**
@@ -34,6 +45,7 @@ export const normalizeChitForForm = (chit) => {
 export const normalizeFormDataForApi = (formData) => {
   const apiData = {
     ...formData,
+    name: capitalizeFirstLetter(formData.name?.trim()),
     start_date: getFirstDayOfMonth(formData.start_date),
   };
 
@@ -58,6 +70,11 @@ export const getChangedFields = (formData, originalData) => {
     if (originalData[key] !== undefined && formData[key] != originalData[key]) {
       changes[key] = formData[key];
     }
+  }
+
+  // Capitalize name if changed
+  if (changes.name) {
+    changes.name = capitalizeFirstLetter(changes.name?.trim());
   }
 
   // Transform start_date if changed

@@ -1,6 +1,6 @@
 // frontend/src/features/chits/hooks/useChitForm.js
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { chitSchema } from "../schemas/chitSchema";
@@ -11,7 +11,11 @@ import {
   normalizeFormDataForApi,
   getChangedFields,
 } from "../utils/normalizeChit";
-import { calculateEndDate } from "../../../utils/calculations";
+import {
+  calculateEndDate,
+  calculateStartDate,
+  calculateDuration,
+} from "../../../utils/calculations";
 
 /**
  * Default form values for chit creation
@@ -29,6 +33,7 @@ const DEFAULT_VALUES = {
   end_date: "",
   collection_day: "",
   payout_day: "",
+  notes: "",
 };
 
 /**
@@ -65,6 +70,7 @@ export const useChitForm = (id, mode) => {
   const wStartDate = useWatch({ control: form.control, name: "start_date" });
   const wEndDate = useWatch({ control: form.control, name: "end_date" });
   const watchedChitType = useWatch({ control: form.control, name: "chit_type" });
+  const watchedName = useWatch({ control: form.control, name: "name" });
 
   // --- Derived State ---
   const createdChitName = useMemo(
@@ -88,28 +94,111 @@ export const useChitForm = (id, mode) => {
 
   // --- Auto-Calculation Effects ---
 
-  // Sync Size <-> Duration
-  useEffect(() => {
-    if (wSize && Number(wSize) !== Number(wDuration)) {
-      setValue("duration_months", Number(wSize), { shouldValidate: true });
-    }
-  }, [wSize, setValue]);
+  // Track which field was last edited by user (for Size <-> Duration sync)
+  const lastEditedField = useRef(null);
 
-  useEffect(() => {
-    if (wDuration && Number(wDuration) !== Number(wSize)) {
-      setValue("size", Number(wDuration), { shouldValidate: true });
-    }
-  }, [wDuration, setValue]);
+  // Handlers to track which field user is editing
+  const handleSizeChange = useCallback(() => {
+    lastEditedField.current = "size";
+  }, []);
 
-  // Calculate End Date from Start Date + Duration
+  const handleDurationChange = useCallback(() => {
+    lastEditedField.current = "duration";
+  }, []);
+
+  // Sync Size <-> Duration based on which field was last edited
   useEffect(() => {
-    if (wStartDate && wStartDate.match(/^\d{4}-\d{2}$/) && wDuration) {
+    // Skip if no field has been edited yet
+    if (!lastEditedField.current) return;
+
+    const sizeVal = wSize;
+    const durationVal = wDuration;
+    const sizeEmpty = sizeVal === "" || sizeVal === null || sizeVal === undefined || Number.isNaN(sizeVal);
+    const durationEmpty = durationVal === "" || durationVal === null || durationVal === undefined || Number.isNaN(durationVal);
+
+    if (lastEditedField.current === "size") {
+      // User is editing size - sync to duration
+      if (sizeEmpty) {
+        if (!durationEmpty) {
+          setValue("duration_months", "", { shouldValidate: true });
+        }
+      } else if (Number(sizeVal) !== Number(durationVal)) {
+        setValue("duration_months", Number(sizeVal), { shouldValidate: true });
+      }
+    } else if (lastEditedField.current === "duration") {
+      // User is editing duration - sync to size
+      if (durationEmpty) {
+        if (!sizeEmpty) {
+          setValue("size", "", { shouldValidate: true });
+        }
+      } else if (Number(durationVal) !== Number(sizeVal)) {
+        setValue("size", Number(durationVal), { shouldValidate: true });
+      }
+    }
+  }, [wSize, wDuration, setValue]);
+
+  // Track which date field was last edited to prevent loops
+  const lastEditedDateField = useRef(null);
+
+  // Handlers to track which date field user is editing
+  const handleStartDateChange = useCallback(() => {
+    lastEditedDateField.current = "start_date";
+  }, []);
+
+  const handleEndDateChange = useCallback(() => {
+    lastEditedDateField.current = "end_date";
+  }, []);
+
+  // Calculate End Date from Start Date + Duration (only when start date is being edited)
+  useEffect(() => {
+    if (
+      lastEditedDateField.current === "start_date" &&
+      wStartDate &&
+      wStartDate.match(/^\d{4}-\d{2}$/) &&
+      wDuration
+    ) {
       const newEndDate = calculateEndDate(wStartDate, wDuration);
-      if (newEndDate !== wEndDate) {
+      if (newEndDate && newEndDate !== wEndDate) {
         setValue("end_date", newEndDate, { shouldValidate: true });
       }
     }
-  }, [wStartDate, wDuration, setValue]);
+  }, [wStartDate, wDuration, wEndDate, setValue]);
+
+  // Calculate Start Date from End Date - Duration (only when end date is being edited)
+  useEffect(() => {
+    if (
+      lastEditedDateField.current === "end_date" &&
+      wEndDate &&
+      wEndDate.match(/^\d{4}-\d{2}$/) &&
+      wDuration
+    ) {
+      const newStartDate = calculateStartDate(wEndDate, wDuration);
+      if (newStartDate && newStartDate !== wStartDate) {
+        setValue("start_date", newStartDate, { shouldValidate: true });
+      }
+    }
+  }, [wEndDate, wDuration, wStartDate, setValue]);
+
+  // Calculate Duration/Size from Start Date and End Date (only when both dates are set and no duration yet)
+  useEffect(() => {
+    // Only calculate if no duration/size exists yet
+    const durationEmpty = !wDuration || Number.isNaN(wDuration);
+    const sizeEmpty = !wSize || Number.isNaN(wSize);
+
+    if (
+      (durationEmpty || sizeEmpty) &&
+      wStartDate &&
+      wStartDate.match(/^\d{4}-\d{2}$/) &&
+      wEndDate &&
+      wEndDate.match(/^\d{4}-\d{2}$/)
+    ) {
+      const calculatedDuration = calculateDuration(wStartDate, wEndDate);
+      if (calculatedDuration && Number(calculatedDuration) > 0) {
+        setValue("duration_months", Number(calculatedDuration), { shouldValidate: true });
+        setValue("size", Number(calculatedDuration), { shouldValidate: true });
+      }
+    }
+  }, [wStartDate, wEndDate, wDuration, wSize, setValue]);
 
   // --- Fetch Chit Data for Edit/View Modes ---
   useEffect(() => {
@@ -148,6 +237,12 @@ export const useChitForm = (id, mode) => {
     async (data, { onSuccessCallback } = {}) => {
       setError(null);
       setSuccess(null);
+
+      // --- Sanitization Step ---
+      // Ensure notes start with a capital letter before sending to backend
+      if (data.notes && typeof data.notes === "string" && data.notes.length > 0) {
+        data.notes = data.notes.charAt(0).toUpperCase() + data.notes.slice(1);
+      }
 
       try {
         if (mode === "create" && !createdChitId) {
@@ -252,8 +347,13 @@ export const useChitForm = (id, mode) => {
     // Derived
     TABS,
     watchedChitType,
+    watchedName,
     // Handlers
     onSubmit,
+    handleSizeChange,
+    handleDurationChange,
+    handleStartDateChange,
+    handleEndDateChange,
   };
 };
 

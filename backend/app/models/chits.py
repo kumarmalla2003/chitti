@@ -45,6 +45,9 @@ class Chit(SQLModel, table=True):
     # Auction Chit: Foreman Commission percentage
     foreman_commission_percent: float = Field(default=0.0)
     
+    # Optional notes field
+    notes: Optional[str] = Field(default=None)
+    
     # Relationships
     payouts: List["Payout"] = Relationship(back_populates="chit")
     collections: List["Collection"] = Relationship(back_populates="chit")

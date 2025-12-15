@@ -26,7 +26,6 @@ import {
   ArrowLeft,
   SquarePen,
   Printer,
-  IndianRupee,
 } from "lucide-react";
 
 // --- Helper Component for Desktop Details Section ---
@@ -154,24 +153,6 @@ const MemberDetailPage = () => {
     [onSubmit, mode, createdMemberId, activeTabIndex, TABS]
   );
 
-  // --- Mobile Form Submit Handler ---
-  const handleMobileFormSubmit = useCallback(
-    async (e) => {
-      if (activeTab !== "details") return;
-
-      if (activeTabIndex === TABS.length - 1) {
-        handleFinalAction();
-      } else if (mode === "create" && activeTabIndex === 0) {
-        await handleSubmit(handleFormSubmit)(e);
-      } else if (mode === "edit" && activeTabIndex === 0) {
-        await handleSubmit(handleFormSubmit)(e);
-      } else if (activeTabIndex < TABS.length - 1) {
-        setActiveTab(TABS[activeTabIndex + 1]);
-      }
-    },
-    [activeTab, activeTabIndex, TABS, mode, handleSubmit, handleFormSubmit]
-  );
-
   // --- Page Title ---
   const getTitle = useCallback(() => {
     const fullName = getValues("full_name");
@@ -209,14 +190,6 @@ const MemberDetailPage = () => {
     }
   }, [activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
 
-  const handleMiddle = useCallback(() => {
-    if (activeTabIndex === TABS.length - 1) {
-      handleFinalAction();
-    } else {
-      handleSkip();
-    }
-  }, [activeTabIndex, TABS.length, handleSkip]);
-
   const handleFinalAction = useCallback(() => {
     const memberIdToView = mode === "create" ? createdMemberId : id;
     const memberName = mode === "create" ? createdMemberName : getValues("full_name");
@@ -230,6 +203,32 @@ const MemberDetailPage = () => {
       state: { success: successMessage },
     });
   }, [mode, createdMemberId, createdMemberName, id, getValues, navigate]);
+
+  const handleMiddle = useCallback(() => {
+    if (activeTabIndex === TABS.length - 1) {
+      handleFinalAction();
+    } else {
+      handleSkip();
+    }
+  }, [activeTabIndex, TABS.length, handleSkip, handleFinalAction]);
+
+  // --- Mobile Form Submit Handler ---
+  const handleMobileFormSubmit = useCallback(
+    async (e) => {
+      if (activeTab !== "details") return;
+
+      if (activeTabIndex === TABS.length - 1) {
+        handleFinalAction();
+      } else if (mode === "create" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else if (mode === "edit" && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else if (activeTabIndex < TABS.length - 1) {
+        setActiveTab(TABS[activeTabIndex + 1]);
+      }
+    },
+    [activeTab, activeTabIndex, TABS, mode, handleSubmit, handleFormSubmit, handleFinalAction]
+  );
 
   const handleLogCollectionClick = useCallback((assignment) => {
     setCollectionDefaults({
@@ -269,7 +268,7 @@ const MemberDetailPage = () => {
 
   return (
     <>
-      <div className="container mx-auto">
+      <div className="w-full">
         <div className="relative flex justify-center items-center mb-4">
           <button
             onClick={handleBackNavigation}
@@ -346,73 +345,69 @@ const MemberDetailPage = () => {
           /* --- EDIT / CREATE MODE --- */
           <>
             {!isDesktop && (
-              <div className="md:hidden">
-                <MemberMobileContent
-                  TABS={TABS}
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  mode={mode}
-                  createdMemberId={effectiveMemberId}
-                  activeTabIndex={activeTabIndex}
-                  isValid={isValid}
-                  detailsLoading={isSubmitting}
-                  handleNext={handleNext}
-                  handleMiddle={handleMiddle}
-                  handleMobileFormSubmit={handleMobileFormSubmit}
-                  isPostCreation={isPostCreation}
-                  onLogCollectionClick={handleLogCollectionClick}
-                  collectionDefaults={collectionDefaults}
-                  setCollectionDefaults={setCollectionDefaults}
-                  control={control}
-                  register={register}
-                  errors={errors}
-                />
-              </div>
+              <MemberMobileContent
+                TABS={TABS}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                mode={mode}
+                createdMemberId={effectiveMemberId}
+                activeTabIndex={activeTabIndex}
+                isValid={isValid}
+                detailsLoading={isSubmitting}
+                handleNext={handleNext}
+                handleMiddle={handleMiddle}
+                handleMobileFormSubmit={handleMobileFormSubmit}
+                isPostCreation={isPostCreation}
+                onLogCollectionClick={handleLogCollectionClick}
+                collectionDefaults={collectionDefaults}
+                setCollectionDefaults={setCollectionDefaults}
+                control={control}
+                register={register}
+                errors={errors}
+              />
             )}
 
             {isDesktop && (
-              <div className="hidden md:block">
-                <form
-                  id="member-details-form-desktop"
-                  onSubmit={handleSubmit(handleFormSubmit)}
-                >
-                  {/* Stacked Full-Width Sections Layout */}
-                  <div className="w-full space-y-6">
-                    {/* Details Form Section */}
-                    <DetailsSection
+              <form
+                id="member-details-form-desktop"
+                onSubmit={handleSubmit(handleFormSubmit)}
+              >
+                {/* Stacked Full-Width Sections Layout */}
+                <div className="w-full space-y-6">
+                  {/* Details Form Section */}
+                  <DetailsSection
+                    mode={mode}
+                    control={control}
+                    register={register}
+                    errors={errors}
+                    onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                    isPostCreation={isPostCreation}
+                  />
+
+                  {mode !== "view" && (
+                    <MemberDesktopActionButton
                       mode={mode}
-                      control={control}
-                      register={register}
-                      errors={errors}
-                      onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                      loading={isSubmitting}
                       isPostCreation={isPostCreation}
                     />
+                  )}
 
-                    {mode !== "view" && (
-                      <MemberDesktopActionButton
-                        mode={mode}
-                        loading={isSubmitting}
-                        isPostCreation={isPostCreation}
-                      />
-                    )}
+                  {/* Chits Section */}
+                  <MemberChitsManager
+                    mode={mode}
+                    memberId={effectiveMemberId}
+                    onLogCollectionClick={handleLogCollectionClick}
+                  />
 
-                    {/* Chits Section */}
-                    <MemberChitsManager
-                      mode={mode}
-                      memberId={effectiveMemberId}
-                      onLogCollectionClick={handleLogCollectionClick}
-                    />
-
-                    {/* Collections Section */}
-                    <CollectionHistoryList
-                      memberId={effectiveMemberId}
-                      mode={mode}
-                      collectionDefaults={collectionDefaults}
-                      setCollectionDefaults={setCollectionDefaults}
-                    />
-                  </div>
-                </form>
-              </div>
+                  {/* Collections Section */}
+                  <CollectionHistoryList
+                    memberId={effectiveMemberId}
+                    mode={mode}
+                    collectionDefaults={collectionDefaults}
+                    setCollectionDefaults={setCollectionDefaults}
+                  />
+                </div>
+              </form>
             )}
           </>
         )}

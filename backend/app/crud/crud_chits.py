@@ -41,6 +41,9 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
         chit_type=db_chit.chit_type,
         monthly_installment=db_chit.monthly_installment,
         payout_premium_percent=db_chit.payout_premium_percent,
+        foreman_commission_percent=db_chit.foreman_commission_percent,
+        # Optional notes field
+        notes=db_chit.notes,
     )
 
 async def delete_chit_by_id(session: AsyncSession, db_chit: Chit):

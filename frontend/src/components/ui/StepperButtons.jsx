@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Check,
   Save,
+  Plus,
   SquarePen,
   Loader2,
 } from "lucide-react";
@@ -29,9 +30,9 @@ const StepperButtons = ({
     if (mode === "create") {
       // Determine button variant and text based on whether chit is already created
       const buttonVariant = isPostCreation ? "warning" : "success";
-      const buttonText = isPostCreation ? "Update & Next" : "Save & Next";
+      const buttonText = isPostCreation ? "Update & Next" : "Create Chit";
 
-      const ButtonIcon = isPostCreation ? SquarePen : Save;
+      const ButtonIcon = isPostCreation ? SquarePen : Plus;
 
       return (
         <div className="mt-8 md:hidden">

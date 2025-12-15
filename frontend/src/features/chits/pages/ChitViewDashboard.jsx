@@ -11,8 +11,8 @@ import {
   ArrowUpRight,
   PieChart,
   SquarePen,
+  IndianRupee,
 } from "lucide-react";
-import { IndianRupee } from "lucide-react";
 import Card from "../../../components/ui/Card";
 import PayoutsSection from "../components/sections/PayoutsSection";
 import ChitMembersManager from "../components/sections/ChitMembersManager";
@@ -39,7 +39,6 @@ const formatDateShort = (dateString) => {
   return dateString;
 };
 
-// eslint-disable-next-line no-unused-vars
 const DetailRow = ({ icon: IconComponent, label, value, className = "" }) => (
   <div
     className={`flex items-center py-3 border-b border-border/50 last:border-0 ${className}`}
@@ -56,7 +55,6 @@ const DetailRow = ({ icon: IconComponent, label, value, className = "" }) => (
   </div>
 );
 
-// eslint-disable-next-line no-unused-vars
 const MetricCard = ({ label, value, icon: IconComponent }) => (
   <div className="bg-background-secondary/50 p-3 rounded-xl border border-border/50 flex flex-col items-center justify-center text-center hover:border-accent/30 transition-colors">
     <div className="flex items-center gap-1.5 mb-1 text-text-secondary">

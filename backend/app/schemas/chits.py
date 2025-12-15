@@ -24,6 +24,7 @@ class ChitNested(BaseModel):
     monthly_installment: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
+    notes: Optional[str] = None
     
     @computed_field
     @property
@@ -64,6 +65,7 @@ class ChitRead(BaseModel):
     monthly_installment: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
+    notes: Optional[str] = None
     
     @computed_field
     @property
@@ -104,6 +106,9 @@ class ChitBase(BaseModel):
     monthly_installment: int = Field(default=0)
     payout_premium_percent: float = Field(default=0.0, ge=0.0, le=100.0)
     foreman_commission_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    
+    # Optional notes field
+    notes: Optional[str] = None
 
     @model_validator(mode='after')
     def validate_chit(self) -> 'ChitBase':
@@ -148,6 +153,7 @@ class ChitPatch(BaseModel):
     monthly_installment: Optional[int] = None
     payout_premium_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     foreman_commission_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    notes: Optional[str] = None
 
     @model_validator(mode='after')
     def check_collection_before_payout_patch(self) -> 'ChitPatch':
