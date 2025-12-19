@@ -26,8 +26,8 @@ const DEFAULT_VALUES = {
   size: "",
   chit_type: "fixed",
   monthly_installment: "",
-  payout_premium_percent: 0,
-  foreman_commission_percent: 0,
+  payout_premium_percent: "",
+  foreman_commission_percent: "",
   duration_months: "",
   start_date: "",
   end_date: "",
@@ -35,6 +35,48 @@ const DEFAULT_VALUES = {
   payout_day: "",
   notes: "",
 };
+
+// --- Inline Validation Helpers (match schema rules) ---
+
+/**
+ * Validate size/duration value (must be positive integer 1-100)
+ */
+const isValidSizeDuration = (val) => {
+  if (val === "" || val === null || val === undefined) return false;
+  const num = Number(val);
+  return !Number.isNaN(num) && Number.isInteger(num) && num > 0 && num <= 100;
+};
+
+/**
+ * Validate date string (YYYY-MM format, valid month 1-12, in range 01/2000-12/2999)
+ */
+const isValidDate = (val) => {
+  if (!val || typeof val !== "string") return false;
+  if (!/^\d{4}-\d{2}$/.test(val)) return false;
+
+  const [year, month] = val.split("-").map(Number);
+
+  // Valid month check (1-12)
+  if (month < 1 || month > 12) return false;
+
+  // Min date check (>= 01/2000)
+  if (year < 2000 || (year === 2000 && month < 1)) return false;
+
+  // Max date check (<= 12/2999)
+  if (year > 2999 || (year === 2999 && month > 12)) return false;
+
+  return true;
+};
+
+/**
+ * Validate chit_value (must be positive, <= 1,000,000,000)
+ */
+const isValidChitValue = (val) => {
+  if (val === "" || val === null || val === undefined) return false;
+  const num = Number(val);
+  return !Number.isNaN(num) && num > 0 && num <= 1000000000;
+};
+
 
 /**
  * Custom hook for managing chit form state and submission.
@@ -66,6 +108,7 @@ export const useChitForm = (id, mode) => {
 
   // --- Watched Fields for Auto-Calculations ---
   const wSize = useWatch({ control: form.control, name: "size" });
+  const wChitValue = useWatch({ control: form.control, name: "chit_value" });
   const wDuration = useWatch({ control: form.control, name: "duration_months" });
   const wStartDate = useWatch({ control: form.control, name: "start_date" });
   const wEndDate = useWatch({ control: form.control, name: "end_date" });
@@ -83,6 +126,17 @@ export const useChitForm = (id, mode) => {
     [mode, createdChitId]
   );
 
+  // --- Compute if chit has active operations (should lock financial/date fields) ---
+  const hasActiveOperations = useMemo(() => {
+    if (!originalData) return false;
+    // Lock if chit is Active, or has members assigned, or has collections logged
+    return (
+      originalData.status === "Active" ||
+      (originalData.members_count ?? 0) > 0 ||
+      (originalData.collections_count ?? 0) > 0
+    );
+  }, [originalData]);
+
   // --- Memoized TABS ---
   const TABS = useMemo(() => {
     const base = ["details", "payouts", "members", "collections"];
@@ -97,6 +151,9 @@ export const useChitForm = (id, mode) => {
   // Track which field was last edited by user (for Size <-> Duration sync)
   const lastEditedField = useRef(null);
 
+  // Track previous chit_type for clearing fields
+  const prevChitType = useRef(watchedChitType);
+
   // Handlers to track which field user is editing
   const handleSizeChange = useCallback(() => {
     lastEditedField.current = "size";
@@ -106,7 +163,54 @@ export const useChitForm = (id, mode) => {
     lastEditedField.current = "duration";
   }, []);
 
+  // Auto-calculate monthly_installment for Variable chits (base installment = chit_value / size)
+  useEffect(() => {
+    if (watchedChitType !== "variable") return;
+
+    const chitValue = Number(wChitValue);
+    const size = Number(wSize);
+
+    // Only calculate if BOTH chit_value AND size are VALID
+    if (isValidChitValue(wChitValue) && isValidSizeDuration(wSize)) {
+      const calculated = Math.floor(chitValue / size);
+      setValue("monthly_installment", calculated, { shouldValidate: true });
+    }
+  }, [wChitValue, wSize, watchedChitType, setValue]);
+
+  // Clear type-specific fields when chit_type changes
+  // Note: We do NOT trigger validation here to avoid showing 'required' errors on untouched fields
+  // Validation will run when user interacts with the relevant field or submits the form
+  useEffect(() => {
+    // Skip on initial render or if type hasn't changed
+    if (prevChitType.current === watchedChitType) return;
+
+    // Update ref for next comparison
+    prevChitType.current = watchedChitType;
+
+    // Clear irrelevant fields and their errors based on new chit_type
+    if (watchedChitType === "fixed") {
+      // Fixed: clear variable and auction fields
+      setValue("payout_premium_percent", "", { shouldValidate: false });
+      setValue("foreman_commission_percent", "", { shouldValidate: false });
+      form.clearErrors(["payout_premium_percent", "foreman_commission_percent"]);
+      // Do NOT trigger monthly_installment validation - let user interact first
+    } else if (watchedChitType === "variable") {
+      // Variable: clear fixed and auction fields
+      setValue("monthly_installment", "", { shouldValidate: false });
+      setValue("foreman_commission_percent", "", { shouldValidate: false });
+      form.clearErrors(["monthly_installment", "foreman_commission_percent"]);
+      // Do NOT trigger payout_premium_percent validation - let user interact first
+    } else if (watchedChitType === "auction") {
+      // Auction: clear fixed and variable fields
+      setValue("monthly_installment", "", { shouldValidate: false });
+      setValue("payout_premium_percent", "", { shouldValidate: false });
+      form.clearErrors(["monthly_installment", "payout_premium_percent"]);
+      // Do NOT trigger foreman_commission_percent validation - let user interact first
+    }
+  }, [watchedChitType, setValue, form]);
+
   // Sync Size <-> Duration based on which field was last edited
+  // Also clears BOTH dates if size/duration is cleared to prevent orphaned data
   useEffect(() => {
     // Skip if no field has been edited yet
     if (!lastEditedField.current) return;
@@ -122,7 +226,15 @@ export const useChitForm = (id, mode) => {
         if (!durationEmpty) {
           setValue("duration_months", "", { shouldValidate: true });
         }
-      } else if (Number(sizeVal) !== Number(durationVal)) {
+        // Clear BOTH dates if size is cleared
+        if (wStartDate) {
+          setValue("start_date", "", { shouldValidate: true });
+        }
+        if (wEndDate) {
+          setValue("end_date", "", { shouldValidate: true });
+        }
+      } else if (isValidSizeDuration(sizeVal) && Number(sizeVal) !== Number(durationVal)) {
+        // Only sync if size is VALID
         setValue("duration_months", Number(sizeVal), { shouldValidate: true });
       }
     } else if (lastEditedField.current === "duration") {
@@ -131,11 +243,20 @@ export const useChitForm = (id, mode) => {
         if (!sizeEmpty) {
           setValue("size", "", { shouldValidate: true });
         }
-      } else if (Number(durationVal) !== Number(sizeVal)) {
+        // Clear BOTH dates if duration is cleared
+        if (wStartDate) {
+          setValue("start_date", "", { shouldValidate: true });
+        }
+        if (wEndDate) {
+          setValue("end_date", "", { shouldValidate: true });
+        }
+      } else if (isValidSizeDuration(durationVal) && Number(durationVal) !== Number(sizeVal)) {
+        // Only sync if duration is VALID
         setValue("size", Number(durationVal), { shouldValidate: true });
       }
     }
-  }, [wSize, wDuration, setValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wSize, wDuration, setValue]); // REMOVED wStartDate, wEndDate to prevent infinite clearing loop when entering dates
 
   // Track which date field was last edited to prevent loops
   const lastEditedDateField = useRef(null);
@@ -150,34 +271,54 @@ export const useChitForm = (id, mode) => {
   }, []);
 
   // Calculate End Date from Start Date + Duration (only when start date is being edited)
+  // Also clears end_date if start_date is cleared
   useEffect(() => {
-    if (
-      lastEditedDateField.current === "start_date" &&
-      wStartDate &&
-      wStartDate.match(/^\d{4}-\d{2}$/) &&
-      wDuration
-    ) {
-      const newEndDate = calculateEndDate(wStartDate, wDuration);
-      if (newEndDate && newEndDate !== wEndDate) {
-        setValue("end_date", newEndDate, { shouldValidate: true });
+    if (lastEditedDateField.current === "start_date") {
+      // If start_date is cleared, also clear end_date
+      if (!wStartDate || wStartDate === "") {
+        if (wEndDate && wEndDate !== "") {
+          setValue("end_date", "", { shouldValidate: true });
+        }
+        return;
+      }
+
+      // Only calculate if start_date is VALID and duration is VALID
+      if (isValidDate(wStartDate) && isValidSizeDuration(wDuration)) {
+        const newEndDate = calculateEndDate(wStartDate, wDuration);
+        if (newEndDate && newEndDate !== wEndDate) {
+          setValue("end_date", newEndDate, { shouldValidate: true });
+          // Re-trigger start_date validation to clear stale cross-field errors
+          setTimeout(() => trigger("start_date"), 0);
+        }
       }
     }
-  }, [wStartDate, wDuration, wEndDate, setValue]);
+  }, [wStartDate, wDuration, wEndDate, setValue, trigger]);
 
-  // Calculate Start Date from End Date - Duration (only when end date is being edited)
+  // Calculate Start Date from End Date - Duration (when end date is being edited)
+  // Duration stays fixed, Start Date recalculates (symmetric with Start Date → End Date behavior)
+  // Also clears start_date if end_date is cleared
   useEffect(() => {
-    if (
-      lastEditedDateField.current === "end_date" &&
-      wEndDate &&
-      wEndDate.match(/^\d{4}-\d{2}$/) &&
-      wDuration
-    ) {
+    if (lastEditedDateField.current === "end_date") {
+      // If end_date is cleared, clear start_date only (size/duration remain intact)
+      if (!wEndDate || wEndDate === "") {
+        if (wStartDate && wStartDate !== "") {
+          setValue("start_date", "", { shouldValidate: true });
+        }
+        return;
+      }
+
+      // Only proceed if end_date is VALID and duration is VALID
+      if (!isValidDate(wEndDate) || !isValidSizeDuration(wDuration)) return;
+
+      // Calculate start_date from end_date - duration (keeping duration fixed)
       const newStartDate = calculateStartDate(wEndDate, wDuration);
       if (newStartDate && newStartDate !== wStartDate) {
         setValue("start_date", newStartDate, { shouldValidate: true });
+        // Re-trigger end_date validation to clear stale cross-field errors
+        setTimeout(() => trigger("end_date"), 0);
       }
     }
-  }, [wEndDate, wDuration, wStartDate, setValue]);
+  }, [wEndDate, wStartDate, wDuration, setValue, trigger]);
 
   // Calculate Duration/Size from Start Date and End Date (only when both dates are set and no duration yet)
   useEffect(() => {
@@ -185,20 +326,24 @@ export const useChitForm = (id, mode) => {
     const durationEmpty = !wDuration || Number.isNaN(wDuration);
     const sizeEmpty = !wSize || Number.isNaN(wSize);
 
+    // Only calculate if BOTH dates are VALID
     if (
       (durationEmpty || sizeEmpty) &&
-      wStartDate &&
-      wStartDate.match(/^\d{4}-\d{2}$/) &&
-      wEndDate &&
-      wEndDate.match(/^\d{4}-\d{2}$/)
+      isValidDate(wStartDate) &&
+      isValidDate(wEndDate)
     ) {
       const calculatedDuration = calculateDuration(wStartDate, wEndDate);
       if (calculatedDuration && Number(calculatedDuration) > 0) {
+        // Reset the date tracking ref BEFORE setting values to prevent race condition (Bug 2 fix)
+        // This prevents subsequent date effects from running with stale tracking state
+        lastEditedDateField.current = null;
+
         setValue("duration_months", Number(calculatedDuration), { shouldValidate: true });
         setValue("size", Number(calculatedDuration), { shouldValidate: true });
       }
     }
-  }, [wStartDate, wEndDate, wDuration, wSize, setValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wStartDate, wEndDate, setValue]); // REMOVED wSize, wDuration to prevent "cannot clear" loop
 
   // --- Fetch Chit Data for Edit/View Modes ---
   useEffect(() => {
@@ -332,6 +477,8 @@ export const useChitForm = (id, mode) => {
     trigger,
     getValues,
     setValue,
+    setFormError: form.setError,  // For inline field validation
+    clearFormErrors: form.clearErrors,  // For clearing inline field errors
     reset,
     // State
     originalData,
@@ -348,6 +495,7 @@ export const useChitForm = (id, mode) => {
     TABS,
     watchedChitType,
     watchedName,
+    hasActiveOperations,
     // Handlers
     onSubmit,
     handleSizeChange,

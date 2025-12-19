@@ -24,6 +24,23 @@ from app.schemas.payouts import PayoutListResponse
 
 router = APIRouter(prefix="/chits", tags=["chits"])
 
+
+@router.get("/check-name")
+async def check_chit_name_availability(
+    name: str,
+    current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Check if a chit name is available (case-insensitive)."""
+    trimmed = name.strip()
+    if len(trimmed) < 3:
+        return {"available": True}  # Too short to validate
+    
+    existing = await session.execute(
+        select(Chit).where(func.lower(Chit.name) == func.lower(trimmed))
+    )
+    return {"available": existing.scalar_one_or_none() is None}
+
 @router.post("", response_model=ChitResponse, status_code=status.HTTP_201_CREATED)
 async def create_chit(
     chit: ChitCreate,

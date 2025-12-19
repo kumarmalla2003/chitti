@@ -30,3 +30,13 @@ export const patchChit = async (chitId, chitData) => {
 export const deleteChit = async (chitId) => {
   await api.delete(`${BASE_URL}/${chitId}`);
 };
+
+/**
+ * Check if a chit name is available (not already in use).
+ * @param {string} name - Name to check
+ * @returns {Promise<{available: boolean}>}
+ */
+export const checkChitNameAvailability = async (name) => {
+  const response = await api.get(`${BASE_URL}/check-name`, { params: { name } });
+  return response.data;
+};

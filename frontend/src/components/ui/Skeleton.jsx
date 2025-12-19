@@ -44,32 +44,32 @@ Skeleton.TableRow = ({ columns = 5, columnWidths = [], actionColumnIndex = -1, s
   <tr className={className}>
     {columnWidths.length > 0
       ? columnWidths.map((width, i) => (
-          <td key={i} className={`px-4 py-3 ${width}`}>
-            {i === actionColumnIndex ? (
-              // Render action icon placeholders
-              // Real ActionButton: p-2 + w-5 icon = 36px, visible area ~24px
-              // Using w-6 (24px) + gap-2 (8px) to match visible icons with spacing
-              <div className="flex items-center justify-center gap-2">
-                <div className={`${shimmerClass} rounded-full w-6 h-6`} />
-                <div className={`${shimmerClass} rounded-full w-6 h-6`} />
-                <div className={`${shimmerClass} rounded-full w-6 h-6`} />
-              </div>
-            ) : i === serialColumnIndex ? (
-              // Render small centered placeholder for serial numbers
-              <Skeleton.Text width="w-6" height="h-4" className="mx-auto" />
-            ) : i === statusColumnIndex ? (
-              // Render badge-like placeholder for status columns
-              <div className={`${shimmerClass} rounded-full w-16 h-5 mx-auto`} />
-            ) : (
-              <Skeleton.Text width="w-full" height="h-4" />
-            )}
-          </td>
-        ))
+        <td key={i} className={`px-4 py-3 ${width}`}>
+          {i === actionColumnIndex ? (
+            // Render action icon placeholders
+            // Real ActionButton: p-2 + w-5 icon = 36px, visible area ~24px
+            // Using w-6 (24px) + gap-2 (8px) to match visible icons with spacing
+            <div className="flex items-center justify-center gap-2">
+              <div className={`${shimmerClass} rounded-full w-6 h-6`} />
+              <div className={`${shimmerClass} rounded-full w-6 h-6`} />
+              <div className={`${shimmerClass} rounded-full w-6 h-6`} />
+            </div>
+          ) : i === serialColumnIndex ? (
+            // Render small centered placeholder for serial numbers
+            <Skeleton.Text width="w-6" height="h-4" className="mx-auto" />
+          ) : i === statusColumnIndex ? (
+            // Render badge-like placeholder for status columns
+            <div className={`${shimmerClass} rounded-full w-16 h-5 mx-auto`} />
+          ) : (
+            <Skeleton.Text width="w-full" height="h-4" />
+          )}
+        </td>
+      ))
       : [...Array(columns)].map((_, i) => (
-          <td key={i} className="px-4 py-3">
-            <Skeleton.Text width={i === 0 ? "w-8" : "w-full"} height="h-4" />
-          </td>
-        ))}
+        <td key={i} className="px-4 py-3">
+          <Skeleton.Text width={i === 0 ? "w-8" : "w-full"} height="h-4" />
+        </td>
+      ))}
   </tr>
 );
 
@@ -93,19 +93,19 @@ Skeleton.Table = ({
         <tr className="bg-background-secondary">
           {columnWidths.length > 0
             ? columnWidths.map((width, i) => (
-                <th key={i} className={`px-4 py-4 border-b-2 border-border ${width}`}>
-                  <Skeleton.Text
-                    width="w-1/2"
-                    height="h-4"
-                    className="mx-auto"
-                  />
-                </th>
-              ))
+              <th key={i} className={`px-4 py-4 border-b-2 border-border ${width}`}>
+                <Skeleton.Text
+                  width="w-1/2"
+                  height="h-4"
+                  className="mx-auto"
+                />
+              </th>
+            ))
             : [...Array(columns)].map((_, i) => (
-                <th key={i} className="px-4 py-4 border-b-2 border-border">
-                  <Skeleton.Text width="w-1/2" height="h-4" className="mx-auto" />
-                </th>
-              ))}
+              <th key={i} className="px-4 py-4 border-b-2 border-border">
+                <Skeleton.Text width="w-1/2" height="h-4" className="mx-auto" />
+              </th>
+            ))}
         </tr>
       </thead>
       <tbody className="bg-background-secondary">
@@ -157,7 +157,7 @@ Skeleton.SearchToolbar = ({ className = "" }) => (
     {/* View Toggle Placeholder */}
     <div className="h-6 w-px bg-border md:hidden" />
     <div className="flex items-center md:hidden">
-       <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+      <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
     </div>
   </div>
 );
@@ -175,7 +175,7 @@ Skeleton.StatsCard = ({ className = "" }) => (
       {/* Subtext - text-xs + mt-2 */}
       <Skeleton.Text width="w-24" height="h-3" className="mt-2" />
     </div>
-    
+
     {/* Icon Placeholder - w-7(28px) + p-3(12px*2) = 52px */}
     <div className={`${shimmerClass} w-[52px] h-[52px] rounded-2xl`} />
   </div>
@@ -195,7 +195,7 @@ Skeleton.PageHeader = ({ showAction = true, className = "" }) => (
   >
     {/* Title placeholder - text-2xl/3xl */}
     <div className={`${shimmerClass} rounded h-7 md:h-8 w-32`} />
-    
+
     {/* Action button placeholder - w-6 icon + visible hover area ~32px */}
     {showAction && (
       <div className="absolute right-0">
@@ -214,10 +214,10 @@ Skeleton.Pagination = ({ className = "" }) => (
   >
     {/* Previous button - p-2 + w-5 = 36px, visible ~24px */}
     <div className={`${shimmerClass} rounded-full w-6 h-6`} />
-    
+
     {/* Page info text - text-sm (14px) = h-3.5 */}
     <div className={`${shimmerClass} rounded h-3.5 w-24`} />
-    
+
     {/* Next button */}
     <div className={`${shimmerClass} rounded-full w-6 h-6`} />
   </div>

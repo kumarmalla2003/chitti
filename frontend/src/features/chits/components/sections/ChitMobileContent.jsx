@@ -29,6 +29,7 @@ const ChitMobileContent = ({
     handleMiddle,
     handleMobileFormSubmit,
     isPostCreation,
+    hasActiveOperations,
     onLogCollectionClick,
     collectionDefaults,
     setCollectionDefaults,
@@ -37,11 +38,17 @@ const ChitMobileContent = ({
     register,
     errors,
     isValid,
-    onNameBlur,
+    setValue,
+    setError,
+    clearErrors,
+    trigger,
+    onNameValid,
+    onNameInvalid,
     onSizeChange,
     onDurationChange,
     onStartDateChange,
     onEndDateChange,
+    onShowLockedFieldWarning,
 }) => {
     const tabRefs = useRef({});
 
@@ -119,12 +126,19 @@ const ChitMobileContent = ({
                             register={register}
                             errors={errors}
                             isPostCreation={isPostCreation}
+                            hasActiveOperations={hasActiveOperations}
+                            setValue={setValue}
+                            setError={setError}
+                            clearErrors={clearErrors}
+                            trigger={trigger}
                             onEnterKeyOnLastInput={handleNext}
-                            onNameBlur={onNameBlur}
+                            onNameValid={onNameValid}
+                            onNameInvalid={onNameInvalid}
                             onSizeChange={onSizeChange}
                             onDurationChange={onDurationChange}
                             onStartDateChange={onStartDateChange}
                             onEndDateChange={onEndDateChange}
+                            onShowLockedFieldWarning={onShowLockedFieldWarning}
                         />
                     </Card>
                     {mode !== "view" && (
@@ -249,6 +263,7 @@ ChitMobileContent.propTypes = {
     handleMiddle: PropTypes.func.isRequired,
     handleMobileFormSubmit: PropTypes.func.isRequired,
     isPostCreation: PropTypes.bool.isRequired,
+    hasActiveOperations: PropTypes.bool,
     onLogCollectionClick: PropTypes.func.isRequired,
     collectionDefaults: PropTypes.object,
     setCollectionDefaults: PropTypes.func.isRequired,
@@ -257,11 +272,17 @@ ChitMobileContent.propTypes = {
     register: PropTypes.func.isRequired,
     errors: PropTypes.object.isRequired,
     isValid: PropTypes.bool.isRequired,
-    onNameBlur: PropTypes.func,
+    setValue: PropTypes.func,
+    setError: PropTypes.func,
+    clearErrors: PropTypes.func,
+    trigger: PropTypes.func,
+    onNameValid: PropTypes.func,
+    onNameInvalid: PropTypes.func,
     onSizeChange: PropTypes.func,
     onDurationChange: PropTypes.func,
     onStartDateChange: PropTypes.func,
     onEndDateChange: PropTypes.func,
+    onShowLockedFieldWarning: PropTypes.func,
 };
 
 export default ChitMobileContent;

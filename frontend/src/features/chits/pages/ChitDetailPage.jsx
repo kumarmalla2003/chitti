@@ -36,13 +36,19 @@ const DetailsSectionComponent = ({
   register,
   errors,
   isPostCreation,
+  hasActiveOperations,
   setValue, // Received from parent
+  setError,
+  clearErrors,
+  trigger,
   onEnterKeyOnLastInput,
-  onNameBlur,
+  onNameValid,
+  onNameInvalid,
   onSizeChange,
   onDurationChange,
   onStartDateChange,
   onEndDateChange,
+  onShowLockedFieldWarning,
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
@@ -55,13 +61,19 @@ const DetailsSectionComponent = ({
       register={register}
       errors={errors}
       isPostCreation={isPostCreation}
+      hasActiveOperations={hasActiveOperations}
       setValue={setValue} // Passed to form
+      setError={setError}
+      clearErrors={clearErrors}
+      trigger={trigger}
       onEnterKeyOnLastInput={onEnterKeyOnLastInput}
-      onNameBlur={onNameBlur}
+      onNameValid={onNameValid}
+      onNameInvalid={onNameInvalid}
       onSizeChange={onSizeChange}
       onDurationChange={onDurationChange}
       onStartDateChange={onStartDateChange}
       onEndDateChange={onEndDateChange}
+      onShowLockedFieldWarning={onShowLockedFieldWarning}
     />
   </Card>
 );
@@ -115,6 +127,8 @@ const ChitDetailPage = () => {
     trigger,
     getValues,
     setValue, // Extracted here
+    setFormError, // For inline field validation
+    clearFormErrors, // For clearing inline errors
     originalData,
     createdChitId,
     createdChitName,
@@ -133,12 +147,15 @@ const ChitDetailPage = () => {
     handleDurationChange,
     handleStartDateChange,
     handleEndDateChange,
+    hasActiveOperations,
   } = useChitForm(id, mode);
 
   // --- Local UI State ---
   const [activeTab, setActiveTab] = useState("details");
   const [collectionDefaults, setCollectionDefaults] = useState(null);
   const [displayedTitle, setDisplayedTitle] = useState(null);
+  const [warning, setWarning] = useState(null);
+  const warningTimeoutRef = useRef(null);
 
   // --- Report Generation Hook ---
   const currentChitData = getValues();
@@ -157,7 +174,7 @@ const ChitDetailPage = () => {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   // --- Scroll to Top on Messages ---
-  useScrollToTop(success || error);
+  useScrollToTop(success || error || warning);
 
   // --- Handle Initial Tab from Navigation State ---
   useEffect(() => {
@@ -199,13 +216,20 @@ const ChitDetailPage = () => {
     [onSubmit, mode, createdChitId, activeTabIndex, TABS]
   );
 
-  // --- Handle Name Field Blur - Update Title ---
-  const handleNameBlur = useCallback(() => {
-    const currentName = getValues("name")?.trim();
-    if (currentName) {
-      setDisplayedTitle(capitalizeFirstLetter(currentName));
+  // --- Header Update Handlers ---
+  // Handler for valid name - updates header
+  const handleNameValid = useCallback((name) => {
+    if (mode === "view") return;
+    if (name && name.length >= 3) {
+      setDisplayedTitle(capitalizeFirstLetter(name));
     }
-  }, [getValues]);
+  }, [mode]);
+
+  // Handler for invalid/duplicate name - resets header to default
+  const handleNameInvalid = useCallback(() => {
+    if (mode === "view") return;
+    setDisplayedTitle(null); // Resets to "Create New Chit" or "Edit Chit"
+  }, [mode]);
 
   // --- Page Title ---
   const getTitle = useCallback(() => {
@@ -215,6 +239,17 @@ const ChitDetailPage = () => {
     if (mode === "edit") return capitalizeFirstLetter(displayedTitle) || capitalizeFirstLetter(watchedName?.trim()) || "Edit Chit";
     return capitalizeFirstLetter(displayedTitle) || capitalizeFirstLetter(watchedName?.trim()) || "Chit Details";
   }, [mode, displayedTitle, watchedName]);
+
+  // --- Handler for locked field warnings ---
+  const handleShowLockedFieldWarning = useCallback((message) => {
+    // Clear any existing timeout to prevent stacking
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
+    }
+    setWarning(message);
+    // Auto-dismiss after 5 seconds
+    warningTimeoutRef.current = setTimeout(() => setWarning(null), 5000);
+  }, []);
 
   // --- Navigation Handlers ---
   const handleBackNavigation = useCallback(() => {
@@ -394,6 +429,11 @@ const ChitDetailPage = () => {
             {error}
           </Message>
         )}
+        {warning && (
+          <Message type="warning" title="Field Locked">
+            {warning}
+          </Message>
+        )}
       </div>
 
       {/* --- VIEW MODE --- */}
@@ -430,11 +470,18 @@ const ChitDetailPage = () => {
               control={control}
               register={register}
               errors={errors}
-              onNameBlur={handleNameBlur}
+              setValue={setValue}
+              setError={setFormError}
+              clearErrors={clearFormErrors}
+              trigger={trigger}
+              onNameValid={handleNameValid}
+              onNameInvalid={handleNameInvalid}
               onSizeChange={handleSizeChange}
               onDurationChange={handleDurationChange}
               onStartDateChange={handleStartDateChange}
               onEndDateChange={handleEndDateChange}
+              hasActiveOperations={hasActiveOperations}
+              onShowLockedFieldWarning={handleShowLockedFieldWarning}
             />
           )}
 
@@ -452,13 +499,19 @@ const ChitDetailPage = () => {
                   register={register}
                   errors={errors}
                   isPostCreation={isPostCreation}
+                  hasActiveOperations={hasActiveOperations}
                   setValue={setValue} // Passed down
+                  setError={setFormError}
+                  clearErrors={clearFormErrors}
+                  trigger={trigger}
                   onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
-                  onNameBlur={handleNameBlur}
+                  onNameValid={handleNameValid}
+                  onNameInvalid={handleNameInvalid}
                   onSizeChange={handleSizeChange}
                   onDurationChange={handleDurationChange}
                   onStartDateChange={handleStartDateChange}
                   onEndDateChange={handleEndDateChange}
+                  onShowLockedFieldWarning={handleShowLockedFieldWarning}
                 />
 
                 <ChitDesktopActionButton

@@ -25,7 +25,7 @@ class Chit(SQLModel, table=True):
     duration_months: int
     start_date: date
     end_date: date
-    collection_day: int = Field(ge=1, le=28)
+    collection_day: int = Field(ge=1, le=27)
     payout_day: int = Field(ge=1, le=28)
     
     # Chit Type - determines installment calculation behavior
@@ -45,8 +45,8 @@ class Chit(SQLModel, table=True):
     # Auction Chit: Foreman Commission percentage
     foreman_commission_percent: float = Field(default=0.0)
     
-    # Optional notes field
-    notes: Optional[str] = Field(default=None)
+    # Optional notes field (max 1000 characters)
+    notes: Optional[str] = Field(default=None, max_length=1000)
     
     # Relationships
     payouts: List["Payout"] = Relationship(back_populates="chit")

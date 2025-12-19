@@ -12,6 +12,7 @@ import { Controller } from "react-hook-form";
  * @param {Array} options - Array of { value, label, icon, description }
  * @param {boolean} disabled - Whether the control is disabled
  * @param {string} className - Additional CSS classes
+ * @param {function} onOptionHighlight - Callback when option is highlighted via hover or focus (receives option or null)
  */
 const SegmentedControl = ({
   control,
@@ -19,6 +20,7 @@ const SegmentedControl = ({
   options,
   disabled = false,
   className = "",
+  onOptionHighlight,
 }) => {
   return (
     <Controller
@@ -38,16 +40,22 @@ const SegmentedControl = ({
               <label
                 key={option.value}
                 className={`
-                  relative flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-full cursor-pointer
+                  relative flex items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 px-2 min-[360px]:px-3 sm:px-4 py-1.5 min-[360px]:py-2 sm:py-2.5 rounded-full cursor-pointer
                   border-2 transition-all duration-200 select-none
                   has-[:focus]:ring-2 has-[:focus]:ring-accent has-[:focus]:ring-offset-2
-                  ${
-                    isSelected
-                      ? "bg-accent text-white border-accent shadow-md"
-                      : "bg-background-secondary text-text-secondary border-border hover:border-accent/50 hover:bg-accent/5"
+                  ${isSelected
+                    ? "bg-accent text-white border-accent shadow-md scale-[1.02]"
+                    : "bg-background-secondary text-text-secondary border-border hover:border-accent/50 hover:bg-accent/5"
                   }
-                  ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+                  ${disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}
                 `}
+                onMouseEnter={() => onOptionHighlight?.(option)}
+                onMouseLeave={(e) => {
+                  // Don't hide if the input inside this label is still focused (from a click)
+                  if (!e.currentTarget.contains(document.activeElement)) {
+                    onOptionHighlight?.(null);
+                  }
+                }}
               >
                 <input
                   type="radio"
@@ -57,15 +65,16 @@ const SegmentedControl = ({
                   disabled={disabled}
                   className="absolute inset-0 opacity-0 w-full h-full cursor-pointer m-0 p-0"
                   onChange={() => field.onChange(option.value)}
+                  onFocus={() => onOptionHighlight?.(option)}
+                  onBlur={() => onOptionHighlight?.(null)}
                 />
                 {Icon && (
                   <Icon
-                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${
-                      isSelected ? "text-white" : "text-text-secondary"
-                    }`}
+                    className={`w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 flex-shrink-0 ${isSelected ? "text-white" : "text-text-secondary"
+                      }`}
                   />
                 )}
-                <span className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                <span className="font-medium text-xs min-[360px]:text-sm whitespace-nowrap">
                   {option.label}
                 </span>
               </label>
@@ -90,6 +99,7 @@ SegmentedControl.propTypes = {
   ).isRequired,
   disabled: PropTypes.bool,
   className: PropTypes.string,
+  onOptionHighlight: PropTypes.func,
 };
 
 export default SegmentedControl;

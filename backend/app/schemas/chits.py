@@ -24,7 +24,7 @@ class ChitNested(BaseModel):
     monthly_installment: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
     
     @computed_field
     @property
@@ -57,7 +57,7 @@ class ChitRead(BaseModel):
     size: int
     duration_months: int
     start_date: date
-    collection_day: int = Field(..., ge=1, le=28)
+    collection_day: int = Field(..., ge=1, le=27)
     payout_day: int = Field(..., ge=1, le=28)
     
     # Chit type and installment fields (no validation)
@@ -65,7 +65,7 @@ class ChitRead(BaseModel):
     monthly_installment: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
     
     @computed_field
     @property
@@ -96,7 +96,7 @@ class ChitBase(BaseModel):
     size: int
     duration_months: int
     start_date: date
-    collection_day: int = Field(..., ge=1, le=28)
+    collection_day: int = Field(..., ge=1, le=27)
     payout_day: int = Field(..., ge=1, le=28)
     
     # Chit type field
@@ -108,11 +108,11 @@ class ChitBase(BaseModel):
     foreman_commission_percent: float = Field(default=0.0, ge=0.0, le=100.0)
     
     # Optional notes field
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
     @model_validator(mode='after')
     def validate_chit(self) -> 'ChitBase':
-        # Validate collection_day < payout_day
+        # Validate collection_day < payout_day (same day NOT allowed)
         if self.collection_day is not None and self.payout_day is not None:
             if self.collection_day >= self.payout_day:
                 raise ValueError('Collection day must be before the payout day.')
@@ -145,7 +145,7 @@ class ChitPatch(BaseModel):
     size: Optional[int] = None
     duration_months: Optional[int] = None
     start_date: Optional[date] = None
-    collection_day: Optional[int] = Field(default=None, ge=1, le=28)
+    collection_day: Optional[int] = Field(default=None, ge=1, le=27)
     payout_day: Optional[int] = Field(default=None, ge=1, le=28)
     
     # Chit type and installment fields
@@ -153,7 +153,7 @@ class ChitPatch(BaseModel):
     monthly_installment: Optional[int] = None
     payout_premium_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     foreman_commission_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
     @model_validator(mode='after')
     def check_collection_before_payout_patch(self) -> 'ChitPatch':

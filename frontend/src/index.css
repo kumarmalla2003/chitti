@@ -52,12 +52,18 @@
      4. ICONOGRAPHY
      ========================================= */
   /* Icon Sizes */
-  --size-icon-xs: theme("spacing.3"); /* 0.75rem */
-  --size-icon-sm: theme("spacing.4"); /* 1rem    */
-  --size-icon-md: theme("spacing.6"); /* 1.5rem  */
-  --size-icon-lg: theme("spacing.8"); /* 2rem    */
-  --size-icon-xl: theme("spacing.12"); /* 3rem    */
-  --size-icon-2xl: theme("spacing.16"); /* 4rem    */
+  --size-icon-xs: theme("spacing.3");
+  /* 0.75rem */
+  --size-icon-sm: theme("spacing.4");
+  /* 1rem    */
+  --size-icon-md: theme("spacing.6");
+  /* 1.5rem  */
+  --size-icon-lg: theme("spacing.8");
+  /* 2rem    */
+  --size-icon-xl: theme("spacing.12");
+  /* 3rem    */
+  --size-icon-2xl: theme("spacing.16");
+  /* 4rem    */
 
   /* =========================================
      5. DEPTH & LAYERING
@@ -113,9 +119,11 @@
 @utility z-sticky {
   z-index: theme("zIndex.20");
 }
+
 @utility z-overlay {
   z-index: theme("zIndex.40");
 }
+
 @utility z-modal {
   z-index: theme("zIndex.50");
 }
@@ -124,6 +132,7 @@
 @utility duration-normal {
   transition-duration: theme("transitionDuration.300");
 }
+
 @utility ease-smooth {
   transition-timing-function: theme("transitionTimingFunction.in-out");
 }
@@ -133,22 +142,27 @@
   width: var(--size-icon-xs);
   height: var(--size-icon-xs);
 }
+
 @utility icon-sm {
   width: var(--size-icon-sm);
   height: var(--size-icon-sm);
 }
+
 @utility icon-md {
   width: var(--size-icon-md);
   height: var(--size-icon-md);
 }
+
 @utility icon-lg {
   width: var(--size-icon-lg);
   height: var(--size-icon-lg);
 }
+
 @utility icon-xl {
   width: var(--size-icon-xl);
   height: var(--size-icon-xl);
 }
+
 @utility icon-2xl {
   width: var(--size-icon-2xl);
   height: var(--size-icon-2xl);
@@ -204,10 +218,12 @@
       font-size: 14px;
     }
   }
+
   body {
     @apply font-body bg-background-primary text-text-primary;
     @apply transition-colors duration-normal ease-smooth;
   }
+
   h1,
   h2,
   h3,
@@ -216,9 +232,29 @@
   h6 {
     @apply font-heading;
   }
+
   input::placeholder,
   textarea::placeholder {
     @apply text-black/35;
+  }
+
+  /* Override browser autofill styles */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus,
+  select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--color-background-secondary) inset !important;
+    -webkit-text-fill-color: var(--color-text-primary) !important;
+    caret-color: var(--color-text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }
 
@@ -226,6 +262,7 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

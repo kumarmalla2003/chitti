@@ -13,7 +13,18 @@ import AnimatedPage from "./components/ui/AnimatedPage";
 import MainLayout from "./components/layout/MainLayout";
 import { ProtectedRoute } from "./components/routing";
 
-// --- Lazy Imports ---
+// --- Page-Specific Skeleton Imports (Direct, not lazy) ---
+import {
+  ChitsPageSkeleton,
+  MembersPageSkeleton,
+  CollectionsPageSkeleton,
+  PayoutsPageSkeleton,
+  DashboardSkeleton,
+  DetailPageSkeleton,
+  HomePageSkeleton,
+} from "./components/skeletons";
+
+// --- Lazy Page Imports ---
 const HomePage = lazy(() => import("./features/home/pages/HomePage"));
 const DashboardPage = lazy(() => import("./features/dashboard/pages/DashboardPage"));
 
@@ -39,7 +50,7 @@ const App = () => {
   useEffect(() => {
     const handleUnauthorized = () => {
       dispatch(logout());
-      setIsModalOpen(true); // Optionally open login modal
+      setIsModalOpen(true);
     };
 
     window.addEventListener("auth:unauthorized", handleUnauthorized);
@@ -56,179 +67,227 @@ const App = () => {
       <ErrorBoundary>
         <ToastProvider>
           <LoginModal isOpen={isModalOpen} onClose={handleLoginModalClose} />
-          {/* Background blur managed by LoginModal's overlay usually, or keep if needed for whole app */}
           <div className={`transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none" : ""}`}>
-            <Suspense fallback={null}>
-              <AnimatePresence mode="wait">
-                <Routes location={location}>
-                  {/* Public Route */}
-                  <Route
-                    path="/"
-                    element={
-                      <AnimatedPage key="home">
+            <AnimatePresence mode="wait">
+              <Routes location={location}>
+                {/* Public Route */}
+                <Route
+                  path="/"
+                  element={
+                    <AnimatedPage key="home">
+                      <Suspense fallback={<HomePageSkeleton />}>
                         <HomePage onLoginClick={handleLoginModalOpen} />
-                      </AnimatedPage>
-                    }
-                  />
+                      </Suspense>
+                    </AnimatedPage>
+                  }
+                />
 
-                  {/* Authenticated Routes wrapped in ProtectedRoute and MainLayout */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<MainLayout />}>
-                      <Route
-                        path="/dashboard"
-                        element={
-                          <AnimatedPage key="dashboard">
+                {/* Authenticated Routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<MainLayout />}>
+                    {/* Dashboard */}
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <AnimatedPage key="dashboard">
+                          <Suspense fallback={<DashboardSkeleton />}>
                             <DashboardPage />
-                          </AnimatedPage>
-                        }
-                      />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
 
-                      {/* --- CHITS ROUTES --- */}
-                      <Route
-                        path="/chits"
-                        element={
-                          <AnimatedPage key="chits">
+                    {/* --- CHITS ROUTES --- */}
+                    <Route
+                      path="/chits"
+                      element={
+                        <AnimatedPage key="chits">
+                          <Suspense fallback={<ChitsPageSkeleton />}>
                             <ChitsPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/chits/create"
-                        element={
-                          <AnimatedPage key="chits-create">
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/chits/create"
+                      element={
+                        <AnimatedPage key="chits-create">
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <ChitDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/chits/view/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/chits/view/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <ChitDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/chits/edit/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/chits/edit/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <ChitDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
 
-                      {/* --- MEMBERS ROUTES --- */}
-                      <Route
-                        path="/members"
-                        element={
-                          <AnimatedPage key="members">
+                    {/* --- MEMBERS ROUTES --- */}
+                    <Route
+                      path="/members"
+                      element={
+                        <AnimatedPage key="members">
+                          <Suspense fallback={<MembersPageSkeleton />}>
                             <MembersPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/members/create"
-                        element={
-                          <AnimatedPage key="members-create">
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/members/create"
+                      element={
+                        <AnimatedPage key="members-create">
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <MemberDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/members/view/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/members/view/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <MemberDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/members/edit/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/members/edit/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <MemberDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
 
-                      {/* --- COLLECTIONS ROUTES --- */}
-                      <Route
-                        path="/collections"
-                        element={
-                          <AnimatedPage key="collections">
+                    {/* --- COLLECTIONS ROUTES --- */}
+                    <Route
+                      path="/collections"
+                      element={
+                        <AnimatedPage key="collections">
+                          <Suspense fallback={<CollectionsPageSkeleton />}>
                             <CollectionsPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/collections/create"
-                        element={
-                          <AnimatedPage key="collections-create">
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/collections/create"
+                      element={
+                        <AnimatedPage key="collections-create">
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <CollectionDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/collections/view/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/collections/view/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <CollectionDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/collections/edit/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/collections/edit/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <CollectionDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
 
-                      {/* --- PAYOUTS ROUTES --- */}
-                      <Route
-                        path="/payouts"
-                        element={
-                          <AnimatedPage key="payouts">
+                    {/* --- PAYOUTS ROUTES --- */}
+                    <Route
+                      path="/payouts"
+                      element={
+                        <AnimatedPage key="payouts">
+                          <Suspense fallback={<PayoutsPageSkeleton />}>
                             <PayoutsPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/payouts/create"
-                        element={
-                          <AnimatedPage key="payouts-create">
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/payouts/create"
+                      element={
+                        <AnimatedPage key="payouts-create">
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <PayoutDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/payouts/view/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/payouts/view/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <PayoutDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
-                      <Route
-                        path="/payouts/edit/:id"
-                        element={
-                          <AnimatedPage key={location.pathname}>
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/payouts/edit/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
                             <PayoutDetailPage />
-                          </AnimatedPage>
-                        }
-                      />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
 
-                      {/* 404 Catch-all for authenticated users */}
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Route>
+                    {/* 404 Catch-all for authenticated users */}
+                    <Route
+                      path="*"
+                      element={
+                        <Suspense fallback={null}>
+                          <NotFoundPage />
+                        </Suspense>
+                      }
+                    />
                   </Route>
+                </Route>
 
-                  {/* Global 404 Catch-all for unauthenticated users */}
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </AnimatePresence>
-            </Suspense>
+                {/* Global 404 Catch-all for unauthenticated users */}
+                <Route
+                  path="*"
+                  element={
+                    <Suspense fallback={null}>
+                      <NotFoundPage />
+                    </Suspense>
+                  }
+                />
+              </Routes>
+            </AnimatePresence>
           </div>
         </ToastProvider>
       </ErrorBoundary>
