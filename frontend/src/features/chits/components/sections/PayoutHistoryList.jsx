@@ -171,9 +171,9 @@ const PayoutHistoryList = ({
   if (loading) {
     return (
       <Card className="flex-1 flex flex-col">
-          <div className="p-4">
-             <Skeleton.Table rows={5} columns={5} />
-          </div>
+        <div className="p-4">
+          <Skeleton.Table rows={5} columns={5} />
+        </div>
       </Card>
     );
   }

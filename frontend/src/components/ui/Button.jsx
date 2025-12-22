@@ -26,7 +26,7 @@ const Button = ({
     <button
       type={type}
       onClick={onClick}
-      className={`${baseStyles} ${variants[variant]} ${className}`}
+      className={`${baseStyles} ${variants[variant]} ${className} cursor-pointer`}
       disabled={disabled}
       {...props}
     >

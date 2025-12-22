@@ -92,6 +92,7 @@
   --color-background-tertiary: theme(colors.gray.300);
   --color-text-primary: theme(colors.gray.900);
   --color-text-secondary: theme(colors.gray.700);
+  --color-accent-bg: theme(colors.blue.100);
   --color-accent: theme(colors.blue.500);
   --color-accent-hover: theme(colors.blue.600);
   --color-border: theme(colors.gray.400);
@@ -177,6 +178,7 @@
   --color-background-tertiary: theme(colors.gray.700);
   --color-text-primary: theme(colors.gray.100);
   --color-text-secondary: theme(colors.gray.300);
+  --color-accent-bg: theme(colors.blue.200);
   --color-accent: theme(colors.blue.600);
   --color-accent-hover: theme(colors.blue.500);
   --color-border: theme(colors.gray.600);
@@ -231,6 +233,12 @@
   h5,
   h6 {
     @apply font-heading;
+  }
+
+  /* Global cursor-pointer for all buttons */
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 
   input::placeholder,

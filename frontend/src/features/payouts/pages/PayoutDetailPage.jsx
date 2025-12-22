@@ -68,7 +68,7 @@ const PayoutDetailPage = () => {
     if (location.key !== "default") {
       navigate(-1);
     } else {
-      navigate("/payouts");
+      navigate("/ledger?tab=payouts");
     }
   }, [location.key, navigate]);
 

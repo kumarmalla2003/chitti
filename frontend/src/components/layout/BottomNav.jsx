@@ -8,9 +8,11 @@ import {
   LayoutDashboard,
   Users,
   Layers,
-  WalletMinimal,
-  TrendingUp,
+  BookOpen,
 } from "lucide-react";
+
+// ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
+const DEV_MODE = true;
 
 const BottomNav = ({ onLoginClick }) => {
   const location = useLocation();
@@ -20,20 +22,24 @@ const BottomNav = ({ onLoginClick }) => {
   const isMembersActive =
     location.pathname.startsWith("/members") ||
     location.pathname.startsWith("/assignments");
-  const isCollectionsActive = location.pathname.startsWith("/collections");
-  const isPayoutsActive = location.pathname.startsWith("/payouts");
+  const isLedgerActive =
+    location.pathname.startsWith("/ledger") ||
+    location.pathname.startsWith("/collections") ||
+    location.pathname.startsWith("/payouts");
   const isDashboardActive =
     location.pathname === "/dashboard" &&
     !isChitsActive &&
     !isMembersActive &&
-    !isCollectionsActive &&
-    !isPayoutsActive;
+    !isLedgerActive;
+
+  // Show nav if logged in OR in dev mode
+  const showNav = isLoggedIn || DEV_MODE;
 
   return (
     <footer className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-background-secondary/80 backdrop-blur-lg border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
       <div className="w-full h-16 px-2">
-        {isLoggedIn ? (
-          <nav className="grid h-full w-full grid-cols-5 items-center justify-items-center">
+        {showNav ? (
+          <nav className="grid h-full w-full grid-cols-4 items-center justify-items-center">
             {/* 1. CHITS */}
             <NavigationLink
               to="/chits"
@@ -41,37 +47,33 @@ const BottomNav = ({ onLoginClick }) => {
               aria-label="Chits"
             >
               <div
-                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
-                  isChitsActive
-                    ? "bg-accent/15 text-accent shadow-sm"
-                    : "text-text-secondary hover:bg-background-tertiary/50"
-                }`}
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${isChitsActive
+                  ? "bg-accent/15 text-accent shadow-sm"
+                  : "text-text-secondary hover:bg-background-tertiary/50"
+                  }`}
               >
                 <Layers
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isChitsActive ? "scale-105" : ""
-                  }`}
+                  className={`w-6 h-6 transition-transform duration-300 ${isChitsActive ? "scale-105" : ""
+                    }`}
                 />
               </div>
             </NavigationLink>
 
-            {/* 2. PAYOUTS */}
+            {/* 2. LEDGER (Unified Collections + Payouts) */}
             <NavigationLink
-              to="/payouts"
+              to="/ledger"
               className="flex items-center justify-center w-full h-full"
-              aria-label="Payouts"
+              aria-label="Ledger"
             >
               <div
-                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
-                  isPayoutsActive
-                    ? "bg-accent/15 text-accent shadow-sm"
-                    : "text-text-secondary hover:bg-background-tertiary/50"
-                }`}
-              >
-                <TrendingUp
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isPayoutsActive ? "scale-105" : ""
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${isLedgerActive
+                  ? "bg-accent/15 text-accent shadow-sm"
+                  : "text-text-secondary hover:bg-background-tertiary/50"
                   }`}
+              >
+                <BookOpen
+                  className={`w-6 h-6 transition-transform duration-300 ${isLedgerActive ? "scale-105" : ""
+                    }`}
                 />
               </div>
             </NavigationLink>
@@ -83,16 +85,14 @@ const BottomNav = ({ onLoginClick }) => {
               aria-label="Dashboard"
             >
               <div
-                className={`flex items-center justify-center p-2.5 rounded-2xl transition-all duration-300 ${
-                  isDashboardActive
-                    ? "bg-accent text-white shadow-md shadow-accent/25"
-                    : "text-text-secondary hover:bg-background-tertiary/50"
-                }`}
+                className={`flex items-center justify-center p-2.5 rounded-2xl transition-all duration-300 ${isDashboardActive
+                  ? "bg-accent text-white shadow-md shadow-accent/25"
+                  : "text-text-secondary hover:bg-background-tertiary/50"
+                  }`}
               >
                 <LayoutDashboard
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isDashboardActive ? "scale-105" : ""
-                  }`}
+                  className={`w-6 h-6 transition-transform duration-300 ${isDashboardActive ? "scale-105" : ""
+                    }`}
                 />
               </div>
             </NavigationLink>
@@ -104,37 +104,14 @@ const BottomNav = ({ onLoginClick }) => {
               aria-label="Members"
             >
               <div
-                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
-                  isMembersActive
-                    ? "bg-accent/15 text-accent shadow-sm"
-                    : "text-text-secondary hover:bg-background-tertiary/50"
-                }`}
+                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${isMembersActive
+                  ? "bg-accent/15 text-accent shadow-sm"
+                  : "text-text-secondary hover:bg-background-tertiary/50"
+                  }`}
               >
                 <Users
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isMembersActive ? "scale-105" : ""
-                  }`}
-                />
-              </div>
-            </NavigationLink>
-
-            {/* 5. COLLECTIONS */}
-            <NavigationLink
-              to="/collections"
-              className="flex items-center justify-center w-full h-full"
-              aria-label="Collections"
-            >
-              <div
-                className={`flex items-center justify-center p-2 rounded-2xl transition-all duration-300 ${
-                  isCollectionsActive
-                    ? "bg-accent/15 text-accent shadow-sm"
-                    : "text-text-secondary hover:bg-background-tertiary/50"
-                }`}
-              >
-                <WalletMinimal
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isCollectionsActive ? "scale-105" : ""
-                  }`}
+                  className={`w-6 h-6 transition-transform duration-300 ${isMembersActive ? "scale-105" : ""
+                    }`}
                 />
               </div>
             </NavigationLink>
@@ -152,3 +129,4 @@ const BottomNav = ({ onLoginClick }) => {
 };
 
 export default BottomNav;
+

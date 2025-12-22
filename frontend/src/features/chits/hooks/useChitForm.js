@@ -139,12 +139,9 @@ export const useChitForm = (id, mode) => {
 
   // --- Memoized TABS ---
   const TABS = useMemo(() => {
-    const base = ["details", "payouts", "members", "collections"];
-    if (watchedChitType === "auction") {
-      return ["details", "auctions", ...base.slice(1)];
-    }
-    return base;
-  }, [watchedChitType]);
+    // New simplified 3-tab structure
+    return ["details", "assignments", "transactions"];
+  }, []);
 
   // --- Auto-Calculation Effects ---
 

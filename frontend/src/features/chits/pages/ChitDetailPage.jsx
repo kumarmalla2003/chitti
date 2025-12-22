@@ -16,16 +16,13 @@ import { useChitReport } from "../hooks/useChitReport";
 import Message from "../../../components/ui/Message";
 
 import Card from "../../../components/ui/Card";
-import TabButton from "../../../components/ui/TabButton";
 import Skeleton from "../../../components/ui/Skeleton";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
-import PayoutsSection from "../components/sections/PayoutsSection";
-import ChitMembersManager from "../components/sections/ChitMembersManager";
 import ChitMobileContent from "../components/sections/ChitMobileContent";
-import AuctionsSection from "../components/sections/AuctionsSection";
+import AssignmentsSection from "../components/sections/AssignmentsSection";
+import TransactionsSection from "../components/sections/TransactionsSection";
 import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
-import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
 import { capitalizeFirstLetter } from "../utils/normalizeChit";
 import { Info, Loader2, ArrowLeft, SquarePen, Printer } from "lucide-react";
 
@@ -78,27 +75,7 @@ const DetailsSectionComponent = ({
   </Card>
 );
 
-const PayoutsSectionComponent = ({ mode, chitId }) => (
-  <Card className="flex-1 flex flex-col">
-    <PayoutsSection mode={mode} chitId={chitId} />
-  </Card>
-);
 
-const AuctionsSectionComponent = ({ mode, chitId }) => (
-  <Card className="flex-1 flex flex-col">
-    <AuctionsSection mode={mode} chitId={chitId} />
-  </Card>
-);
-
-const MembersSectionComponent = ({ mode, chitId, onLogCollectionClick }) => (
-  <Card className="flex-1 flex flex-col">
-    <ChitMembersManager
-      mode={mode}
-      chitId={chitId}
-      onLogCollectionClick={onLogCollectionClick}
-    />
-  </Card>
-);
 
 /**
  * ChitDetailPage component - handles create, edit, and view modes for chit details.
@@ -520,34 +497,24 @@ const ChitDetailPage = () => {
                   isPostCreation={isPostCreation}
                 />
 
-                {/* Only show these sections after chit exists */}
+                {/* Assignments Section (Members, Payouts, Auctions, Collections) */}
                 {effectiveChitId && (
                   <>
-                    {/* Auctions Section (if auction type) */}
-                    {watchedChitType === "auction" && (
-                      <AuctionsSectionComponent
+                    <Card className="flex-1 flex flex-col">
+                      <AssignmentsSection
+                        mode={mode}
+                        chitId={effectiveChitId}
+                        onLogCollectionClick={handleLogCollectionClick}
+                      />
+                    </Card>
+
+                    {/* Transactions Section */}
+                    <Card className="flex-1 flex flex-col">
+                      <TransactionsSection
                         mode={mode}
                         chitId={effectiveChitId}
                       />
-                    )}
-
-                    {/* Payouts Section */}
-                    <PayoutsSectionComponent mode={mode} chitId={effectiveChitId} />
-
-                    {/* Members Section */}
-                    <MembersSectionComponent
-                      mode={mode}
-                      chitId={effectiveChitId}
-                      onLogCollectionClick={handleLogCollectionClick}
-                    />
-
-                    {/* Collections Section */}
-                    <CollectionHistoryList
-                      chitId={effectiveChitId}
-                      mode={mode}
-                      collectionDefaults={collectionDefaults}
-                      setCollectionDefaults={setCollectionDefaults}
-                    />
+                    </Card>
                   </>
                 )}
               </div>

@@ -384,7 +384,7 @@ const CollectionHistoryList = ({
     return (
       <Card className="flex-1 flex flex-col">
         <div className="p-4">
-           <Skeleton.Table rows={5} columns={6} />
+          <Skeleton.Table rows={5} columns={6} />
         </div>
       </Card>
     );

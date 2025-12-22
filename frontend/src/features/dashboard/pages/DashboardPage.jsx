@@ -108,16 +108,16 @@ const DashboardPage = () => {
         // Calculate current cycle from chit start date
         const startDate = new Date(c.start_date);
         const today = new Date();
-        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                          (today.getMonth() - startDate.getMonth()) + 1;
+        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 +
+          (today.getMonth() - startDate.getMonth()) + 1;
         const currentCycle = Math.max(1, Math.min(monthsDiff, c.duration_months || 1));
         const totalCycle = c.duration_months || 1;
-        
+
         // Formula: (total - current + 1) × before + (current - 1) × after
         const membersBefore = totalCycle - currentCycle + 1;
         const membersAfter = currentCycle - 1;
-        chitTotal = membersBefore * (c.installment_before_payout || 0) + 
-                   membersAfter * (c.installment_after_payout || 0);
+        chitTotal = membersBefore * (c.installment_before_payout || 0) +
+          membersAfter * (c.installment_after_payout || 0);
       }
       // Auction chits: not included in fixed target (amount varies)
       return sum + chitTotal;
@@ -127,17 +127,17 @@ const DashboardPage = () => {
     const payoutMetrics = payouts.reduce(
       (metrics, p) => {
         if (!p.chit || !p.chit.start_date) return metrics;
-        
+
         const chitStartDate = new Date(p.chit.start_date);
         const scheduledDate = new Date(chitStartDate);
         scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
-        
+
         const isThisMonth =
           scheduledDate.getMonth() === currentMonth &&
           scheduledDate.getFullYear() === currentYear;
-        
+
         if (!isThisMonth) return metrics;
-        
+
         return {
           paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
           targetAmount: metrics.targetAmount + (p.planned_amount || 0),
@@ -411,21 +411,21 @@ const DashboardPage = () => {
     return (
       <div className="w-full space-y-8">
         <div className="relative flex justify-center items-center mb-4">
-           <Skeleton.Text width="w-48" height="h-8" />
+          <Skeleton.Text width="w-48" height="h-8" />
         </div>
         <hr className="border-border" />
         {/* Metrics Grid Skeleton */}
         <StatsCarousel isLoading className="mb-8" />
         {/* Main Grid Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 flex flex-col gap-8">
-                <Skeleton.Card className="h-96" />
-                <Skeleton.Card className="h-64" />
-            </div>
-            <div className="space-y-8">
-                <Skeleton.Card className="h-64" />
-                <Skeleton.Card className="h-64" />
-            </div>
+          <div className="lg:col-span-2 flex flex-col gap-8">
+            <Skeleton.Card className="h-96" />
+            <Skeleton.Card className="h-64" />
+          </div>
+          <div className="space-y-8">
+            <Skeleton.Card className="h-64" />
+            <Skeleton.Card className="h-64" />
+          </div>
         </div>
       </div>
     );
@@ -451,44 +451,44 @@ const DashboardPage = () => {
         {/* --- 2. Key Metrics Grid (4 Columns) --- */}
         <StatsCarousel className="mb-8">
           <StatsCard
-              icon={WalletMinimal}
-              label="Monthly Collection"
-              value={<FormattedCurrency amount={stats?.collectedThisMonth} />}
-              subtext={
-                <span className="inline-flex items-center gap-1">
-                  Target: <FormattedCurrency amount={stats?.monthlyTarget} showIcon={true} />
-                </span>
-              }
-              onClick={() => navigate("/collections")}
-              color="accent"
+            icon={WalletMinimal}
+            label="Monthly Collection"
+            value={<FormattedCurrency amount={stats?.collectedThisMonth} />}
+            subtext={
+              <span className="inline-flex items-center gap-1">
+                Target: <FormattedCurrency amount={stats?.monthlyTarget} showIcon={true} />
+              </span>
+            }
+            onClick={() => navigate("/ledger?tab=collections")}
+            color="accent"
           />
           <StatsCard
-              icon={TrendingUp}
-              label="Monthly Payouts"
-              value={<FormattedCurrency amount={stats?.paidThisMonth} />}
-              subtext={
-                <span className="inline-flex items-center gap-1">
-                  Target: <FormattedCurrency amount={stats?.monthlyPayoutTarget} showIcon={true} />
-                </span>
-              }
-              onClick={() => navigate("/chits")}
-              color="accent" // Differentiate payouts
+            icon={TrendingUp}
+            label="Monthly Payouts"
+            value={<FormattedCurrency amount={stats?.paidThisMonth} />}
+            subtext={
+              <span className="inline-flex items-center gap-1">
+                Target: <FormattedCurrency amount={stats?.monthlyPayoutTarget} showIcon={true} />
+              </span>
+            }
+            onClick={() => navigate("/chits")}
+            color="accent" // Differentiate payouts
           />
           <StatsCard
-              icon={Layers}
-              label="Active Chits"
-              value={stats?.activeChits || 0}
-              subtext={`Total Chits: ${stats?.totalChits || 0}`}
-              onClick={() => navigate("/chits")}
-              color="accent"
+            icon={Layers}
+            label="Active Chits"
+            value={stats?.activeChits || 0}
+            subtext={`Total Chits: ${stats?.totalChits || 0}`}
+            onClick={() => navigate("/chits")}
+            color="accent"
           />
           <StatsCard
-              icon={Users}
-              label="Active Members"
-              value={stats?.activeMembers || 0}
-              subtext={`Total Members: ${stats?.totalMembers || 0}`}
-              onClick={() => navigate("/members")}
-              color="accent"
+            icon={Users}
+            label="Active Members"
+            value={stats?.activeMembers || 0}
+            subtext={`Total Members: ${stats?.totalMembers || 0}`}
+            onClick={() => navigate("/members")}
+            color="accent"
           />
         </StatsCarousel>
 
@@ -591,7 +591,7 @@ const DashboardPage = () => {
                   Recent Activity
                 </h2>
                 <button
-                  onClick={() => navigate("/collections")}
+                  onClick={() => navigate("/ledger?tab=collections")}
                   className="absolute right-0 text-sm text-accent hover:underline font-semibold"
                 >
                   View All

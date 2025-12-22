@@ -19,6 +19,10 @@ const Header = ({
   const location = useLocation();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
+  // ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
+  const DEV_MODE = true;
+  const showLoggedInUI = isLoggedIn || DEV_MODE;
+
   const [underlineStyle, setUnderlineStyle] = useState({});
   const [hoveredLink, setHoveredLink] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -34,8 +38,7 @@ const Header = ({
     dashboard: useRef(null),
     chits: useRef(null),
     members: useRef(null),
-    collections: useRef(null),
-    payouts: useRef(null),
+    ledger: useRef(null),
   };
 
   const loggedOutNavLinks = [
@@ -46,22 +49,22 @@ const Header = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
-  // UPDATED: Reordered links
+  // UPDATED: Using unified Ledger page
   const loggedInNavLinks = [
     { href: "/chits", text: "Chits", id: "chits" },
-    { href: "/payouts", text: "Payouts", id: "payouts" },
+    { href: "/ledger", text: "Ledger", id: "ledger" },
     { href: "/dashboard", text: "Dashboard", id: "dashboard" },
     { href: "/members", text: "Members", id: "members" },
-    { href: "/collections", text: "Collections", id: "collections" },
   ];
 
   const getActiveId = () => {
-    if (!isLoggedIn) return activeSection;
+    if (!showLoggedInUI) return activeSection;
     if (location.pathname.startsWith("/chits")) return "chits";
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
-    if (location.pathname.startsWith("/collections")) return "collections";
-    if (location.pathname.startsWith("/payouts")) return "payouts";
+    if (location.pathname.startsWith("/ledger")) return "ledger";
+    if (location.pathname.startsWith("/collections")) return "ledger";
+    if (location.pathname.startsWith("/payouts")) return "ledger";
     if (location.pathname === "/dashboard") return "dashboard";
     return "home";
   };
@@ -96,23 +99,25 @@ const Header = ({
         location.pathname.startsWith("/members") ||
         location.pathname.startsWith("/assignments")
       );
-    if (path === "/collections")
-      return location.pathname.startsWith("/collections");
-    if (path === "/payouts") return location.pathname.startsWith("/payouts");
+    if (path === "/ledger")
+      return (
+        location.pathname.startsWith("/ledger") ||
+        location.pathname.startsWith("/collections") ||
+        location.pathname.startsWith("/payouts")
+      );
     return location.pathname.startsWith(path);
   };
 
   const NavLinks = () => {
-    if (isLoggedIn) {
+    if (showLoggedInUI) {
       return loggedInNavLinks.map((link) => (
         <NavigationLink
           key={link.id}
           ref={linkRefs[link.id]}
           to={link.href}
           onMouseEnter={() => setHoveredLink(link.id)}
-          className={`relative z-40 transition-colors duration-normal ease-smooth ${
-            isLinkActive(link.href) ? "text-accent" : "text-text-secondary"
-          }`}
+          className={`relative z-40 transition-colors duration-normal ease-smooth ${isLinkActive(link.href) ? "text-accent" : "text-text-secondary"
+            }`}
         >
           {link.text}
         </NavigationLink>
@@ -125,9 +130,8 @@ const Header = ({
         href={link.href}
         onClick={(e) => handleLinkClick(e, link.id)}
         onMouseEnter={() => setHoveredLink(link.id)}
-        className={`transition-colors duration-normal ease-smooth ${
-          activeSection === link.id ? "text-accent" : "text-text-secondary"
-        }`}
+        className={`transition-colors duration-normal ease-smooth ${activeSection === link.id ? "text-accent" : "text-text-secondary"
+          }`}
       >
         {link.text}
       </a>
@@ -207,38 +211,36 @@ const Header = ({
           onMouseLeave={() => setHoveredLink(null)}
           className="hidden md:flex items-center md:space-x-4 lg:space-x-8 relative z-30"
         >
-          {isLoggedIn
+          {showLoggedInUI
             ? loggedInNavLinks.map((link) => (
-                <NavigationLink
-                  key={link.id}
-                  ref={linkRefs[link.id]}
-                  to={link.href}
-                  onMouseEnter={() => setHoveredLink(link.id)}
-                  className={`relative z-40 transition-colors duration-normal ease-smooth ${
-                    isLinkActive(link.href)
-                      ? "text-accent"
-                      : "text-text-secondary"
+              <NavigationLink
+                key={link.id}
+                ref={linkRefs[link.id]}
+                to={link.href}
+                onMouseEnter={() => setHoveredLink(link.id)}
+                className={`relative z-40 transition-colors duration-normal ease-smooth ${isLinkActive(link.href)
+                  ? "text-accent"
+                  : "text-text-secondary"
                   }`}
-                >
-                  {link.text}
-                </NavigationLink>
-              ))
+              >
+                {link.text}
+              </NavigationLink>
+            ))
             : loggedOutNavLinks.map((link) => (
-                <a
-                  key={link.id}
-                  ref={linkRefs[link.id]}
-                  href={link.href}
-                  onClick={(e) => handleLinkClick(e, link.id)}
-                  onMouseEnter={() => setHoveredLink(link.id)}
-                  className={`relative z-40 transition-colors duration-normal ease-smooth ${
-                    activeSection === link.id
-                      ? "text-accent"
-                      : "text-text-secondary"
+              <a
+                key={link.id}
+                ref={linkRefs[link.id]}
+                href={link.href}
+                onClick={(e) => handleLinkClick(e, link.id)}
+                onMouseEnter={() => setHoveredLink(link.id)}
+                className={`relative z-40 transition-colors duration-normal ease-smooth ${activeSection === link.id
+                  ? "text-accent"
+                  : "text-text-secondary"
                   }`}
-                >
-                  {link.text}
-                </a>
-              ))}
+              >
+                {link.text}
+              </a>
+            ))}
           <span
             className="absolute bottom-[-5px] h-0.5 bg-accent transition-all duration-normal ease-smooth pointer-events-none"
             style={underlineStyle}
@@ -250,7 +252,7 @@ const Header = ({
           <div className="hidden md:block">
             <ThemeToggle />
           </div>
-          {isLoggedIn ? (
+          {showLoggedInUI ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen((prev) => !prev)}

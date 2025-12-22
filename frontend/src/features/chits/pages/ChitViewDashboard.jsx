@@ -4,7 +4,6 @@ import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Info,
-  Users,
   Clock,
   Calendar,
   ArrowDownLeft,
@@ -12,11 +11,11 @@ import {
   PieChart,
   SquarePen,
   IndianRupee,
+  Users,
 } from "lucide-react";
 import Card from "../../../components/ui/Card";
-import PayoutsSection from "../components/sections/PayoutsSection";
-import ChitMembersManager from "../components/sections/ChitMembersManager";
-import CollectionHistoryList from "../../members/components/sections/CollectionHistoryList";
+import AssignmentsSection from "../components/sections/AssignmentsSection";
+import TransactionsSection from "../components/sections/TransactionsSection";
 
 const formatCurrency = (val) => {
   if (!val) return "0";
@@ -77,17 +76,10 @@ const ChitViewDashboard = ({
   collectionDefaults,
   setCollectionDefaults,
 }) => {
-  const collectionsRef = useRef(null);
   const navigate = useNavigate();
 
   const handleLogCollection = (assignment) => {
     onLogCollectionClick(assignment);
-    if (collectionsRef.current) {
-      collectionsRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
   };
 
   const handleEditDetails = () => {
@@ -197,17 +189,10 @@ const ChitViewDashboard = ({
         </Card>
       </div>
 
-      {/* Payouts Section */}
+      {/* Assignments Section (Month-centric view with Members, Payouts, Auctions, Collections) */}
       <div className="grid grid-cols-1">
         <Card>
-          <PayoutsSection chitId={chitId} mode="view" showTitle={true} />
-        </Card>
-      </div>
-
-      {/* Members Section */}
-      <div className="grid grid-cols-1">
-        <Card>
-          <ChitMembersManager
+          <AssignmentsSection
             chitId={chitId}
             mode="view"
             onLogCollectionClick={handleLogCollection}
@@ -215,14 +200,14 @@ const ChitViewDashboard = ({
         </Card>
       </div>
 
-      {/* Collections Section */}
-      <div ref={collectionsRef} className="grid grid-cols-1">
-        <CollectionHistoryList
-          chitId={chitId}
-          mode="view"
-          collectionDefaults={collectionDefaults}
-          setCollectionDefaults={setCollectionDefaults}
-        />
+      {/* Transactions Section */}
+      <div className="grid grid-cols-1">
+        <Card>
+          <TransactionsSection
+            chitId={chitId}
+            mode="view"
+          />
+        </Card>
       </div>
     </div>
   );

@@ -84,7 +84,7 @@ const CollectionDetailPage = () => {
     if (location.key !== "default") {
       navigate(-1);
     } else {
-      navigate("/collections");
+      navigate("/ledger?tab=collections");
     }
   }, [location.key, navigate]);
 

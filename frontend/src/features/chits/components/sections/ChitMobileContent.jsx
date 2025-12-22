@@ -2,18 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Info, TrendingUp, Users, WalletMinimal, Gavel } from "lucide-react";
+import { Info, ClipboardList, Receipt } from "lucide-react";
 import Card from "../../../../components/ui/Card";
 import TabButton from "../../../../components/ui/TabButton";
 import StepperButtons from "../../../../components/ui/StepperButtons";
 import ChitDetailsForm from "../forms/ChitDetailsForm";
-import PayoutsSection from "./PayoutsSection";
-import AuctionsSection from "./AuctionsSection";
-import ChitMembersManager from "./ChitMembersManager";
-import CollectionHistoryList from "../../../members/components/sections/CollectionHistoryList";
+import AssignmentsSection from "./AssignmentsSection";
+import TransactionsSection from "./TransactionsSection";
 
 /**
  * ChitMobileContent component - renders the mobile tab navigation and content for chit detail page.
+ * New 3-tab structure: Details, Assignments, Transactions
  *
  * @param {object} props - Component props
  */
@@ -76,37 +75,19 @@ const ChitMobileContent = ({
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
-                    {TABS.includes("auctions") && (
-                        <TabButton
-                            ref={(el) => (tabRefs.current["auctions"] = el)}
-                            name="auctions"
-                            icon={Gavel}
-                            label="Auctions"
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                        />
-                    )}
                     <TabButton
-                        ref={(el) => (tabRefs.current["payouts"] = el)}
-                        name="payouts"
-                        icon={TrendingUp}
-                        label="Payouts"
+                        ref={(el) => (tabRefs.current["assignments"] = el)}
+                        name="assignments"
+                        icon={ClipboardList}
+                        label="Assignments"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
                     <TabButton
-                        ref={(el) => (tabRefs.current["members"] = el)}
-                        name="members"
-                        icon={Users}
-                        label="Members"
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                    />
-                    <TabButton
-                        ref={(el) => (tabRefs.current["collections"] = el)}
-                        name="collections"
-                        icon={WalletMinimal}
-                        label="Collections"
+                        ref={(el) => (tabRefs.current["transactions"] = el)}
+                        name="transactions"
+                        icon={Receipt}
+                        label="Transactions"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
@@ -157,52 +138,10 @@ const ChitMobileContent = ({
                 </form>
             )}
 
-            {activeTab === "auctions" && (
+            {activeTab === "assignments" && (
                 <>
                     <Card className="flex-1 flex flex-col">
-                        <AuctionsSection mode={mode} chitId={chitId} />
-                    </Card>
-                    {mode !== "view" && (
-                        <StepperButtons
-                            currentStep={activeTabIndex}
-                            totalSteps={TABS.length}
-                            onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-                            onNext={handleNext}
-                            onMiddle={handleMiddle}
-                            isNextDisabled={false}
-                            loading={loading}
-                            mode={mode}
-                            isPostCreation={isPostCreation}
-                        />
-                    )}
-                </>
-            )}
-
-            {activeTab === "payouts" && (
-                <>
-                    <Card className="flex-1 flex flex-col">
-                        <PayoutsSection mode={mode} chitId={chitId} />
-                    </Card>
-                    {mode !== "view" && (
-                        <StepperButtons
-                            currentStep={activeTabIndex}
-                            totalSteps={TABS.length}
-                            onPrev={() => setActiveTab(TABS[activeTabIndex - 1])}
-                            onNext={handleNext}
-                            onMiddle={handleMiddle}
-                            isNextDisabled={false}
-                            loading={loading}
-                            mode={mode}
-                            isPostCreation={isPostCreation}
-                        />
-                    )}
-                </>
-            )}
-
-            {activeTab === "members" && (
-                <>
-                    <Card className="flex-1 flex flex-col">
-                        <ChitMembersManager
+                        <AssignmentsSection
                             mode={mode}
                             chitId={chitId}
                             onLogCollectionClick={onLogCollectionClick}
@@ -224,14 +163,14 @@ const ChitMobileContent = ({
                 </>
             )}
 
-            {activeTab === "collections" && (
+            {activeTab === "transactions" && (
                 <>
-                    <CollectionHistoryList
-                        chitId={chitId}
-                        mode={mode}
-                        collectionDefaults={collectionDefaults}
-                        setCollectionDefaults={setCollectionDefaults}
-                    />
+                    <Card className="flex-1 flex flex-col">
+                        <TransactionsSection
+                            mode={mode}
+                            chitId={chitId}
+                        />
+                    </Card>
                     {mode !== "view" && (
                         <StepperButtons
                             currentStep={activeTabIndex}

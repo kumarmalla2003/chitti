@@ -19,6 +19,10 @@ const MobileNav = ({
   const dispatch = useDispatch();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
+  // ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
+  const DEV_MODE = true;
+  const showLoggedInUI = isLoggedIn || DEV_MODE;
+
   const handleLinkClick = (e, sectionId) => {
     if (onNavLinkClick) {
       onNavLinkClick(sectionId);
@@ -49,11 +53,12 @@ const MobileNav = ({
         location.pathname.startsWith("/assignments")
       );
     }
-    if (path === "/collections") {
-      return location.pathname.startsWith("/collections");
-    }
-    if (path === "/payouts") {
-      return location.pathname.startsWith("/payouts");
+    if (path === "/ledger") {
+      return (
+        location.pathname.startsWith("/ledger") ||
+        location.pathname.startsWith("/collections") ||
+        location.pathname.startsWith("/payouts")
+      );
     }
     return location.pathname.startsWith(path);
   };
@@ -66,13 +71,12 @@ const MobileNav = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
-  // UPDATED: Reordered links
+  // UPDATED: Using unified Ledger page
   const loggedInNavLinks = [
     { href: "/chits", text: "Chits" },
-    { href: "/payouts", text: "Payouts" },
+    { href: "/ledger", text: "Ledger" },
     { href: "/dashboard", text: "Dashboard" },
     { href: "/members", text: "Members" },
-    { href: "/collections", text: "Collections" },
   ];
 
   const BrandLogo = () => {
@@ -118,7 +122,7 @@ const MobileNav = ({
               <ArrowLeft className="w-6 h-6" />
             </button>
             <BrandLogo />
-            {isLoggedIn ? (
+            {showLoggedInUI ? (
               <button
                 onClick={handleLogoutClick}
                 className="absolute right-0 p-1 text-error-accent"
@@ -140,15 +144,15 @@ const MobileNav = ({
 
           {/* Navigation Links */}
           <nav className="flex flex-col space-y-2 mt-6">
-            {isLoggedIn
+            {showLoggedInUI
               ? loggedInNavLinks.map((link, index) => (
                 <NavigationLink
                   key={link.href}
                   to={link.href}
                   onClick={onClose}
                   className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${isLinkActive(link.href)
-                      ? "text-accent font-semibold underline underline-offset-4"
-                      : "text-text-primary"
+                    ? "text-accent font-semibold underline underline-offset-4"
+                    : "text-text-primary"
                     }`}
                   style={{
                     transitionDelay: `${75 + index * 25}ms`,
@@ -165,8 +169,8 @@ const MobileNav = ({
                   href={link.href}
                   onClick={(e) => handleLinkClick(e, link.id)}
                   className={`px-4 py-3 rounded-md transition-[background-color,transform,opacity] duration-200 text-lg hover:bg-background-tertiary ${activeSection === link.id
-                      ? "text-accent font-semibold underline underline-offset-4"
-                      : "text-text-primary"
+                    ? "text-accent font-semibold underline underline-offset-4"
+                    : "text-text-primary"
                     }`}
                   style={{
                     transitionDelay: `${75 + index * 25}ms`,
@@ -190,7 +194,7 @@ const MobileNav = ({
 
           {/* Session Actions (Login/Logout) */}
           <div className="mt-auto">
-            {isLoggedIn ? (
+            {showLoggedInUI ? (
               <>
                 <hr className="mb-6 border-border" />
                 <Button

@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "./features/auth/authSlice";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -39,6 +39,9 @@ const CollectionDetailPage = lazy(() => import("./features/collections/pages/Col
 
 const PayoutsPage = lazy(() => import("./features/payouts/pages/PayoutsPage"));
 const PayoutDetailPage = lazy(() => import("./features/payouts/pages/PayoutDetailPage"));
+
+const LedgerPage = lazy(() => import("./features/ledger/pages/LedgerPage"));
+const LedgerPageSkeleton = lazy(() => import("./features/ledger/pages/LedgerPageSkeleton"));
 
 const NotFoundPage = lazy(() => import("./features/errors/pages/NotFoundPage"));
 
@@ -182,15 +185,10 @@ const App = () => {
                     />
 
                     {/* --- COLLECTIONS ROUTES --- */}
+                    {/* Redirect old /collections to new Ledger page */}
                     <Route
                       path="/collections"
-                      element={
-                        <AnimatedPage key="collections">
-                          <Suspense fallback={<CollectionsPageSkeleton />}>
-                            <CollectionsPage />
-                          </Suspense>
-                        </AnimatedPage>
-                      }
+                      element={<Navigate to="/ledger?tab=collections" replace />}
                     />
                     <Route
                       path="/collections/create"
@@ -224,15 +222,10 @@ const App = () => {
                     />
 
                     {/* --- PAYOUTS ROUTES --- */}
+                    {/* Redirect old /payouts to new Ledger page */}
                     <Route
                       path="/payouts"
-                      element={
-                        <AnimatedPage key="payouts">
-                          <Suspense fallback={<PayoutsPageSkeleton />}>
-                            <PayoutsPage />
-                          </Suspense>
-                        </AnimatedPage>
-                      }
+                      element={<Navigate to="/ledger?tab=payouts" replace />}
                     />
                     <Route
                       path="/payouts/create"
@@ -260,6 +253,18 @@ const App = () => {
                         <AnimatedPage key={location.pathname}>
                           <Suspense fallback={<DetailPageSkeleton />}>
                             <PayoutDetailPage />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+
+                    {/* --- LEDGER ROUTE (Unified Collections + Payouts) --- */}
+                    <Route
+                      path="/ledger"
+                      element={
+                        <AnimatedPage key="ledger">
+                          <Suspense fallback={<LedgerPageSkeleton />}>
+                            <LedgerPage />
                           </Suspense>
                         </AnimatedPage>
                       }
