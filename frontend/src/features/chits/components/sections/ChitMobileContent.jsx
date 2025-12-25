@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Info, ClipboardList, Receipt } from "lucide-react";
 import Card from "../../../../components/ui/Card";
+import Message from "../../../../components/ui/Message";
 import TabButton from "../../../../components/ui/TabButton";
 import StepperButtons from "../../../../components/ui/StepperButtons";
 import ChitDetailsForm from "../forms/ChitDetailsForm";
@@ -48,6 +49,9 @@ const ChitMobileContent = ({
     onStartDateChange,
     onEndDateChange,
     onShowLockedFieldWarning,
+    lockedFieldWarning, // For displaying warning below Details header
+    showEditWarning, // For auto-dismiss edit mode warning
+    membersCount, // For singular/plural message
 }) => {
     const tabRefs = useRef({});
 
@@ -101,6 +105,16 @@ const ChitMobileContent = ({
                             <Info className="w-6 h-6" /> Details
                         </h2>
                         <hr className="border-border mb-4" />
+                        {showEditWarning && (
+                            <Message type="warning" title="Limited Editing" className="mb-4">
+                                Some fields are locked — this chit has {membersCount} {membersCount === 1 ? "member" : "members"} assigned.
+                            </Message>
+                        )}
+                        {lockedFieldWarning && (
+                            <Message type="warning" title="Field Locked" className="mb-4">
+                                {lockedFieldWarning}
+                            </Message>
+                        )}
                         <ChitDetailsForm
                             mode={mode}
                             control={control}
@@ -222,6 +236,9 @@ ChitMobileContent.propTypes = {
     onStartDateChange: PropTypes.func,
     onEndDateChange: PropTypes.func,
     onShowLockedFieldWarning: PropTypes.func,
+    lockedFieldWarning: PropTypes.string,
+    showEditWarning: PropTypes.bool,
+    membersCount: PropTypes.number,
 };
 
 export default ChitMobileContent;

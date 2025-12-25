@@ -50,9 +50,11 @@ async def get_member_by_id(session: AsyncSession, member_id: int) -> Member | No
     return member
 
 async def update_member(session: AsyncSession, db_member: Member, member_in: MemberUpdate) -> Member:
+    from datetime import datetime, timezone
     member_data = member_in.model_dump(exclude_unset=True)
     for key, value in member_data.items():
         setattr(db_member, key, value)
+    db_member.updated_at = datetime.now(timezone.utc)
     session.add(db_member)
     await session.commit()
     await session.refresh(db_member)

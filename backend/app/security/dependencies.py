@@ -11,12 +11,26 @@ from sqlmodel import select
 from app.models.auth import AuthorizedPhone
 from app.schemas.auth import TokenData
 
+# ⚠️ DEVELOPMENT ONLY: Set to True to bypass authentication
+# Remember to set this back to False before deploying to production!
+DEV_BYPASS_AUTH = True
+
 # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token") # No longer used for bearer token extraction
 
 async def get_current_user(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
+    # Development bypass - return first user or mock user
+    if DEV_BYPASS_AUTH:
+        # Try to get the first authorized user from database
+        result = await session.execute(select(AuthorizedPhone).limit(1))
+        db_user = result.scalar_one_or_none()
+        if db_user:
+            return db_user
+        # If no users exist, create a mock object (won't be persisted)
+        return AuthorizedPhone(id=1, phone_number="dev_user")
+
     token = request.cookies.get("access_token")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

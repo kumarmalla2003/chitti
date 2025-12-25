@@ -4,6 +4,9 @@ import {
     getCollectionById,
     getCollectionsByChitId,
     getCollectionsByMemberId,
+    updateCollection,
+    resetCollection,
+    // Backward compatibility
     createCollection,
     patchCollection,
     deleteCollection,
@@ -19,6 +22,7 @@ export const collectionKeys = {
     all: ['collections'],
     lists: () => [...collectionKeys.all, 'list'],
     list: (filters) => [...collectionKeys.lists(), filters],
+    collected: () => [...collectionKeys.all, 'collected'],
     details: () => [...collectionKeys.all, 'detail'],
     detail: (id) => [...collectionKeys.details(), id],
     byChit: (chitId) => [...collectionKeys.all, 'chit', chitId],
@@ -26,7 +30,7 @@ export const collectionKeys = {
 };
 
 /**
- * Hook to fetch all collections with optional filters.
+ * Hook to fetch all collections (both scheduled and collected).
  * 
  * @param {Object} filters - Optional filter parameters
  * @param {string} [filters.chitId] - Filter by chit ID
@@ -45,21 +49,34 @@ export const useCollections = (filters = {}) => {
 };
 
 /**
+ * Hook to fetch collections with 'collected' status.
+ * Uses getAllCollections with status=collected filter.
+ * 
+ * @param {Object} filters - Optional filter parameters
+ * @returns {import('@tanstack/react-query').UseQueryResult} Query result with collected payments
+ */
+export const useCollectedPayments = (filters = {}) => {
+    return useQuery({
+        queryKey: collectionKeys.collected(),
+        queryFn: () => getAllCollections({ ...filters, status: 'collected' }),
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+    });
+};
+
+/**
  * Hook to fetch collections for a specific chit.
  * 
  * @param {string|number} chitId - The ID of the chit
  * @returns {import('@tanstack/react-query').UseQueryResult} Query result with collections data
- * @example
- * const { data, isLoading } = useCollectionsByChit(chitId);
- * const collections = data?.collections ?? [];
  */
 export const useCollectionsByChit = (chitId) => {
     return useQuery({
         queryKey: collectionKeys.byChit(chitId),
         queryFn: () => getCollectionsByChitId(chitId),
         enabled: Boolean(chitId),
-        staleTime: 1000 * 60 * 5,  // 5 minutes
-        gcTime: 1000 * 60 * 30,    // 30 minutes
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
     });
 };
 
@@ -68,9 +85,6 @@ export const useCollectionsByChit = (chitId) => {
  * 
  * @param {string|number} memberId - The ID of the member
  * @returns {import('@tanstack/react-query').UseQueryResult} Query result with collections data
- * @example
- * const { data, isLoading } = useCollectionsByMember(memberId);
- * const collections = data?.collections ?? [];
  */
 export const useCollectionsByMember = (memberId) => {
     return useQuery({
@@ -95,14 +109,44 @@ export const useCollectionDetails = (collectionId) => {
 };
 
 /**
- * Hook to create a new collection.
+ * Hook to update a collection (record payment or update expected amount).
  * Automatically invalidates related caches on success.
  * 
  * @returns {import('@tanstack/react-query').UseMutationResult} Mutation result
- * @example
- * const createCollectionMutation = useCreateCollection();
- * createCollectionMutation.mutate(collectionData);
  */
+export const useUpdateCollection = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ collectionId, collectionData }) => updateCollection(collectionId, collectionData),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: collectionKeys.detail(variables.collectionId) });
+            queryClient.invalidateQueries({ queryKey: collectionKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: collectionKeys.collected() });
+            queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+        },
+    });
+};
+
+/**
+ * Hook to reset a collection to scheduled state.
+ * Clears actual payment data but keeps the schedule.
+ * 
+ * @returns {import('@tanstack/react-query').UseMutationResult} Mutation result
+ */
+export const useResetCollection = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: resetCollection,
+        onSuccess: (data, collectionId) => {
+            queryClient.invalidateQueries({ queryKey: collectionKeys.detail(collectionId) });
+            queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+        },
+    });
+};
+
+// Backward compatibility aliases
 export const useCreateCollection = () => {
     const queryClient = useQueryClient();
 
@@ -120,45 +164,4 @@ export const useCreateCollection = () => {
     });
 };
 
-/**
- * Hook to update an existing collection.
- * Automatically invalidates related caches on success.
- * 
- * @returns {import('@tanstack/react-query').UseMutationResult} Mutation result
- * @example
- * const updateCollectionMutation = useUpdateCollection();
- * updateCollectionMutation.mutate({ collectionId: 1, collectionData: { amount: 5000 } });
- */
-export const useUpdateCollection = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({ collectionId, collectionData }) => patchCollection(collectionId, collectionData),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: collectionKeys.detail(variables.collectionId) });
-            queryClient.invalidateQueries({ queryKey: collectionKeys.lists() });
-            // Invalidate chit and member specific queries
-            queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-        },
-    });
-};
-
-/**
- * Hook to delete a collection.
- * Automatically invalidates related caches on success.
- * 
- * @returns {import('@tanstack/react-query').UseMutationResult} Mutation result
- * @example
- * const deleteCollectionMutation = useDeleteCollection();
- * deleteCollectionMutation.mutate(collectionId);
- */
-export const useDeleteCollection = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: deleteCollection,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-        },
-    });
-};
+export const useDeleteCollection = useResetCollection;

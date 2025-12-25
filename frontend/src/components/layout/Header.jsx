@@ -19,10 +19,6 @@ const Header = ({
   const location = useLocation();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  // ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
-  const DEV_MODE = true;
-  const showLoggedInUI = isLoggedIn || DEV_MODE;
-
   const [underlineStyle, setUnderlineStyle] = useState({});
   const [hoveredLink, setHoveredLink] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -49,7 +45,7 @@ const Header = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
-  // UPDATED: Using unified Ledger page
+  // UPDATED: Consolidated Ledger link
   const loggedInNavLinks = [
     { href: "/chits", text: "Chits", id: "chits" },
     { href: "/ledger", text: "Ledger", id: "ledger" },
@@ -58,7 +54,7 @@ const Header = ({
   ];
 
   const getActiveId = () => {
-    if (!showLoggedInUI) return activeSection;
+    if (!isLoggedIn) return activeSection;
     if (location.pathname.startsWith("/chits")) return "chits";
     if (location.pathname.startsWith("/members")) return "members";
     if (location.pathname.startsWith("/assignments")) return "members";
@@ -109,7 +105,7 @@ const Header = ({
   };
 
   const NavLinks = () => {
-    if (showLoggedInUI) {
+    if (isLoggedIn) {
       return loggedInNavLinks.map((link) => (
         <NavigationLink
           key={link.id}
@@ -211,7 +207,7 @@ const Header = ({
           onMouseLeave={() => setHoveredLink(null)}
           className="hidden md:flex items-center md:space-x-4 lg:space-x-8 relative z-30"
         >
-          {showLoggedInUI
+          {isLoggedIn
             ? loggedInNavLinks.map((link) => (
               <NavigationLink
                 key={link.id}
@@ -252,7 +248,7 @@ const Header = ({
           <div className="hidden md:block">
             <ThemeToggle />
           </div>
-          {showLoggedInUI ? (
+          {isLoggedIn ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen((prev) => !prev)}

@@ -11,9 +11,6 @@ import {
   BookOpen,
 } from "lucide-react";
 
-// ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
-const DEV_MODE = true;
-
 const BottomNav = ({ onLoginClick }) => {
   const location = useLocation();
   const { isLoggedIn } = useSelector((state) => state.auth);
@@ -32,13 +29,10 @@ const BottomNav = ({ onLoginClick }) => {
     !isMembersActive &&
     !isLedgerActive;
 
-  // Show nav if logged in OR in dev mode
-  const showNav = isLoggedIn || DEV_MODE;
-
   return (
     <footer className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-background-secondary/80 backdrop-blur-lg border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
       <div className="w-full h-16 px-2">
-        {showNav ? (
+        {isLoggedIn ? (
           <nav className="grid h-full w-full grid-cols-4 items-center justify-items-center">
             {/* 1. CHITS */}
             <NavigationLink

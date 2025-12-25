@@ -34,3 +34,24 @@ export const calculatePayoutDate = (startDateStr, monthIndex) => {
     const year = d.getFullYear();
     return `${month}/${year}`;
 };
+
+/**
+ * Validate date string (YYYY-MM format, valid month 1-12, in range 01/2000-12/2999)
+ */
+export const isValidDate = (val) => {
+    if (!val || typeof val !== "string") return false;
+    if (!/^\d{4}-\d{2}$/.test(val)) return false;
+
+    const [year, month] = val.split("-").map(Number);
+
+    // Valid month check (1-12)
+    if (month < 1 || month > 12) return false;
+
+    // Min date check (>= 01/2000)
+    if (year < 2000 || (year === 2000 && month < 1)) return false;
+
+    // Max date check (<= 12/2999)
+    if (year > 2999 || (year === 2999 && month > 12)) return false;
+
+    return true;
+};

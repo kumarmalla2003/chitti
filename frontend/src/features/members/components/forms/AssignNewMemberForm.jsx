@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import MemberDetailsForm from "./MemberDetailsForm";
 import Button from "../../../../components/ui/Button";
 import Message from "../../../../components/ui/Message";
-import { Save, Calendar, Check, Loader2 } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 import { createMember } from "../../../../services/membersService";
 import { memberSchema } from "../../schemas/memberSchema";
 
@@ -14,21 +14,16 @@ const AssignNewMemberForm = forwardRef(
   (
     {
       token,
-      chitId,
-      availableMonths,
-      onAssignment,
-      formatDate,
+      onMemberCreated,
       onMemberNameChange,
       onBackToList,
     },
     ref
   ) => {
-    // Stage 1: Member Creation Form
     const {
       register,
       handleSubmit,
       control,
-      getValues,
       watch,
       formState: { errors },
     } = useForm({
@@ -48,70 +43,39 @@ const AssignNewMemberForm = forwardRef(
       }
     }, [watchedName, onMemberNameChange]);
 
-    const [createdMember, setCreatedMember] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState("");
     const [loading, setLoading] = useState(false);
-    const [pageError, setPageError] = useState(null); // General errors
-    const [memberCreatedSuccess, setMemberCreatedSuccess] = useState(null);
+    const [pageError, setPageError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     useImperativeHandle(ref, () => ({
       goBack: () => {
-        if (createdMember) {
-          setCreatedMember(null);
-          // Check if we need to reset name?
-          // If we go back from Stage 2 to Stage 1, we might want to keep the name?
-          // The prompt said: "if createdMember... setCreatedMember(null); onMemberNameChange('');".
-          // If we reset createdMember, we show the form again.
-          onMemberNameChange(getValues("full_name"));
-        } else {
-          onBackToList();
-        }
+        onBackToList();
       },
     }));
 
     useEffect(() => {
-      if (memberCreatedSuccess) {
+      if (success) {
         const timer = setTimeout(() => {
-          setMemberCreatedSuccess(null);
-        }, 3000);
+          onBackToList();
+        }, 1500);
         return () => clearTimeout(timer);
       }
-    }, [memberCreatedSuccess]);
-
-    // Focus handling handled by MemberDetailsForm logic or autoFocus
+    }, [success, onBackToList]);
 
     const handleCreateMember = async (data) => {
       setLoading(true);
       setPageError(null);
       try {
         const newMember = await createMember(data, token);
-        setCreatedMember(newMember);
-        setMemberCreatedSuccess(
-          `Member "${newMember.full_name}" created successfully!`
-        );
+        setSuccess(`Member "${newMember.full_name}" created successfully!`);
+        if (onMemberCreated) {
+          onMemberCreated(newMember);
+        }
       } catch (err) {
         setPageError(err.message);
       } finally {
         setLoading(false);
       }
-    };
-
-    const handleConfirmAssignment = async (e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (!selectedMonth) {
-        setPageError("Please select a chit month to assign.");
-        return;
-      }
-
-      await onAssignment({
-        member_id: createdMember.id,
-        chit_id: chitId,
-        chit_month: selectedMonth,
-      });
     };
 
     return (
@@ -121,70 +85,34 @@ const AssignNewMemberForm = forwardRef(
             {pageError}
           </Message>
         )}
-
-        {!createdMember ? (
-          <form onSubmit={handleSubmit(handleCreateMember)}>
-            <MemberDetailsForm
-              mode="create"
-              control={control}
-              register={register}
-              errors={errors}
-            />
-            <div className="flex justify-end gap-2 mt-6">
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex items-center justify-center"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <>
-                    <Save className="mr-2" /> Save
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div>
-            {memberCreatedSuccess && (
-              <Message type="success">{memberCreatedSuccess}</Message>
-            )}
-            <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">
-              Assign Month for {createdMember.full_name}
-            </h3>
-            <div className="relative flex items-center">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <Calendar className="w-5 h-5 text-text-secondary" />
-              </span>
-              <div className="absolute left-10 h-6 w-px bg-border"></div>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent text-center"
-              >
-                <option value="">Select an available month...</option>
-                {availableMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {formatDate(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button
-                type="button"
-                onClick={handleConfirmAssignment}
-                variant="success"
-                disabled={!selectedMonth}
-                className="flex items-center justify-center"
-              >
-                <Check className="mr-2" /> Confirm Assignment
-              </Button>
-            </div>
-          </div>
+        {success && (
+          <Message type="success">{success}</Message>
         )}
+
+        <MemberDetailsForm
+          mode="create"
+          control={control}
+          register={register}
+          errors={errors}
+          onEnterKeyOnLastInput={handleSubmit(handleCreateMember)}
+        />
+        <div className="flex justify-end gap-2 mt-6">
+          <Button
+            type="button"
+            variant="success"
+            onClick={handleSubmit(handleCreateMember)}
+            disabled={loading || success}
+            className="flex items-center justify-center"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" /> Save
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     );
   }

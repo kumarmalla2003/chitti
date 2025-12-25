@@ -23,20 +23,22 @@ async def create_assignment(
     """
     Assigns a member to a chit for a specific month.
     """
-    # 1. Create the new assignment in the database
-    new_assignment = await crud_assignments.create_assignment(session=session, assignment_in=assignment_in)
+    # Validate that member exists
+    member = await crud_members.get_member_by_id(session, member_id=assignment_in.member_id)
+    if not member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     
-    # 2. Fetch the full details for the related objects
-    chit_with_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=new_assignment.chit_id)
-    member = await crud_members.get_member_by_id(session, member_id=new_assignment.member_id)
-
-    if not chit_with_details or not member:
-        raise HTTPException(status_code=500, detail="Could not retrieve created assignment details after creation.")
+    # Validate that chit exists
+    chit_with_details = await crud_chits.get_chit_by_id_with_details(session, chit_id=assignment_in.chit_id)
+    if not chit_with_details:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chit not found")
+    
+    # Create the new assignment in the database
+    new_assignment = await crud_assignments.create_assignment(session=session, assignment_in=assignment_in)
 
     member_public = MemberPublic.model_validate(member)
 
-    # For a new assignment, collection status is always "Unpaid"
-    total_paid = 0.0
+    total_paid = 0
     due_amount = chit_with_details.monthly_installment
     collection_status = "Unpaid"
 

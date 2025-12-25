@@ -17,7 +17,6 @@ export const getAllPayouts = async (filters = {}) => {
   if (filters.endDate) params.end_date = filters.endDate;
 
   try {
-    // Call base /payouts endpoint which returns ALL payouts (including unpaid)
     const response = await api.get(`${BASE_URL}`, { params });
     return response.data;
   } catch (error) {
@@ -54,7 +53,10 @@ export const getPayoutById = async (id) => {
 
 export const updatePayout = async (id, payoutData) => {
   try {
-    const response = await api.put(`${BASE_URL}/${id}`, payoutData);
+    const response = await api.put(
+      `${BASE_URL}/${id}`,
+      payoutData
+    );
     return response.data;
   } catch (error) {
     handleError(error, "Failed to update payout.");

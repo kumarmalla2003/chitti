@@ -43,7 +43,11 @@ import StatsCard from "../../../components/ui/StatsCard";
 import StatsCarousel from "../../../components/ui/StatsCarousel";
 import { pdf } from "@react-pdf/renderer";
 
-const ITEMS_PER_PAGE = 10;
+// Responsive items per page based on screen size
+const getItemsPerPage = () => {
+  if (window.innerWidth >= 1024) return 12; // Desktop (lg+)
+  return 10;                                 // Tablet & Mobile (minimum 10)
+};
 const VIEW_MODE_STORAGE_KEY = "chitsViewMode";
 
 const STATUS_OPTIONS = [
@@ -109,10 +113,12 @@ const ChitsPage = () => {
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [printingChitId, setPrintingChitId] = useState(null);
 
-  // Initialize view mode from localStorage, fallback to responsive default
+  // State for responsive items per page
+  const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage);
+
   // Initialize view mode from localStorage, fallback to responsive default
   const [viewMode, setViewMode] = useState(() => {
-    // If mobile, force card view regardless of storage (or fallback) to prevent broken tables
+    // If mobile, force card view regardless of storage to prevent broken tables
     if (window.innerWidth < 768) return "card";
 
     const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
@@ -122,17 +128,16 @@ const ChitsPage = () => {
     return "table";
   });
 
-  // Automatically switch view mode based on screen size
+  // Handle resize for items per page and initial view mode on mobile
   useEffect(() => {
     const handleResize = () => {
+      setItemsPerPage(getItemsPerPage());
+      // Only force card view on mobile, let desktop users keep their choice
       if (window.innerWidth < 768) {
         setViewMode("card");
-      } else {
-        setViewMode("table");
       }
     };
 
-    // Correct initial check handled by useState, but consistent resize listener essential
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -185,16 +190,16 @@ const ChitsPage = () => {
         // Calculate current cycle from chit start date
         const startDate = new Date(c.start_date);
         const today = new Date();
-        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                          (today.getMonth() - startDate.getMonth()) + 1;
+        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 +
+          (today.getMonth() - startDate.getMonth()) + 1;
         const currentCycle = Math.max(1, Math.min(monthsDiff, c.duration_months || 1));
         const totalCycle = c.duration_months || 1;
-        
+
         // Formula: (total - current + 1) × before + (current - 1) × after
         const membersBefore = totalCycle - currentCycle + 1;
         const membersAfter = currentCycle - 1;
-        chitTotal = membersBefore * (c.installment_before_payout || 0) + 
-                   membersAfter * (c.installment_after_payout || 0);
+        chitTotal = membersBefore * (c.installment_before_payout || 0) +
+          membersAfter * (c.installment_after_payout || 0);
       }
       // Auction chits: amount varies, not included in fixed target
       return sum + chitTotal;
@@ -206,7 +211,7 @@ const ChitsPage = () => {
     // ========================================================================
     // OPTIMIZED PAYOUT LOGIC - Single Pass
     // ========================================================================
-    
+
     // Calculate all metrics in a single pass through the payouts array
     const payoutMetrics = (payoutsData?.payouts || []).reduce(
       (metrics, p) => {
@@ -401,11 +406,11 @@ const ChitsPage = () => {
   }, [filteredChits, sortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(sortedChits.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedChits.length / itemsPerPage);
   const paginatedChits = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return sortedChits.slice(start, start + ITEMS_PER_PAGE);
-  }, [sortedChits, currentPage]);
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedChits.slice(start, start + itemsPerPage);
+  }, [sortedChits, currentPage, itemsPerPage]);
 
   // Keyboard navigation
   const { focusedRowIndex, resetFocus } = useTableKeyboardNavigation({
@@ -493,7 +498,7 @@ const ChitsPage = () => {
       header: "S.No",
       accessor: "s_no",
       className: "text-center w-16",
-      cell: (row, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+      cell: (row, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
       header: "Chit Name",
@@ -619,7 +624,7 @@ const ChitsPage = () => {
             {/* Table/Card Skeletons */}
             {viewMode === "table" ? (
               <Skeleton.Table
-                rows={ITEMS_PER_PAGE}
+                rows={itemsPerPage}
                 columnWidths={[
                   "w-16", // S.No
                   "w-1/4", // Chit Name
@@ -635,7 +640,7 @@ const ChitsPage = () => {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                {[...Array(itemsPerPage)].map((_, i) => (
                   <ChitCardSkeleton key={i} />
                 ))}
               </div>

@@ -49,7 +49,7 @@ export const chitSchema = z.object({
         (val) => (val === "" || val === undefined || val === null ? 0 : Number(val)),
         z.number().min(0, "Payout Premium cannot be negative.").max(100, "Payout Premium cannot exceed 100%.")
     ),
-    // Auction Chit: foreman commission percentage (0-100)
+    // Variable/Auction Chit: foreman commission percentage (0-100)
     foreman_commission_percent: z.preprocess(
         (val) => (val === "" || val === undefined || val === null ? 0 : Number(val)),
         z.number().min(0, "Foreman Commission cannot be negative.").max(100, "Foreman Commission cannot exceed 100%.")
@@ -144,6 +144,26 @@ export const chitSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Payout Premium cannot exceed 100%.",
                 path: ["payout_premium_percent"],
+            });
+        }
+        // Require foreman_commission_percent for variable chits (must be >= 0.5)
+        if (!data.foreman_commission_percent || data.foreman_commission_percent <= 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Foreman Commission is required for Variable chits.",
+                path: ["foreman_commission_percent"],
+            });
+        } else if (data.foreman_commission_percent < 0.5) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Foreman Commission must be at least 0.5%.",
+                path: ["foreman_commission_percent"],
+            });
+        } else if (data.foreman_commission_percent > 100) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Foreman Commission cannot exceed 100%.",
+                path: ["foreman_commission_percent"],
             });
         }
     }

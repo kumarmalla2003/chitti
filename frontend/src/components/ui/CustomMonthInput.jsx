@@ -152,6 +152,7 @@ const CustomMonthInput = ({ name, value, onChange, onBlur, disabled, required, o
         onBlur={onBlur}
         enterKeyHint="next"
         autoComplete="on"
+        autoCapitalize="off"
         className={`w-full pl-12 pr-10 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${disabled ? "pointer-events-none" : ""} ${className || "border-border"}`}
         disabled={disabled}
         placeholder="MM/YYYY"

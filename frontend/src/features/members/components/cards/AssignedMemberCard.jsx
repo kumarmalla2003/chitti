@@ -61,9 +61,8 @@ const AssignedMemberCard = ({
         // --- CENTERED LAYOUT (Dashboard) ---
         <div className="flex justify-center items-center mb-3 min-h-[2rem]">
           <h3
-            className={`font-bold text-lg text-text-primary truncate text-center w-full ${
-              showActions ? "px-16" : ""
-            }`}
+            className={`font-bold text-lg text-text-primary truncate text-center w-full ${showActions ? "px-16" : ""
+              }`}
           >
             {member.full_name}
           </h3>

@@ -221,8 +221,8 @@ const MemberReportPDF = ({ member, assignments, collections }) => {
             row.status === "Active"
               ? styles.textSuccess
               : row.status === "Upcoming"
-              ? { color: theme.warning, fontWeight: "bold" }
-              : { color: theme.textLight, fontWeight: "bold" } // Completed or others
+                ? { color: theme.warning, fontWeight: "bold" }
+                : { color: theme.textLight, fontWeight: "bold" } // Completed or others
           }
         >
           {row.status}

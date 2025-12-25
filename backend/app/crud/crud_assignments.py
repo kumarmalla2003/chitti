@@ -8,15 +8,37 @@ from dateutil.relativedelta import relativedelta
 from typing import List
 
 from app.models.assignments import ChitAssignment
-from app.models.chits import Chit # <-- RENAMED
+from app.models.chits import Chit
+from app.crud.crud_collections import collections as crud_collections
 # --- IMPORT NEW BULK SCHEMA ---
 from app.schemas.assignments import ChitAssignmentCreate, ChitAssignmentBulkItem
+
+
+def calculate_month_number(chit_start_date: date, chit_month: date) -> int:
+    """Calculate the month number (1-based) from the chit_month date relative to start_date."""
+    months_diff = (chit_month.year - chit_start_date.year) * 12 + (chit_month.month - chit_start_date.month)
+    return months_diff + 1  # 1-based month number
+
 
 async def create_assignment(session: AsyncSession, assignment_in: ChitAssignmentCreate) -> ChitAssignment:
     db_assignment = ChitAssignment.model_validate(assignment_in)
     session.add(db_assignment)
     await session.commit()
     await session.refresh(db_assignment)
+    
+    # Get the chit to calculate month number
+    chit = await session.get(Chit, assignment_in.chit_id)
+    if chit:
+        month_number = calculate_month_number(chit.start_date, assignment_in.chit_month)
+        # Link the pre-created collection to this assignment
+        await crud_collections.link_to_assignment(
+            db=session,
+            chit_id=assignment_in.chit_id,
+            month=month_number,
+            assignment_id=db_assignment.id,
+            member_id=assignment_in.member_id
+        )
+    
     return db_assignment
 
 # --- ADD NEW BULK CREATE FUNCTION ---
@@ -27,21 +49,41 @@ async def create_bulk_assignments(
 ) -> bool:
     """
     Creates multiple chit assignments for a chit in a single transaction.
+    Also links the corresponding Collection records to each assignment.
     """
-    db_assignments = [
-        ChitAssignment(
+    if not assignments_in:
+        return True  # Nothing to add, but operation is "successful"
+    
+    # Get the chit for start_date to calculate month numbers
+    chit = await session.get(Chit, chit_id)
+    if not chit:
+        return False
+    
+    # Create all assignments
+    db_assignments = []
+    for item in assignments_in:
+        db_assignment = ChitAssignment(
             member_id=item.member_id,
             chit_month=item.chit_month,
             chit_id=chit_id
         )
-        for item in assignments_in
-    ]
+        session.add(db_assignment)
+        db_assignments.append((db_assignment, item))
     
-    if not db_assignments:
-        return True # Nothing to add, but operation is "successful"
-
-    session.add_all(db_assignments)
     await session.commit()
+    
+    # Now link each assignment to its collection
+    for db_assignment, item in db_assignments:
+        await session.refresh(db_assignment)
+        month_number = calculate_month_number(chit.start_date, item.chit_month)
+        await crud_collections.link_to_assignment(
+            db=session,
+            chit_id=chit_id,
+            month=month_number,
+            assignment_id=db_assignment.id,
+            member_id=item.member_id
+        )
+    
     return True
 
 async def get_unassigned_months_for_chit(session: AsyncSession, chit_id: int) -> list[date]:

@@ -299,11 +299,11 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       headerClassName: "text-center",
       cell: (row) =>
         row.assignment ? (
-          <span className="font-medium text-text-primary">
+          <span className="text-text-primary">
             {row.assignment.member.full_name}
           </span>
         ) : (
-          <span className="text-text-secondary italic">-</span>
+          <span className="text-text-secondary">-</span>
         ),
     },
     {
@@ -316,7 +316,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
         // For Auction chits, show "Varies"
         const chit = chitDetails;
         if (!chit) return <span className="text-text-secondary">-</span>;
-        
+
         if (chit.chit_type === "auction") {
           return <span className="text-text-secondary text-sm">Auction pending</span>;
         } else if (chit.chit_type === "variable") {
@@ -531,7 +531,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
 
         {loading && !allMonthsData.length ? (
           <div className="p-4">
-             <Skeleton.Table rows={5} columns={6} />
+            <Skeleton.Table rows={5} columns={6} />
           </div>
         ) : (
           <>

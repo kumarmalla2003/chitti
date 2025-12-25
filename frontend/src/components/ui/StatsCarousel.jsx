@@ -99,11 +99,10 @@ const StatsCarousel = ({ children, className = "", isLoading = false }) => {
               <button
                 key={index}
                 onClick={() => scrollToIndex(index)}
-                className={`transition-all duration-300 rounded-full ${
-                  index === currentIndex
-                    ? "w-8 h-2 bg-accent"
-                    : "w-2 h-2 bg-border hover:bg-text-secondary"
-                }`}
+                className={`transition-all duration-300 rounded-full ${index === currentIndex
+                  ? "w-8 h-2 bg-accent"
+                  : "w-2 h-2 bg-border hover:bg-text-secondary"
+                  }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}
@@ -116,7 +115,7 @@ const StatsCarousel = ({ children, className = "", isLoading = false }) => {
         {items.map((child, index) => (
           <StaggerItem
             key={index}
-            className="w-full md:w-1/2 xl:w-1/4 px-3 pb-6"
+            className="w-full md:w-1/2 xl:w-1/4 px-3 pb-2"
           >
             {child}
           </StaggerItem>

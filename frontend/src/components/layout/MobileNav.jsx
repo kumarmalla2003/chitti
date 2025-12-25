@@ -19,10 +19,6 @@ const MobileNav = ({
   const dispatch = useDispatch();
   const { isLoggedIn } = useSelector((state) => state.auth);
 
-  // ⚠️ DEVELOPMENT MODE: Set to false to re-enable authentication
-  const DEV_MODE = true;
-  const showLoggedInUI = isLoggedIn || DEV_MODE;
-
   const handleLinkClick = (e, sectionId) => {
     if (onNavLinkClick) {
       onNavLinkClick(sectionId);
@@ -71,7 +67,7 @@ const MobileNav = ({
     { href: "#contact", text: "Contact", id: "contact" },
   ];
 
-  // UPDATED: Using unified Ledger page
+  // UPDATED: Consolidated Ledger link
   const loggedInNavLinks = [
     { href: "/chits", text: "Chits" },
     { href: "/ledger", text: "Ledger" },
@@ -122,7 +118,7 @@ const MobileNav = ({
               <ArrowLeft className="w-6 h-6" />
             </button>
             <BrandLogo />
-            {showLoggedInUI ? (
+            {isLoggedIn ? (
               <button
                 onClick={handleLogoutClick}
                 className="absolute right-0 p-1 text-error-accent"
@@ -144,7 +140,7 @@ const MobileNav = ({
 
           {/* Navigation Links */}
           <nav className="flex flex-col space-y-2 mt-6">
-            {showLoggedInUI
+            {isLoggedIn
               ? loggedInNavLinks.map((link, index) => (
                 <NavigationLink
                   key={link.href}
@@ -194,7 +190,7 @@ const MobileNav = ({
 
           {/* Session Actions (Login/Logout) */}
           <div className="mt-auto">
-            {showLoggedInUI ? (
+            {isLoggedIn ? (
               <>
                 <hr className="mb-6 border-border" />
                 <Button

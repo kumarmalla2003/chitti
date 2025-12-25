@@ -128,36 +128,43 @@ Skeleton.Table = ({
 // Search Toolbar skeleton
 Skeleton.SearchToolbar = ({ className = "" }) => (
   <div
-    className={`mb-6 flex flex-row items-center bg-background-secondary border border-border rounded-md shadow-sm h-12 ${className}`}
+    className={`mb-6 flex flex-col gap-3 ${className}`}
     role="status"
     aria-label="Loading toolbar"
   >
-    {/* Search Input Placeholder */}
-    <div className="flex-1 flex items-center pl-3">
-      {/* Icon */}
-      <div className={`${shimmerClass} rounded w-5 h-5`} />
-      {/* Internal Divider (matches absolute left-10) */}
-      <div className="h-6 w-px bg-border ml-2 mr-2" />
-      {/* Search Text */}
-      <div className={`${shimmerClass} rounded h-4 w-full max-w-[12rem]`} />
-    </div>
+    {/* Main Toolbar Row */}
+    <div className="flex flex-row items-center bg-background-secondary border border-border rounded-md shadow-sm h-12">
+      {/* Search Input Placeholder */}
+      <div className="flex-1 flex items-center pl-3">
+        {/* Icon */}
+        <div className={`${shimmerClass} rounded w-5 h-5`} />
+        {/* Internal Divider (matches absolute left-10) */}
+        <div className="h-6 w-px bg-border ml-2 mr-2" />
+        {/* Search Text */}
+        <div className={`${shimmerClass} rounded h-4 w-full max-w-[12rem]`} />
+      </div>
 
-    {/* Divider */}
-    <div className="h-6 w-px bg-border" />
-
-    {/* Actions Placeholder (Filter & Sort) */}
-    {/* Real buttons: p-3 + w-5 = 44px, visible with hover ~32px */}
-    {/* Using w-8 (32px) to represent visible area with hover background */}
-    <div className="flex items-center">
-      <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+      {/* Divider */}
       <div className="h-6 w-px bg-border" />
-      <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+
+      {/* Sort Action Placeholder */}
+      <div className="flex items-center">
+        <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+      </div>
+
+      {/* View Toggle Placeholder */}
+      <div className="h-6 w-px bg-border" />
+      <div className="flex items-center">
+        <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+      </div>
     </div>
 
-    {/* View Toggle Placeholder */}
-    <div className="h-6 w-px bg-border md:hidden" />
-    <div className="flex items-center md:hidden">
-      <div className={`${shimmerClass} rounded-full w-8 h-8 mx-1`} />
+    {/* Filter Chips Row */}
+    <div className="flex flex-wrap gap-2">
+      <div className={`${shimmerClass} rounded-full w-12 h-8`} />
+      <div className={`${shimmerClass} rounded-full w-16 h-8`} />
+      <div className={`${shimmerClass} rounded-full w-20 h-8`} />
+      <div className={`${shimmerClass} rounded-full w-24 h-8`} />
     </div>
   </div>
 );

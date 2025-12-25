@@ -13,7 +13,8 @@ from app.api.routers import (
     members as members_router,             
     assignments as assignments_router,     
     collections as collections_router,
-    payouts as payouts_router
+    payouts as payouts_router,
+    payments as payments_router
 )
 from app.core.config import settings
 from app.db.session import engine, AsyncSessionLocal
@@ -23,7 +24,8 @@ from app.models import (
     members as members_models,             
     assignments as assignments_models,     
     collections as collections_models,
-    payouts as payouts_models
+    payouts as payouts_models,
+    payments as payments_models
 )
 from app.security import core as security
 
@@ -38,6 +40,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(assignments_models.SQLModel.metadata.create_all)
         await conn.run_sync(collections_models.SQLModel.metadata.create_all) 
         await conn.run_sync(payouts_models.SQLModel.metadata.create_all)
+        await conn.run_sync(payments_models.SQLModel.metadata.create_all)
 
     print("Seeding initial data...")
     async with AsyncSessionLocal() as session:
@@ -88,6 +91,7 @@ app.include_router(members_router.router)
 app.include_router(assignments_router.router)
 app.include_router(collections_router.router)
 app.include_router(payouts_router.router)
+app.include_router(payments_router.router)
 
 @app.get("/")
 def read_root():
@@ -96,10 +100,10 @@ def read_root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and deployment verification."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0"
     }
 

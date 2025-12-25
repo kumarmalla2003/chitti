@@ -75,6 +75,10 @@ async def patch_member_details(
     
     for key, value in update_data.items():
         setattr(db_member, key, value)
+    
+    # Update timestamp
+    from datetime import datetime, timezone
+    db_member.updated_at = datetime.now(timezone.utc)
 
     session.add(db_member)
     await session.commit()
@@ -136,7 +140,13 @@ async def get_member_assignments(
         # --- FIXED CALL HERE ---
         collections = await crud_collections.collections.get_by_assignment(session, assignment.id)
         
-        total_paid = sum(p.amount_paid for p in collections)
+        # Sum actual payment amounts from the payments relationship (in rupees)
+        total_paid = sum(
+            payment.amount 
+            for collection in collections 
+            for payment in (collection.payments or [])
+            if payment.amount is not None
+        )
         due_amount = monthly_installment - total_paid
 
         if total_paid == 0: collection_status = "Unpaid"

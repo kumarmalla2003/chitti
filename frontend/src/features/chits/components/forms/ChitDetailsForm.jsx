@@ -10,7 +10,9 @@ import SegmentedControl from "../../../../components/ui/SegmentedControl";
 import NotesToolbar from "./fields/NotesToolbar";
 import NotesFullScreenModal from "./fields/NotesFullScreenModal";
 import { useNotesDraft } from "../../hooks/useNotesDraft";
+
 import { checkChitNameAvailability } from "../../../../services/chitsService";
+import { calculateEndDate, isValidDate } from "../../../../utils/calculations";
 import {
   Layers,
   Users,
@@ -228,6 +230,8 @@ const ChitDetailsForm = ({
 
   // Refs for notes field
   const notesRef = useRef(null);
+  // Ref for debounced name check timeout
+  const nameCheckTimeoutRef = useRef(null);
   // State for name checking
   const [isCheckingName, setIsCheckingName] = useState(false);
   // State for name availability (show check mark when available)
@@ -245,7 +249,9 @@ const ChitDetailsForm = ({
     if (watchedChitType === "fixed") {
       return [...baseFields, "monthly_installment", "duration_months", "start_date", "end_date", "collection_day", "payout_day", "notes"];
     } else if (watchedChitType === "variable") {
-      return [...baseFields, "payout_premium_percent", "duration_months", "start_date", "end_date", "collection_day", "payout_day", "notes"];
+      // Hide Duration, Show Foreman Commission
+      // We sync Duration with Size automatically
+      return [...baseFields, "payout_premium_percent", "foreman_commission_percent", "start_date", "end_date", "collection_day", "payout_day", "notes"];
     } else if (watchedChitType === "auction") {
       return [...baseFields, "foreman_commission_percent", "duration_months", "start_date", "end_date", "collection_day", "payout_day", "notes"];
     }
@@ -258,6 +264,24 @@ const ChitDetailsForm = ({
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [mode, isPostCreation]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (nameCheckTimeoutRef.current) {
+        clearTimeout(nameCheckTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Sync Duration with Size for Variable Chits
+  // Note: End Date calculations are handled by useChitForm which tracks which date field user is editing
+  useEffect(() => {
+    if (watchedChitType === "variable" && watchedSize) {
+      // Sync Duration = Size (for Variable chits, size determines duration)
+      setValue("duration_months", watchedSize, { shouldValidate: true });
+    }
+  }, [watchedChitType, watchedSize, setValue]);
 
   // Handle numeric input - only allow digits (and optionally decimal for percentages)
   const handleNumericInput = useCallback((e, allowDecimal = false) => {
@@ -276,9 +300,9 @@ const ChitDetailsForm = ({
   const showLockedFieldMessage = useCallback((fieldName, reason) => {
     if (!onShowLockedFieldWarning) return;
     const messages = {
-      core: `"${fieldName}" cannot be changed as it defines the chit contract.`,
-      financial: `"${fieldName}" cannot be changed as it affects financial calculations.`,
-      active: `"${fieldName}" cannot be changed because this chit has active members or collections.`,
+      core: `"${fieldName}" is locked — it defines the chit contract.`,
+      financial: `"${fieldName}" is locked — it affects financial calculations.`,
+      active: `"${fieldName}" is locked — this chit has members assigned.`,
     };
     onShowLockedFieldWarning(messages[reason] || messages.core);
   }, [onShowLockedFieldWarning]);
@@ -494,7 +518,7 @@ const ChitDetailsForm = ({
   }, [isEditMode, touchedFields?.name, watchedName, setError, clearErrors]);
 
 
-  // Handle Name Change - Format text and validate if touched
+  // Handle Name Change - Format text and validate if touched (with debounced API check)
   const handleNameChange = useCallback((e) => {
     // Early return in edit mode - field is disabled but this is defensive
     if (isEditMode) return;
@@ -533,6 +557,11 @@ const ChitDetailsForm = ({
       });
     }
 
+    // Clear any pending debounce timeout
+    if (nameCheckTimeoutRef.current) {
+      clearTimeout(nameCheckTimeoutRef.current);
+    }
+
     // Skip duplicate check if name too short (but NOT based on touched state)
     if (formatted.length < 3) {
       setIsCheckingName(false);
@@ -540,10 +569,12 @@ const ChitDetailsForm = ({
       return;
     }
 
-    // Check for duplicates immediately on change (for check mark visibility)
+    // Set loading state immediately for UI feedback
     setIsCheckingName(true);
     setIsNameAvailable(false);
-    (async () => {
+
+    // Debounce the API call by 300ms
+    nameCheckTimeoutRef.current = setTimeout(async () => {
       try {
         const result = await checkChitNameAvailability(formatted.trim());
         if (!result.available) {
@@ -564,7 +595,7 @@ const ChitDetailsForm = ({
       } finally {
         setIsCheckingName(false);
       }
-    })();
+    }, 300);
   }, [isEditMode, touchedFields?.name, setValue, setError]);
 
   // Handle Notes Blur - Format to Sentence Case
@@ -659,6 +690,7 @@ const ChitDetailsForm = ({
                 nameInputRef.current = e;
               }}
               type="text"
+              inputMode="text"
               id="name"
               autoComplete="off"
               autoCapitalize="words"
@@ -740,8 +772,8 @@ const ChitDetailsForm = ({
         <div className="grid sm:grid-cols-2 gap-6">
           {/* Chit Value (Formatted) */}
           <div
-            onClick={isEditMode ? () => showLockedFieldMessage("Chit Value", "core") : undefined}
-            className={isEditMode ? "cursor-not-allowed" : ""}
+            onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Chit Value", "core") : undefined}
+            className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
           >
             <label
               htmlFor="chit_value"
@@ -766,11 +798,11 @@ const ChitDetailsForm = ({
                 inputMode="numeric"
                 autoComplete="on"
                 enterKeyHint="next"
-                className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.chit_value ? "border-red-500" : "border-border"
+                className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.chit_value ? "border-red-500" : "border-border"
                   }`}
                 maxLength={20}
                 placeholder="5,00,000"
-                disabled={isFormDisabled || isEditMode}
+                disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                 onKeyDown={handleKeyDown}
               />
             </div>
@@ -779,24 +811,24 @@ const ChitDetailsForm = ({
                 <ErrorMessageWithIcon message={errors.chit_value.message} />
               </p>
             )}
-            {!errors.chit_value && watchedChitValue > 0 && watchedChitValue < 100000 && !isFormDisabled && !isEditMode && (
+            {!errors.chit_value && watchedChitValue > 0 && watchedChitValue < 100000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
               <p className="mt-1 text-xs font-medium text-amber-500">Low value — below <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />1,00,000 may not be practical.</p>
             )}
-            {!errors.chit_value && watchedChitValue > 10000000 && !isFormDisabled && !isEditMode && (
+            {!errors.chit_value && watchedChitValue > 10000000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
               <p className="mt-1 text-xs font-medium text-amber-500">High value — above <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />1 Crore, ensure members can afford installments.</p>
             )}
           </div>
 
-          {/* Size */}
+          {/* Size (or Size/Duration for Variable chits) */}
           <div
-            onClick={isEditMode ? () => showLockedFieldMessage("Size", "core") : undefined}
-            className={isEditMode ? "cursor-not-allowed" : ""}
+            onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage(watchedChitType === "variable" ? "Size/Duration" : "Size", "core") : undefined}
+            className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
           >
             <label
               htmlFor="size"
               className="block text-lg font-medium text-text-secondary mb-1"
             >
-              Size
+              {watchedChitType === "variable" ? "Size/Duration" : "Size"}
             </label>
             <div className="relative flex items-center">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -809,25 +841,44 @@ const ChitDetailsForm = ({
                 inputMode="numeric"
                 id="size"
                 autoComplete="on"
+                autoCapitalize="off"
                 enterKeyHint="next"
                 maxLength={3}
-                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.size ? "border-red-500" : "border-border"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.size ? "border-red-500" : "border-border"
                   }`}
                 placeholder="20"
-                disabled={isFormDisabled || isEditMode}
+                disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
+                onInput={(e) => handleNumericInput(e)}
+                onChange={(e) => {
+                  handleNumericInput(e);
+                  register("size").onChange(e);
+                  // For Variable chits, Size also acts as Duration - trigger duration change callback
+                  if (watchedChitType === "variable" && onDurationChange) {
+                    onDurationChange(e.target.value);
+                  }
+                  // For all chit types, also trigger size change callback
+                  if (onSizeChange) onSizeChange(e.target.value);
+                }}
                 onKeyDown={handleKeyDown}
-                onFocus={onSizeChange}
-                onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
               />
             </div>
             {errors.size && (
               <p className="mt-1 text-xs font-medium text-red-500">{errors.size.message}</p>
             )}
-            {!errors.size && watchedSize > 0 && watchedSize < 15 && !isFormDisabled && !isEditMode && (
-              <p className="mt-1 text-xs font-medium text-amber-500">Small size — less than 15 members may not be sustainable.</p>
+            {/* Size warnings - different messages for Variable chits where Size = Duration */}
+            {!errors.size && watchedSize > 0 && watchedSize < 15 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+              <p className="mt-1 text-xs font-medium text-amber-500">
+                {watchedChitType === "variable"
+                  ? "Small size — less than 15 members/months may not be sustainable."
+                  : "Small size — less than 15 members may not be sustainable."}
+              </p>
             )}
-            {!errors.size && watchedSize > 50 && !isFormDisabled && !isEditMode && (
-              <p className="mt-1 text-xs font-medium text-amber-500">Large size — over 50 members may be difficult to manage.</p>
+            {!errors.size && watchedSize > 50 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+              <p className="mt-1 text-xs font-medium text-amber-500">
+                {watchedChitType === "variable"
+                  ? "Large size — over 50 members/months may be difficult to manage."
+                  : "Large size — over 50 members may be difficult to manage."}
+              </p>
             )}
           </div>
         </div>
@@ -837,8 +888,8 @@ const ChitDetailsForm = ({
           <div className="grid sm:grid-cols-2 gap-6">
             {/* Monthly Installment (Fixed Chit) */}
             <div
-              onClick={isEditMode ? () => showLockedFieldMessage("Monthly Installment", "financial") : undefined}
-              className={isEditMode ? "cursor-not-allowed" : ""}
+              onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Monthly Installment", "financial") : undefined}
+              className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
             >
               <label
                 htmlFor="monthly_installment"
@@ -864,10 +915,10 @@ const ChitDetailsForm = ({
                   autoComplete="on"
                   enterKeyHint="next"
                   maxLength={15}
-                  className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.monthly_installment ? "border-red-500" : "border-border"
+                  className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.monthly_installment ? "border-red-500" : "border-border"
                     }`}
                   placeholder="20,000"
-                  disabled={isFormDisabled || isEditMode}
+                  disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                   onKeyDown={handleKeyDown}
                 />
               </div>
@@ -876,59 +927,64 @@ const ChitDetailsForm = ({
                   <ErrorMessageWithIcon message={errors.monthly_installment.message} />
                 </p>
               )}
-              {!errors.monthly_installment && watchedMonthlyInstallment > 0 && watchedMonthlyInstallment < 10000 && !isFormDisabled && !isEditMode && (
+              {!errors.monthly_installment && watchedMonthlyInstallment > 0 && watchedMonthlyInstallment < 10000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                 <p className="mt-1 text-xs font-medium text-amber-500">Low installment — below <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />10,000 may not be practical.</p>
               )}
-              {!errors.monthly_installment && watchedMonthlyInstallment > 50000 && !isFormDisabled && !isEditMode && (
+              {!errors.monthly_installment && watchedMonthlyInstallment > 50000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                 <p className="mt-1 text-xs font-medium text-amber-500">High installment — above <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />50,000/month may be difficult for members.</p>
               )}
             </div>
 
-            {/* Duration */}
-            <div
-              onClick={isEditMode ? () => showLockedFieldMessage("Duration", "core") : undefined}
-              className={isEditMode ? "cursor-not-allowed" : ""}
-            >
-              <label
-                htmlFor="duration_months"
-                className="block text-lg font-medium text-text-secondary mb-1"
+            {/* Duration (Hidden for Variable) */}
+            {watchedChitType !== "variable" && (
+              <div
+                onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Duration", "core") : undefined}
+                className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
               >
-                Duration
-              </label>
-              <div className="relative flex items-center">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Clock className="w-5 h-5 text-text-secondary" />
-                </span>
-                <div className="absolute left-10 h-6 w-px bg-border"></div>
-                <input
-                  {...register("duration_months", { setValueAs: v => v === '' ? undefined : Number(v) })}
-                  type="text"
-                  inputMode="numeric"
-                  id="duration_months"
-                  autoComplete="on"
-                  enterKeyHint="next"
-                  maxLength={3}
-                  className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.duration_months ? "border-red-500" : "border-border"
-                    }`}
-                  placeholder="20"
-                  disabled={isFormDisabled || isEditMode}
-                  onKeyDown={handleKeyDown}
-                  onFocus={onDurationChange}
-                  onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
-                />
+                <label
+                  htmlFor="duration_months"
+                  className="block text-lg font-medium text-text-secondary mb-1"
+                >
+                  Duration
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Clock className="w-5 h-5 text-text-secondary" />
+                  </span>
+                  <div className="absolute left-10 h-6 w-px bg-border"></div>
+                  <input
+                    {...register("duration_months")}
+                    type="text"
+                    id="duration_months"
+                    inputMode="numeric"
+                    autoComplete="on"
+                    autoCapitalize="off"
+                    enterKeyHint="next"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.duration_months ? "border-red-500" : "border-border"
+                      }`}
+                    maxLength={3}
+                    placeholder="20"
+                    disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
+                    onInput={(e) => handleNumericInput(e)}
+                    onChange={(e) => {
+                      handleNumericInput(e);
+                      register("duration_months").onChange(e);
+                      if (onDurationChange) onDurationChange(e.target.value);
+                    }}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+                {errors.duration_months && (
+                  <p className="mt-1 text-xs font-medium text-red-500">{errors.duration_months.message}</p>
+                )}
+                {!errors.duration_months && watchedDuration > 0 && watchedDuration < 15 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+                  <p className="mt-1 text-xs font-medium text-amber-500">Short duration — less than 15 months may not yield sufficient returns.</p>
+                )}
+                {!errors.duration_months && watchedDuration > 36 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+                  <p className="mt-1 text-xs font-medium text-amber-500">Long duration — over 36 months increases risk of member dropouts.</p>
+                )}
               </div>
-              {errors.duration_months && (
-                <p className="mt-1 text-xs font-medium text-red-500">
-                  {errors.duration_months.message}
-                </p>
-              )}
-              {!errors.duration_months && watchedDuration > 0 && watchedDuration < 15 && !isFormDisabled && !isEditMode && (
-                <p className="mt-1 text-xs font-medium text-amber-500">Short duration — less than 15 months may not yield sufficient returns.</p>
-              )}
-              {!errors.duration_months && watchedDuration > 36 && !isFormDisabled && !isEditMode && (
-                <p className="mt-1 text-xs font-medium text-amber-500">Long duration — over 36 months increases risk of member dropouts.</p>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -938,8 +994,8 @@ const ChitDetailsForm = ({
             <div className="grid sm:grid-cols-2 gap-6">
               {/* Payout Premium Percent */}
               <div
-                onClick={isEditMode ? () => showLockedFieldMessage("Payout Premium", "financial") : undefined}
-                className={isEditMode ? "cursor-not-allowed" : ""}
+                onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Payout Premium", "financial") : undefined}
+                className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
               >
                 <label
                   htmlFor="payout_premium_percent"
@@ -958,12 +1014,13 @@ const ChitDetailsForm = ({
                     inputMode="decimal"
                     id="payout_premium_percent"
                     autoComplete="on"
+                    autoCapitalize="off"
                     enterKeyHint="next"
                     maxLength={6}
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.payout_premium_percent ? "border-red-500" : "border-border"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.payout_premium_percent ? "border-red-500" : "border-border"
                       }`}
                     placeholder="1"
-                    disabled={isFormDisabled || isEditMode}
+                    disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                     onKeyDown={handleKeyDown}
                     onInput={(e) => { e.target.value = parseDecimalNumber(e.target.value); }}
                   />
@@ -973,58 +1030,67 @@ const ChitDetailsForm = ({
                     {errors.payout_premium_percent.message}
                   </p>
                 )}
-                {!errors.payout_premium_percent && watchedPayoutPremium > 0 && watchedPayoutPremium < 1 && !isFormDisabled && !isEditMode && (
+                {!errors.payout_premium_percent && watchedPayoutPremium > 0 && watchedPayoutPremium < 1 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">Low premium — below 1% may not incentivize early payouts.</p>
                 )}
-                {!errors.payout_premium_percent && watchedPayoutPremium > 10 && !isFormDisabled && !isEditMode && (
+                {!errors.payout_premium_percent && watchedPayoutPremium > 10 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">High premium — above 10% is unusual for most chit funds.</p>
                 )}
               </div>
 
-              {/* Duration for Variable Chit */}
+              {/* Foreman Commission (Variable) */}
               <div
-                onClick={isEditMode ? () => showLockedFieldMessage("Duration", "core") : undefined}
-                className={isEditMode ? "cursor-not-allowed" : ""}
+                onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Foreman Commission", "financial") : undefined}
+                className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
               >
                 <label
-                  htmlFor="duration_months"
+                  htmlFor="foreman_commission_percent"
                   className="block text-lg font-medium text-text-secondary mb-1"
                 >
-                  Duration
+                  Foreman Commission
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Clock className="w-5 h-5 text-text-secondary" />
+                    <Percent className="w-5 h-5 text-text-secondary" />
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
-                    {...register("duration_months", { setValueAs: v => v === '' ? undefined : Number(v) })}
+                    {...register("foreman_commission_percent", { setValueAs: v => v === '' ? undefined : Number(v) })}
                     type="text"
-                    inputMode="numeric"
-                    id="duration_months"
+                    id="foreman_commission_percent"
+                    inputMode="decimal"
                     autoComplete="on"
+                    autoCapitalize="off"
                     enterKeyHint="next"
-                    maxLength={3}
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.duration_months ? "border-red-500" : "border-border"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.foreman_commission_percent ? "border-red-500" : "border-border"
                       }`}
-                    placeholder="20"
-                    disabled={isFormDisabled || isEditMode}
+                    maxLength={6}
+                    placeholder="5"
+                    disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                     onKeyDown={handleKeyDown}
-                    onFocus={onDurationChange}
-                    onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
+                    onInput={(e) => { e.target.value = parseDecimalNumber(e.target.value); }}
                   />
                 </div>
-                {errors.duration_months && (
+                {errors.foreman_commission_percent && (
                   <p className="mt-1 text-xs font-medium text-red-500">
-                    {errors.duration_months.message}
+                    {errors.foreman_commission_percent.message}
                   </p>
                 )}
-                {!errors.duration_months && watchedDuration > 0 && watchedDuration < 15 && !isFormDisabled && !isEditMode && (
-                  <p className="mt-1 text-xs font-medium text-amber-500">Short duration — less than 15 months may not yield sufficient returns.</p>
+                {!errors.foreman_commission_percent && watchedForemanCommission > 0 && watchedForemanCommission < 1 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+                  <p className="mt-1 text-xs font-medium text-amber-500">Low commission — below 1% may not cover operational costs.</p>
                 )}
-                {!errors.duration_months && watchedDuration > 36 && !isFormDisabled && !isEditMode && (
-                  <p className="mt-1 text-xs font-medium text-amber-500">Long duration — over 36 months increases risk of member dropouts.</p>
+                {!errors.foreman_commission_percent && watchedForemanCommission > 10 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+                  <p className="mt-1 text-xs font-medium text-amber-500">High commission — above 10% is unusual for most chit funds.</p>
                 )}
+                {/* Combined percentage warning */}
+                {!errors.payout_premium_percent && !errors.foreman_commission_percent &&
+                  watchedPayoutPremium > 0 && watchedForemanCommission > 0 &&
+                  (watchedPayoutPremium + watchedForemanCommission) > 15 &&
+                  !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+                    <p className="mt-1 text-xs font-medium text-amber-500">
+                      High total — premium and commission together exceed 15%, which may impact member payouts.
+                    </p>
+                  )}
               </div>
             </div>
 
@@ -1040,8 +1106,8 @@ const ChitDetailsForm = ({
             <div className="grid sm:grid-cols-2 gap-6">
               {/* Foreman Commission Percent */}
               <div
-                onClick={isEditMode ? () => showLockedFieldMessage("Foreman Commission", "financial") : undefined}
-                className={isEditMode ? "cursor-not-allowed" : ""}
+                onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Foreman Commission", "financial") : undefined}
+                className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
               >
                 <label
                   htmlFor="foreman_commission_percent"
@@ -1060,12 +1126,13 @@ const ChitDetailsForm = ({
                     inputMode="decimal"
                     id="foreman_commission_percent"
                     autoComplete="on"
+                    autoCapitalize="off"
                     enterKeyHint="next"
                     maxLength={6}
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.foreman_commission_percent ? "border-red-500" : "border-border"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.foreman_commission_percent ? "border-red-500" : "border-border"
                       }`}
                     placeholder="1"
-                    disabled={isFormDisabled || isEditMode}
+                    disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                     onKeyDown={handleKeyDown}
                     onInput={(e) => { e.target.value = parseDecimalNumber(e.target.value); }}
                   />
@@ -1075,18 +1142,18 @@ const ChitDetailsForm = ({
                     {errors.foreman_commission_percent.message}
                   </p>
                 )}
-                {!errors.foreman_commission_percent && watchedForemanCommission > 0 && watchedForemanCommission < 1 && !isFormDisabled && !isEditMode && (
+                {!errors.foreman_commission_percent && watchedForemanCommission > 0 && watchedForemanCommission < 1 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">Low commission — below 1% may not cover operational costs.</p>
                 )}
-                {!errors.foreman_commission_percent && watchedForemanCommission > 10 && !isFormDisabled && !isEditMode && (
+                {!errors.foreman_commission_percent && watchedForemanCommission > 10 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">High commission — above 10% is unusual for most chit funds.</p>
                 )}
               </div>
 
               {/* Duration for Auction Chit */}
               <div
-                onClick={isEditMode ? () => showLockedFieldMessage("Duration", "core") : undefined}
-                className={isEditMode ? "cursor-not-allowed" : ""}
+                onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Duration", "core") : undefined}
+                className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
               >
                 <label
                   htmlFor="duration_months"
@@ -1100,20 +1167,25 @@ const ChitDetailsForm = ({
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
-                    {...register("duration_months", { setValueAs: v => v === '' ? undefined : Number(v) })}
+                    {...register("duration_months")}
                     type="text"
-                    inputMode="numeric"
                     id="duration_months"
+                    inputMode="numeric"
                     autoComplete="on"
+                    autoCapitalize="off"
                     enterKeyHint="next"
-                    maxLength={3}
-                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${isEditMode ? "pointer-events-none" : ""} ${errors.duration_months ? "border-red-500" : "border-border"
+                    className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.duration_months ? "border-red-500" : "border-border"
                       }`}
+                    maxLength={3}
                     placeholder="20"
-                    disabled={isFormDisabled || isEditMode}
+                    disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
+                    onInput={(e) => handleNumericInput(e)}
+                    onChange={(e) => {
+                      handleNumericInput(e);
+                      register("duration_months").onChange(e);
+                      if (onDurationChange) onDurationChange(e.target.value);
+                    }}
                     onKeyDown={handleKeyDown}
-                    onFocus={onDurationChange}
-                    onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                   />
                 </div>
                 {errors.duration_months && (
@@ -1121,10 +1193,10 @@ const ChitDetailsForm = ({
                     {errors.duration_months.message}
                   </p>
                 )}
-                {!errors.duration_months && watchedDuration > 0 && watchedDuration < 15 && !isFormDisabled && !isEditMode && (
+                {!errors.duration_months && watchedDuration > 0 && watchedDuration < 15 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">Short duration — less than 15 months may not yield sufficient returns.</p>
                 )}
-                {!errors.duration_months && watchedDuration > 36 && !isFormDisabled && !isEditMode && (
+                {!errors.duration_months && watchedDuration > 36 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                   <p className="mt-1 text-xs font-medium text-amber-500">Long duration — over 36 months increases risk of member dropouts.</p>
                 )}
               </div>
@@ -1245,12 +1317,32 @@ const ChitDetailsForm = ({
               }
               return null;
             })()}
+            {/* Duration vs Date Range mismatch warning */}
+            {!errors.end_date && !errors.start_date && watchedStartDate && watchedEndDate &&
+              watchedStartDate.match(/^\d{4}-\d{2}$/) && watchedEndDate.match(/^\d{4}-\d{2}$/) &&
+              watchedDuration > 0 && !isFormDisabled && (() => {
+                const [startYear, startMonth] = watchedStartDate.split("-").map(Number);
+                const [endYear, endMonth] = watchedEndDate.split("-").map(Number);
+                const actualMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+
+                if (actualMonths > 0 && actualMonths !== watchedDuration) {
+                  return (
+                    <p className="mt-1 text-xs font-medium text-amber-500">
+                      Date range is {actualMonths} month{actualMonths !== 1 ? 's' : ''}, but Duration is {watchedDuration} month{watchedDuration !== 1 ? 's' : ''}.
+                    </p>
+                  );
+                }
+                return null;
+              })()}
           </div>
         </div>
 
         {/* --- DAYS --- */}
         <div className="grid sm:grid-cols-2 gap-6">
-          <div>
+          <div
+            onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Collection Day", "active") : undefined}
+            className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
+          >
             <label
               htmlFor="collection_day"
               className="block text-lg font-medium text-text-secondary mb-1"
@@ -1268,12 +1360,13 @@ const ChitDetailsForm = ({
                 inputMode="numeric"
                 id="collection_day"
                 autoComplete="on"
+                autoCapitalize="off"
                 enterKeyHint="next"
                 maxLength={2}
-                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.collection_day ? "border-red-500" : "border-border"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.collection_day ? "border-red-500" : "border-border"
                   }`}
                 placeholder="5"
-                disabled={isFormDisabled}
+                disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                 onKeyDown={handleKeyDown}
                 onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                 onChange={(e) => {
@@ -1294,7 +1387,10 @@ const ChitDetailsForm = ({
             )}
 
           </div>
-          <div>
+          <div
+            onClick={(isEditMode && hasActiveOperations) ? () => showLockedFieldMessage("Payout Day", "active") : undefined}
+            className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
+          >
             <label
               htmlFor="payout_day"
               className="block text-lg font-medium text-text-secondary mb-1"
@@ -1312,12 +1408,13 @@ const ChitDetailsForm = ({
                 inputMode="numeric"
                 id="payout_day"
                 autoComplete="on"
+                autoCapitalize="off"
                 enterKeyHint="next"
                 maxLength={2}
-                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.payout_day ? "border-red-500" : "border-border"
+                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.payout_day ? "border-red-500" : "border-border"
                   }`}
                 placeholder="10"
-                disabled={isFormDisabled}
+                disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                 onKeyDown={handleKeyDown}
                 onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                 onChange={(e) => {
@@ -1337,7 +1434,7 @@ const ChitDetailsForm = ({
               </p>
             )}
 
-            {!errors.payout_day && watchedCollectionDay > 0 && watchedPayoutDay > 0 && (watchedPayoutDay - watchedCollectionDay) > 0 && (watchedPayoutDay - watchedCollectionDay) <= 2 && !isFormDisabled && (
+            {!errors.payout_day && watchedCollectionDay > 0 && watchedPayoutDay > 0 && (watchedPayoutDay - watchedCollectionDay) > 0 && (watchedPayoutDay - watchedCollectionDay) <= 2 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
               <p className="mt-1 text-xs font-medium text-amber-500">Short gap — only {watchedPayoutDay - watchedCollectionDay} day{watchedPayoutDay - watchedCollectionDay > 1 ? 's' : ''} after collection, allow more processing time.</p>
             )}
           </div>
@@ -1381,6 +1478,7 @@ const ChitDetailsForm = ({
                 onFocus={handleNotesFocus}
                 onScroll={handleNotesScroll}
                 id="notes"
+                inputMode="text"
                 autoComplete="off"
                 maxLength={1000000}
                 className={`w-full px-4 pt-3 pb-3 text-base bg-background-secondary border border-t-0 rounded-b-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed resize-none h-[148px] overflow-y-auto ${errors.notes ? "border-red-500" : "border-border"}`}

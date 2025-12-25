@@ -126,15 +126,12 @@ export const useChitForm = (id, mode) => {
     [mode, createdChitId]
   );
 
-  // --- Compute if chit has active operations (should lock financial/date fields) ---
+  // --- Compute if chit has active operations (should lock most fields in edit mode) ---
   const hasActiveOperations = useMemo(() => {
     if (!originalData) return false;
-    // Lock if chit is Active, or has members assigned, or has collections logged
-    return (
-      originalData.status === "Active" ||
-      (originalData.members_count ?? 0) > 0 ||
-      (originalData.collections_count ?? 0) > 0
-    );
+    // Lock only when members are assigned (they are affected by changes)
+    // Note: status check removed - if no members, changes affect no one
+    return (originalData.members_count ?? 0) > 0;
   }, [originalData]);
 
   // --- Memoized TABS ---
@@ -192,11 +189,11 @@ export const useChitForm = (id, mode) => {
       form.clearErrors(["payout_premium_percent", "foreman_commission_percent"]);
       // Do NOT trigger monthly_installment validation - let user interact first
     } else if (watchedChitType === "variable") {
-      // Variable: clear fixed and auction fields
+      // Variable: clear ONLY fixed fields (monthly_installment)
+      // Keep foreman_commission_percent - Variable chits also require it!
       setValue("monthly_installment", "", { shouldValidate: false });
-      setValue("foreman_commission_percent", "", { shouldValidate: false });
-      form.clearErrors(["monthly_installment", "foreman_commission_percent"]);
-      // Do NOT trigger payout_premium_percent validation - let user interact first
+      form.clearErrors(["monthly_installment"]);
+      // Do NOT trigger payout_premium_percent or foreman_commission_percent validation - let user interact first
     } else if (watchedChitType === "auction") {
       // Auction: clear fixed and variable fields
       setValue("monthly_installment", "", { shouldValidate: false });
@@ -257,6 +254,21 @@ export const useChitForm = (id, mode) => {
 
   // Track which date field was last edited to prevent loops
   const lastEditedDateField = useRef(null);
+
+  // Recalculate End Date when Duration changes (only if start_date exists and user is not editing end_date)
+  useEffect(() => {
+    // Skip if user is currently editing end_date (they want to change it manually)
+    if (lastEditedDateField.current === "end_date") return;
+
+    // Only calculate if duration is valid AND start_date is valid
+    if (!isValidSizeDuration(wDuration) || !isValidDate(wStartDate)) return;
+
+    const newEndDate = calculateEndDate(wStartDate, wDuration);
+    if (newEndDate && newEndDate !== wEndDate) {
+      setValue("end_date", newEndDate, { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wDuration]); // Only trigger on duration changes
 
   // Handlers to track which date field user is editing
   const handleStartDateChange = useCallback(() => {
@@ -493,6 +505,7 @@ export const useChitForm = (id, mode) => {
     watchedChitType,
     watchedName,
     hasActiveOperations,
+    membersCount: originalData?.members_count ?? 0,
     // Handlers
     onSubmit,
     handleSizeChange,

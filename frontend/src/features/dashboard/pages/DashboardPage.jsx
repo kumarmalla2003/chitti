@@ -40,7 +40,7 @@ const fetchDashboardData = async () => {
     api.get("/chits"),
     api.get("/members"),
     api.get("/collections"),
-    api.get("/payouts/all"),
+    api.get("/payouts"),
   ]);
 
   const chits = chitsRes.data;

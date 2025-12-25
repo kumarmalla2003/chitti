@@ -287,7 +287,7 @@ const MemberChitsManager = ({
 
         {loading && !assignments.length ? (
           <div className="p-4">
-             <Skeleton.Table rows={3} columns={6} />
+            <Skeleton.Table rows={3} columns={6} />
           </div>
         ) : assignments.length > 0 ? (
           <>

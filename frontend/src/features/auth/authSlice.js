@@ -1,8 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+// ⚠️ DEVELOPMENT ONLY: Set to true to bypass authentication UI
+// Remember to set this back to false before deploying to production!
+const DEV_BYPASS_AUTH = true;
+
 const initialState = {
-  user: null,
-  isLoggedIn: false,
+  user: DEV_BYPASS_AUTH ? { phone_number: "dev_user" } : null,
+  isLoggedIn: DEV_BYPASS_AUTH,
 };
 
 const authSlice = createSlice({

@@ -1,14 +1,14 @@
 # app/schemas/assignments.py
 
-from pydantic import BaseModel, ConfigDict
-from datetime import date
-from typing import List
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import date, datetime
+from typing import List, Optional
 from app.schemas.members import MemberPublic
 from app.schemas.chits import ChitResponse
 
 class ChitAssignmentBase(BaseModel):
-    member_id: int
-    chit_id: int
+    member_id: int = Field(..., ge=1)
+    chit_id: int = Field(..., ge=1)
     chit_month: date
 
 class ChitAssignmentCreate(ChitAssignmentBase):
@@ -18,6 +18,8 @@ class ChitAssignmentSimple(BaseModel):
     """Minimal assignment info for nesting."""
     id: int
     chit_month: date
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 class ChitAssignmentPublic(BaseModel):
@@ -28,6 +30,8 @@ class ChitAssignmentPublic(BaseModel):
     total_paid: float
     due_amount: float
     collection_status: str 
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,7 +42,7 @@ class UnassignedMonthResponse(BaseModel):
     available_months: List[date]
 
 class ChitAssignmentBulkItem(BaseModel):
-    member_id: int
+    member_id: int = Field(..., ge=1)
     chit_month: date
 
 class ChitAssignmentBulkCreate(BaseModel):

@@ -46,12 +46,25 @@ const DetailsSectionComponent = ({
   onStartDateChange,
   onEndDateChange,
   onShowLockedFieldWarning,
+  lockedFieldWarning, // Add new prop for displaying warning
+  showEditWarning, // For auto-dismiss edit mode warning
+  membersCount, // For singular/plural message
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
       <Info className="w-6 h-6" /> Details
     </h2>
     <hr className="border-border mb-4" />
+    {showEditWarning && (
+      <Message type="warning" title="Limited Editing" className="mb-4">
+        Some fields are locked — this chit has {membersCount} {membersCount === 1 ? "member" : "members"} assigned.
+      </Message>
+    )}
+    {lockedFieldWarning && (
+      <Message type="warning" title="Field Locked" className="mb-4">
+        {lockedFieldWarning}
+      </Message>
+    )}
     <ChitDetailsForm
       mode={mode}
       control={control}
@@ -125,6 +138,7 @@ const ChitDetailPage = () => {
     handleStartDateChange,
     handleEndDateChange,
     hasActiveOperations,
+    membersCount,
   } = useChitForm(id, mode);
 
   // --- Local UI State ---
@@ -132,7 +146,9 @@ const ChitDetailPage = () => {
   const [collectionDefaults, setCollectionDefaults] = useState(null);
   const [displayedTitle, setDisplayedTitle] = useState(null);
   const [warning, setWarning] = useState(null);
+  const [showEditWarning, setShowEditWarning] = useState(false);
   const warningTimeoutRef = useRef(null);
+  const editWarningTimeoutRef = useRef(null);
 
   // --- Report Generation Hook ---
   const currentChitData = getValues();
@@ -151,7 +167,7 @@ const ChitDetailPage = () => {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   // --- Scroll to Top on Messages ---
-  useScrollToTop(success || error || warning);
+  useScrollToTop(success || error || warning || showEditWarning);
 
   // --- Handle Initial Tab from Navigation State ---
   useEffect(() => {
@@ -168,6 +184,27 @@ const ChitDetailPage = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state, setSuccess]);
+
+  // --- Auto-dismiss Edit Warning ---
+  useEffect(() => {
+    // Clear any existing timeout
+    if (editWarningTimeoutRef.current) {
+      clearTimeout(editWarningTimeoutRef.current);
+    }
+    // Show warning if in edit mode with members assigned
+    if (mode === "edit" && hasActiveOperations) {
+      setShowEditWarning(true);
+      // Auto-dismiss after 5 seconds
+      editWarningTimeoutRef.current = setTimeout(() => setShowEditWarning(false), 5000);
+    } else {
+      setShowEditWarning(false);
+    }
+    return () => {
+      if (editWarningTimeoutRef.current) {
+        clearTimeout(editWarningTimeoutRef.current);
+      }
+    };
+  }, [mode, hasActiveOperations]);
 
   // --- Focus Title on Tab Change ---
   useEffect(() => {
@@ -406,11 +443,6 @@ const ChitDetailPage = () => {
             {error}
           </Message>
         )}
-        {warning && (
-          <Message type="warning" title="Field Locked">
-            {warning}
-          </Message>
-        )}
       </div>
 
       {/* --- VIEW MODE --- */}
@@ -459,6 +491,9 @@ const ChitDetailPage = () => {
               onEndDateChange={handleEndDateChange}
               hasActiveOperations={hasActiveOperations}
               onShowLockedFieldWarning={handleShowLockedFieldWarning}
+              lockedFieldWarning={warning}
+              showEditWarning={showEditWarning}
+              membersCount={membersCount}
             />
           )}
 
@@ -489,6 +524,9 @@ const ChitDetailPage = () => {
                   onStartDateChange={handleStartDateChange}
                   onEndDateChange={handleEndDateChange}
                   onShowLockedFieldWarning={handleShowLockedFieldWarning}
+                  lockedFieldWarning={warning}
+                  showEditWarning={showEditWarning}
+                  membersCount={membersCount}
                 />
 
                 <ChitDesktopActionButton
