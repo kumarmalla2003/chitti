@@ -1,21 +1,17 @@
 # backend/app/models/payments.py
 
-from typing import Optional, List, TYPE_CHECKING
-from datetime import date, datetime, timezone
+from typing import Optional, TYPE_CHECKING
+from datetime import date, datetime
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import CheckConstraint
 import enum
 
+from app.core.utils import utc_now
+
 if TYPE_CHECKING:
-    from app.models.collections import Collection
-    from app.models.payouts import Payout
+    from app.models.slots import ChitSlot
     from app.models.members import Member
     from app.models.chits import Chit
-
-
-def utc_now() -> datetime:
-    """Return current UTC time (timezone-aware)."""
-    return datetime.now(timezone.utc)
 
 
 class PaymentType(str, enum.Enum):
@@ -36,13 +32,21 @@ class PaymentMethod(str, enum.Enum):
 class Payment(SQLModel, table=True):
     """
     Tracks all actual payment transactions.
-    Each payment can be full or partial, linked to a Collection or Payout schedule.
+    Each payment can be full or partial.
+    
+    For COLLECTION payments:
+      - Links via chit_id + member_id + month
+      - slot_id is NULL
+      
+    For PAYOUT payments:
+      - Links via slot_id (which has chit_id and member_id)
+      - month can be derived from slot
     """
     __table_args__ = (
         CheckConstraint(
-            "(payment_type = 'collection' AND collection_id IS NOT NULL AND payout_id IS NULL) OR "
-            "(payment_type = 'payout' AND payout_id IS NOT NULL AND collection_id IS NULL)",
-            name='ck_payment_type_fk_consistency'
+            "(payment_type = 'collection' AND slot_id IS NULL) OR "
+            "(payment_type = 'payout' AND slot_id IS NOT NULL)",
+            name='ck_payment_type_slot_consistency'
         ),
     )
     
@@ -55,9 +59,11 @@ class Payment(SQLModel, table=True):
     notes: Optional[str] = Field(default=None, max_length=1000)
     payment_type: PaymentType  # collection or payout
     
-    # Link to schedule (one of these will be set based on payment_type)
-    collection_id: Optional[int] = Field(default=None, foreign_key="collection.id")
-    payout_id: Optional[int] = Field(default=None, foreign_key="payout.id")
+    # Month number (1, 2, 3...) - used for collection payments
+    month: int = Field(ge=1)
+    
+    # Link to slot (for payout payments only)
+    slot_id: Optional[int] = Field(default=None, foreign_key="chitslot.id")
     
     # Required references
     member_id: int = Field(foreign_key="member.id", ge=1)  # Who paid/received
@@ -68,7 +74,6 @@ class Payment(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
     
     # Relationships
-    collection: Optional["Collection"] = Relationship(back_populates="payments")
-    payout: Optional["Payout"] = Relationship(back_populates="payments")
+    slot: Optional["ChitSlot"] = Relationship(back_populates="payments")
     member: "Member" = Relationship(back_populates="payments")
     chit: "Chit" = Relationship(back_populates="payments")

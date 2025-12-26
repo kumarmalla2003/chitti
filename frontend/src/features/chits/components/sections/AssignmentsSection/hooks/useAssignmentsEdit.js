@@ -337,23 +337,30 @@ export const useAssignmentsEdit = ({
             }
 
             // 4. Process collection changes (key format: "month_X" where X is month number)
+            // Input is Total Monthly Collection, save directly to DB
             for (const [collectionKey, newAmount] of Object.entries(editedCollections)) {
                 // Parse month number from key (e.g., "month_1" -> 1)
                 const monthMatch = collectionKey.match(/^month_(\d+)$/);
                 if (!monthMatch) continue;
                 const monthNumber = parseInt(monthMatch[1]);
 
-                // Find collection by month number
-                const originalCollection = collections.find((c) => c.month === monthNumber);
-                if (originalCollection) {
-                    const newAmountNum = parseFloat(newAmount) || 0;
-                    if (originalCollection.expected_amount !== newAmountNum) {
+                const totalAmount = parseFloat(newAmount) || 0;
+
+                // Find ALL collections for this month to update them all
+                const monthCollections = collections.filter((c) => c.month === monthNumber);
+
+                if (monthCollections.length > 0) {
+                    // If existing is different, update ALL.
+                    if (monthCollections[0].expected_amount !== totalAmount) {
                         savingSet.add(`collection_${collectionKey}`);
-                        promises.push(
-                            patchCollection(originalCollection.id, { expected_amount: newAmountNum }).catch((err) => {
-                                errors.push(`Failed to update collection: ${err.message}`);
+
+                        // Update all records for this month with the Total amount
+                        const collectionPromises = monthCollections.map(col =>
+                            patchCollection(col.id, { expected_amount: totalAmount }).catch((err) => {
+                                errors.push(`Failed to update collection ${col.id}: ${err.message}`);
                             })
                         );
+                        promises.push(...collectionPromises);
                     }
                 }
             }

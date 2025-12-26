@@ -146,7 +146,7 @@ const ChitViewDashboard = ({
               ) : (
                 <MetricCard
                   label="Installment"
-                  value={formatCurrency(chitData.monthly_installment)}
+                  value={formatCurrency(chitData.base_contribution)}
                   icon={PieChart}
                 />
               )}

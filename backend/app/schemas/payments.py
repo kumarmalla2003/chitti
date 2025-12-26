@@ -15,9 +15,11 @@ class PaymentCreate(BaseModel):
     notes: Optional[str] = None
     payment_type: PaymentType
     
-    # One of these required based on payment_type
-    collection_id: Optional[int] = None
-    payout_id: Optional[int] = None
+    # Month number (required for all payments)
+    month: int = Field(ge=1)
+    
+    # For payout payments only
+    slot_id: Optional[int] = None
     
     # Required
     member_id: int = Field(ge=1)
@@ -39,8 +41,8 @@ class PaymentResponse(BaseModel):
     notes: Optional[str] = None
     payment_type: PaymentType
     
-    collection_id: Optional[int] = None
-    payout_id: Optional[int] = None
+    month: int
+    slot_id: Optional[int] = None
     member_id: int
     chit_id: int
     

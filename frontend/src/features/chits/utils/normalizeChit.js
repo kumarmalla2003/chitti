@@ -15,7 +15,7 @@ export const normalizeChitForForm = (chit) => {
     chit_value: chit.chit_value || "",
     size: chit.size || "",
     chit_type: chit.chit_type || "fixed",
-    monthly_installment: chit.monthly_installment || 0,
+    base_contribution: chit.base_contribution || 0,
     payout_premium_percent: chit.payout_premium_percent || 0,
     foreman_commission_percent: chit.foreman_commission_percent || 0,
     duration_months: chit.duration_months || "",

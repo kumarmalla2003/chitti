@@ -39,10 +39,12 @@ export const chitSchema = z.object({
     // Chit Type
     chit_type: z.enum(["fixed", "variable", "auction"]).default("fixed"),
 
-    // Installment fields - use preprocess to handle empty strings gracefully
-    monthly_installment: z.preprocess(
+    // Contribution fields - renamed from base_contribution
+    // For Fixed chit: base_contribution = monthly installment (required)
+    // For Variable/Auction: base_contribution is calculated (chit_value / size)
+    base_contribution: z.preprocess(
         (val) => (val === "" || val === undefined || val === null ? 0 : Number(val)),
-        z.number().int().nonnegative().max(100000000, "Monthly Installment cannot exceed ₹10 Crores.")
+        z.number().int().nonnegative().max(100000000, "Base Contribution cannot exceed ₹10 Crores.")
     ),
     // Variable Chit: payout premium percentage (0-100)
     payout_premium_percent: z.preprocess(
@@ -112,17 +114,17 @@ export const chitSchema = z.object({
 }).superRefine((data, ctx) => {
     // Conditional validation based on chit_type
     if (data.chit_type === "fixed") {
-        if (!data.monthly_installment || data.monthly_installment <= 0) {
+        if (!data.base_contribution || data.base_contribution <= 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Monthly Installment is required for Fixed chits.",
-                path: ["monthly_installment"],
+                path: ["base_contribution"],
             });
-        } else if (data.monthly_installment < 1000) {
+        } else if (data.base_contribution < 1000) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Monthly Installment must be at least ₹1,000.",
-                path: ["monthly_installment"],
+                path: ["base_contribution"],
             });
         }
     } else if (data.chit_type === "variable") {
@@ -227,10 +229,16 @@ export const chitSchema = z.object({
     }
 });
 
-// Helper function to calculate installments for variable chits
+// Helper function to calculate contributions for variable chits
+export const calculateContributions = (chitValue, size, payoutPremiumPercent) => {
+    if (!size || size <= 0) return { base: 0, premium: 0 };
+    const base = Math.floor(chitValue / size);
+    const premium = Math.floor(base + (chitValue * payoutPremiumPercent / 100));
+    return { base, premium };
+};
+
+// Legacy alias for backwards compatibility
 export const calculateInstallments = (chitValue, size, payoutPremiumPercent) => {
-    if (!size || size <= 0) return { before: 0, after: 0 };
-    const before = Math.floor(chitValue / size);
-    const after = Math.floor(before + (chitValue * payoutPremiumPercent / 100));
-    return { before, after };
+    const { base, premium } = calculateContributions(chitValue, size, payoutPremiumPercent);
+    return { before: base, after: premium };
 };

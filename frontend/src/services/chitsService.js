@@ -40,3 +40,31 @@ export const checkChitNameAvailability = async (name) => {
   const response = await api.get(`${BASE_URL}/check-name`, { params: { name } });
   return response.data;
 };
+
+/**
+ * Record an auction for a specific month.
+ * @param {number} chitId
+ * @param {number} month
+ * @param {number} bidAmount
+ * @param {number} memberId
+ */
+export const recordAuction = async (chitId, month, bidAmount, memberId) => {
+  const response = await api.post(`${BASE_URL}/${chitId}/auctions`, {
+    month,
+    bid_amount: bidAmount,
+    member_id: memberId
+  });
+  return response.data;
+};
+
+/**
+ * Get per-member breakdown for a specific month.
+ * Shows all assigned members with their expected contribution and payment status.
+ * @param {number} chitId
+ * @param {number} month
+ * @returns {Promise<{month: number, month_date: string, chit_id: number, chit_name: string, size: number, total_expected: number, total_collected: number, collection_percentage: number, members: Array}>}
+ */
+export const getMonthMembers = async (chitId, month) => {
+  const response = await api.get(`${BASE_URL}/${chitId}/months/${month}/members`);
+  return response.data;
+};

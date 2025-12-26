@@ -379,7 +379,7 @@ const ChitReportPDF = ({ chit, payouts, assignments, collections }) => {
                     ? `${formatCurrency(chit.installment_before_payout)} / ${formatCurrency(chit.installment_after_payout)}`
                     : chit.chit_type === "auction"
                       ? "Varies"
-                      : formatCurrency(chit.monthly_installment)}
+                      : formatCurrency(chit.base_contribution)}
                 </Text>
               </View>
             </View>

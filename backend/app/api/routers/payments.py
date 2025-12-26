@@ -39,24 +39,25 @@ async def get_payment(
     return payment
 
 
-@router.get("/collection/{collection_id}", response_model=List[PaymentResponse])
-async def get_payments_by_collection(
-    collection_id: int,
+@router.get("/slot/{slot_id}", response_model=List[PaymentResponse])
+async def get_payments_by_slot(
+    slot_id: int,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all payments for a specific collection."""
-    return await crud_payments.get_by_collection(session, collection_id)
+    """Get all payout payments for a specific slot."""
+    return await crud_payments.get_by_slot(session, slot_id)
 
 
-@router.get("/payout/{payout_id}", response_model=List[PaymentResponse])
-async def get_payments_by_payout(
-    payout_id: int,
+@router.get("/chit/{chit_id}/month/{month}", response_model=List[PaymentResponse])
+async def get_payments_by_chit_and_month(
+    chit_id: int,
+    month: int,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all payments for a specific payout."""
-    return await crud_payments.get_by_payout(session, payout_id)
+    """Get all payments for a specific chit in a specific month."""
+    return await crud_payments.get_by_chit_and_month(session, chit_id, month)
 
 
 @router.get("/member/{member_id}", response_model=List[PaymentResponse])
@@ -85,17 +86,19 @@ async def create_payment(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new payment. Automatically updates related Collection/Payout status."""
-    # Validate that the correct ID is provided based on payment_type
-    if payment_in.payment_type == PaymentType.COLLECTION and not payment_in.collection_id:
+    """Create a new payment. Automatically updates related slot status for payout payments."""
+    # Validate that slot_id is provided for payout payments
+    if payment_in.payment_type == PaymentType.PAYOUT and not payment_in.slot_id:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="collection_id is required for collection payments"
+            detail="slot_id is required for payout payments"
         )
-    if payment_in.payment_type == PaymentType.PAYOUT and not payment_in.payout_id:
+    
+    # For collection payments: slot_id should be None
+    if payment_in.payment_type == PaymentType.COLLECTION and payment_in.slot_id:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="payout_id is required for payout payments"
+            detail="slot_id should not be provided for collection payments"
         )
     
     return await crud_payments.create(session, payment_in)
@@ -108,7 +111,7 @@ async def update_payment(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Update a payment. Automatically recalculates related Collection/Payout status."""
+    """Update a payment. Automatically recalculates related slot status for payout payments."""
     payment = await crud_payments.get_by_id(session, payment_id)
     if not payment:
         raise HTTPException(
@@ -124,7 +127,7 @@ async def delete_payment(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Delete a payment. Automatically recalculates related Collection/Payout status."""
+    """Delete a payment. Automatically recalculates related slot status for payout payments."""
     payment = await crud_payments.get_by_id(session, payment_id)
     if not payment:
         raise HTTPException(

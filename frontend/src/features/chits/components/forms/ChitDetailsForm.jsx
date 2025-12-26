@@ -203,7 +203,7 @@ const ChitDetailsForm = ({
   const watchedName = useWatch({ control, name: "name" }) || "";
   const watchedChitValue = useWatch({ control, name: "chit_value" });
   const watchedSize = useWatch({ control, name: "size" });
-  const watchedMonthlyInstallment = useWatch({ control, name: "monthly_installment" });
+  const watchedMonthlyInstallment = useWatch({ control, name: "base_contribution" });
   const watchedPayoutPremium = useWatch({ control, name: "payout_premium_percent" });
   const watchedForemanCommission = useWatch({ control, name: "foreman_commission_percent" });
   const watchedDuration = useWatch({ control, name: "duration_months" });
@@ -247,7 +247,7 @@ const ChitDetailsForm = ({
     const baseFields = ["name", "chit_type", "chit_value", "size"];
 
     if (watchedChitType === "fixed") {
-      return [...baseFields, "monthly_installment", "duration_months", "start_date", "end_date", "collection_day", "payout_day", "notes"];
+      return [...baseFields, "base_contribution", "duration_months", "start_date", "end_date", "collection_day", "payout_day", "notes"];
     } else if (watchedChitType === "variable") {
       // Hide Duration, Show Foreman Commission
       // We sync Duration with Size automatically
@@ -284,17 +284,7 @@ const ChitDetailsForm = ({
   }, [watchedChitType, watchedSize, setValue]);
 
   // Handle numeric input - only allow digits (and optionally decimal for percentages)
-  const handleNumericInput = useCallback((e, allowDecimal = false) => {
-    const pattern = allowDecimal ? /[^0-9.]/g : /[^0-9]/g;
-    e.target.value = e.target.value.replace(pattern, '');
-    // For decimal, ensure only one decimal point
-    if (allowDecimal) {
-      const parts = e.target.value.split('.');
-      if (parts.length > 2) {
-        e.target.value = parts[0] + '.' + parts.slice(1).join('');
-      }
-    }
-  }, []);
+
 
   // Show warning when user clicks on a locked field
   const showLockedFieldMessage = useCallback((fieldName, reason) => {
@@ -848,9 +838,8 @@ const ChitDetailsForm = ({
                   }`}
                 placeholder="20"
                 disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
-                onInput={(e) => handleNumericInput(e)}
+                onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                 onChange={(e) => {
-                  handleNumericInput(e);
                   register("size").onChange(e);
                   // For Variable chits, Size also acts as Duration - trigger duration change callback
                   if (watchedChitType === "variable" && onDurationChange) {
@@ -873,11 +862,11 @@ const ChitDetailsForm = ({
                   : "Small size — less than 15 members may not be sustainable."}
               </p>
             )}
-            {!errors.size && watchedSize > 50 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+            {!errors.size && watchedSize > 36 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
               <p className="mt-1 text-xs font-medium text-amber-500">
                 {watchedChitType === "variable"
-                  ? "Large size — over 50 members/months may be difficult to manage."
-                  : "Large size — over 50 members may be difficult to manage."}
+                  ? "Large size — over 36 members/months may be difficult to manage."
+                  : "Large size — over 36 members may be difficult to manage."}
               </p>
             )}
           </div>
@@ -892,7 +881,7 @@ const ChitDetailsForm = ({
               className={(isEditMode && hasActiveOperations) ? "cursor-not-allowed" : ""}
             >
               <label
-                htmlFor="monthly_installment"
+                htmlFor="base_contribution"
                 className="block text-lg font-medium text-text-secondary mb-1"
               >
                 Monthly Installment
@@ -906,31 +895,31 @@ const ChitDetailsForm = ({
                   <IndianRupee className="w-4 h-4" />
                 </span>
                 <FormattedInput
-                  name="monthly_installment"
+                  name="base_contribution"
                   control={control}
                   format={formatNumber}
                   parse={parseNumber}
-                  id="monthly_installment"
+                  id="base_contribution"
                   inputMode="numeric"
                   autoComplete="on"
                   enterKeyHint="next"
                   maxLength={15}
-                  className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.monthly_installment ? "border-red-500" : "border-border"
+                  className={`w-full pl-16 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${(isEditMode && hasActiveOperations) ? "pointer-events-none" : ""} ${errors.base_contribution ? "border-red-500" : "border-border"
                     }`}
                   placeholder="20,000"
                   disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
                   onKeyDown={handleKeyDown}
                 />
               </div>
-              {errors.monthly_installment && (
+              {errors.base_contribution && (
                 <p className="mt-1 text-xs font-medium text-red-500">
-                  <ErrorMessageWithIcon message={errors.monthly_installment.message} />
+                  <ErrorMessageWithIcon message={errors.base_contribution.message} />
                 </p>
               )}
-              {!errors.monthly_installment && watchedMonthlyInstallment > 0 && watchedMonthlyInstallment < 10000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+              {!errors.base_contribution && watchedMonthlyInstallment > 0 && watchedMonthlyInstallment < 10000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                 <p className="mt-1 text-xs font-medium text-amber-500">Low installment — below <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />10,000 may not be practical.</p>
               )}
-              {!errors.monthly_installment && watchedMonthlyInstallment > 50000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
+              {!errors.base_contribution && watchedMonthlyInstallment > 50000 && !isFormDisabled && !(isEditMode && hasActiveOperations) && (
                 <p className="mt-1 text-xs font-medium text-amber-500">High installment — above <IndianRupee className="inline w-3 h-3 align-middle" style={{ marginTop: "-2px" }} />50,000/month may be difficult for members.</p>
               )}
             </div>
@@ -953,7 +942,7 @@ const ChitDetailsForm = ({
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
-                    {...register("duration_months")}
+                    {...register("duration_months", { setValueAs: v => v === '' ? undefined : Number(v) })}
                     type="text"
                     id="duration_months"
                     inputMode="numeric"
@@ -965,9 +954,8 @@ const ChitDetailsForm = ({
                     maxLength={3}
                     placeholder="20"
                     disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
-                    onInput={(e) => handleNumericInput(e)}
+                    onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                     onChange={(e) => {
-                      handleNumericInput(e);
                       register("duration_months").onChange(e);
                       if (onDurationChange) onDurationChange(e.target.value);
                     }}
@@ -1167,7 +1155,7 @@ const ChitDetailsForm = ({
                   </span>
                   <div className="absolute left-10 h-6 w-px bg-border"></div>
                   <input
-                    {...register("duration_months")}
+                    {...register("duration_months", { setValueAs: v => v === '' ? undefined : Number(v) })}
                     type="text"
                     id="duration_months"
                     inputMode="numeric"
@@ -1179,9 +1167,8 @@ const ChitDetailsForm = ({
                     maxLength={3}
                     placeholder="20"
                     disabled={isFormDisabled || (isEditMode && hasActiveOperations)}
-                    onInput={(e) => handleNumericInput(e)}
+                    onInput={(e) => { e.target.value = parseNumber(e.target.value); }}
                     onChange={(e) => {
-                      handleNumericInput(e);
                       register("duration_months").onChange(e);
                       if (onDurationChange) onDurationChange(e.target.value);
                     }}

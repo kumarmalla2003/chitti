@@ -9,12 +9,13 @@ const handleError = (error, defaultMessage) => {
   throw new Error(defaultMessage);
 };
 
+/**
+ * Get all slots (payouts). Response uses ChitSlot format.
+ * GET /payouts
+ */
 export const getAllPayouts = async (filters = {}) => {
   const params = {};
-  if (filters.chitId) params.chit_id = filters.chitId;
-  if (filters.memberId) params.member_id = filters.memberId;
-  if (filters.startDate) params.start_date = filters.startDate;
-  if (filters.endDate) params.end_date = filters.endDate;
+  if (filters.status) params.status = filters.status;
 
   try {
     const response = await api.get(`${BASE_URL}`, { params });
@@ -24,6 +25,10 @@ export const getAllPayouts = async (filters = {}) => {
   }
 };
 
+/**
+ * Get all slots (payouts) for a specific chit.
+ * GET /payouts/chit/{chitId}
+ */
 export const getPayoutsByChitId = async (chitId) => {
   try {
     const response = await api.get(`${BASE_URL}/chit/${chitId}`);
@@ -33,6 +38,10 @@ export const getPayoutsByChitId = async (chitId) => {
   }
 };
 
+/**
+ * Get all slots (payouts) for a specific member.
+ * GET /payouts/member/{memberId}
+ */
 export const getPayoutsByMemberId = async (memberId) => {
   try {
     const response = await api.get(`${BASE_URL}/member/${memberId}`);
@@ -42,6 +51,10 @@ export const getPayoutsByMemberId = async (memberId) => {
   }
 };
 
+/**
+ * Get a specific slot (payout) by ID.
+ * GET /payouts/{slotId}
+ */
 export const getPayoutById = async (id) => {
   try {
     const response = await api.get(`${BASE_URL}/${id}`);
@@ -51,6 +64,10 @@ export const getPayoutById = async (id) => {
   }
 };
 
+/**
+ * Update a slot (payout).
+ * PUT /payouts/{slotId}
+ */
 export const updatePayout = async (id, payoutData) => {
   try {
     const response = await api.put(
@@ -63,11 +80,9 @@ export const updatePayout = async (id, payoutData) => {
   }
 };
 
-export const deletePayout = async (id) => {
-  try {
-    const response = await api.delete(`${BASE_URL}/${id}`);
-    return response.data;
-  } catch (error) {
-    handleError(error, "Failed to delete payout.");
-  }
+// Note: Payouts (slots) are not deleted, only unassigned via slots API
+// This export is kept for backwards compatibility but does nothing
+export const deletePayout = async () => {
+  console.warn('deletePayout is deprecated. Use slots API to unassign members.');
+  return Promise.resolve();
 };

@@ -11,6 +11,7 @@ import Message from "../../../../../components/ui/Message";
 import AssignNewMemberForm from "../../../../members/components/forms/AssignNewMemberForm";
 import Skeleton from "../../../../../components/ui/Skeleton";
 import FormattedCurrencyInput from "./components/FormattedCurrencyInput";
+import MonthMemberBreakdown from "./components/MonthMemberBreakdown";
 import { useAssignmentsEdit } from "./hooks/useAssignmentsEdit";
 import {
     formatAmount,
@@ -34,6 +35,8 @@ import {
     Gavel,
     TrendingUp,
     WalletMinimal,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import {
     useAssignmentsByChit,
@@ -67,6 +70,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
     const [localError, setLocalError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
+    const [expandedMonth, setExpandedMonth] = useState(null); // Track which month is expanded
 
     // --- Responsive Items Per Page ---
     useEffect(() => {
@@ -119,7 +123,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
             });
             const payout = payouts.find((p) => p.month === i);
 
-            // Find collection by month number to get expected_amount
+            // Find collection by month number to get expected_amount (now stores Total for all chit types)
             const collection = collections.find((c) => c.month === i);
             const expectedAmount = collection?.expected_amount || 0;
 
@@ -131,7 +135,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 assignment: assignment || null,
                 payout: payout || null,
                 collection: collection || null,
-                expectedAmount,
+                expectedAmount, // Total Monthly Collection (stored directly in DB)
                 auctionCompleted,
                 bidAmount: payout?.bid_amount || null,
             });
@@ -319,7 +323,21 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
         const baseColumns = [
             {
                 header: "Month",
-                cell: (row) => row.monthIndex,
+                cell: (row) => {
+                    const isExpanded = expandedMonth === row.monthIndex;
+                    const ExpandIcon = isExpanded ? ChevronUp : ChevronDown;
+                    return (
+                        <button
+                            type="button"
+                            onClick={() => setExpandedMonth(isExpanded ? null : row.monthIndex)}
+                            className="inline-flex items-center gap-1 font-medium text-text-primary hover:text-accent transition-colors"
+                            title={isExpanded ? "Collapse" : "View members"}
+                        >
+                            {row.monthIndex}
+                            <ExpandIcon className="w-3 h-3 text-text-secondary" />
+                        </button>
+                    );
+                },
                 className: "text-center font-medium",
                 headerClassName: "text-center",
             },
@@ -614,6 +632,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
         editingRowMember, editingRowPayout, editingRowAuction, editingRowCollection,
         isAuctionType, editedMembers, editedPayouts, editedAuctions, editedCollections,
         allMembers, paginatedData, currentPage, totalPages, isSaving, savingCells,
+        expandedMonth,
     ]);
 
     // --- Render Content ---
@@ -768,6 +787,19 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                                         columns={columns}
                                         data={paginatedData}
                                         variant="secondary"
+                                        expandedRowRender={(row) => expandedMonth === row.monthIndex ? (
+                                            <MonthMemberBreakdown
+                                                chitId={chitId}
+                                                month={row.monthIndex}
+                                                monthLabel={row.monthLabel}
+                                                onClose={() => setExpandedMonth(null)}
+                                                onLogPayment={onLogCollectionClick ? (member) => onLogCollectionClick({
+                                                    ...member,
+                                                    month: row.monthIndex,
+                                                    collectionId: row.collection?.id,
+                                                }) : null}
+                                            />
+                                        ) : null}
                                     />
                                 </div>
 

@@ -1,10 +1,12 @@
 // frontend/src/components/ui/Table.jsx
 
+import React from "react";
+
 const getNestedValue = (obj, path) => {
   return path.split(".").reduce((acc, part) => acc && acc[part], obj);
 };
 
-const Table = ({ columns, data, variant = "primary", onRowClick, rowClassName }) => {
+const Table = ({ columns, data, variant = "primary", onRowClick, rowClassName, expandedRowRender }) => {
   const headerClass =
     variant === "secondary"
       ? "bg-background-primary"
@@ -45,24 +47,36 @@ const Table = ({ columns, data, variant = "primary", onRowClick, rowClassName })
               ? rowClassName(row, rowIndex)
               : rowClassName || "";
 
+            // Get expanded content if expandedRowRender is provided
+            const expandedContent = expandedRowRender ? expandedRowRender(row, rowIndex) : null;
+
             return (
-              <tr
-                key={rowIndex}
-                onClick={() => onRowClick && onRowClick(row)}
-                className={`group ${rowClass} ${customRowClass} transition-all duration-normal ease-smooth ${rowHoverClass}`}
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.accessor || col.header}
-                    className={`px-control py-4 font-medium whitespace-nowrap ${col.cellClassName || col.className || ""
-                      }`}
-                  >
-                    {col.cell
-                      ? col.cell(row, rowIndex)
-                      : getNestedValue(row, col.accessor)}
-                  </td>
-                ))}
-              </tr>
+              <React.Fragment key={rowIndex}>
+                <tr
+                  onClick={() => onRowClick && onRowClick(row)}
+                  className={`group ${rowClass} ${customRowClass} transition-all duration-normal ease-smooth ${rowHoverClass}`}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.accessor || col.header}
+                      className={`px-control py-4 font-medium whitespace-nowrap ${col.cellClassName || col.className || ""
+                        }`}
+                    >
+                      {col.cell
+                        ? col.cell(row, rowIndex)
+                        : getNestedValue(row, col.accessor)}
+                    </td>
+                  ))}
+                </tr>
+                {/* Expanded row content */}
+                {expandedContent && (
+                  <tr>
+                    <td colSpan={columns.length} className="p-0 bg-background-secondary">
+                      {expandedContent}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             );
           })}
         </tbody>

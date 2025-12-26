@@ -11,10 +11,10 @@ from app.api.routers import (
     auth as auth_router, 
     chits as chits_router, 
     members as members_router,             
-    assignments as assignments_router,     
-    collections as collections_router,
+    slots as slots_router,     
     payouts as payouts_router,
-    payments as payments_router
+    payments as payments_router,
+    collections as collections_router  # Stub for backwards compatibility
 )
 from app.core.config import settings
 from app.db.session import engine, AsyncSessionLocal
@@ -22,9 +22,7 @@ from app.models import (
     auth as auth_models, 
     chits as chits_models,
     members as members_models,             
-    assignments as assignments_models,     
-    collections as collections_models,
-    payouts as payouts_models,
+    slots as slots_models,
     payments as payments_models
 )
 from app.security import core as security
@@ -37,9 +35,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(auth_models.SQLModel.metadata.create_all)
         await conn.run_sync(chits_models.SQLModel.metadata.create_all)
         await conn.run_sync(members_models.SQLModel.metadata.create_all)
-        await conn.run_sync(assignments_models.SQLModel.metadata.create_all)
-        await conn.run_sync(collections_models.SQLModel.metadata.create_all) 
-        await conn.run_sync(payouts_models.SQLModel.metadata.create_all)
+        await conn.run_sync(slots_models.SQLModel.metadata.create_all)
         await conn.run_sync(payments_models.SQLModel.metadata.create_all)
 
     print("Seeding initial data...")
@@ -88,10 +84,10 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(chits_router.router)
 app.include_router(members_router.router)
-app.include_router(assignments_router.router)
-app.include_router(collections_router.router)
+app.include_router(slots_router.router)
 app.include_router(payouts_router.router)
 app.include_router(payments_router.router)
+app.include_router(collections_router.router)  # Stub for backwards compatibility
 
 @app.get("/")
 def read_root():

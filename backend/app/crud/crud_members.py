@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 
 from app.models.members import Member
-from app.models.assignments import ChitAssignment # <-- This import is correct
+from app.models.slots import ChitSlot
 from app.schemas.members import MemberCreate, MemberUpdate
 
 async def get_member_by_phone(session: AsyncSession, phone_number: str) -> Member | None:
@@ -25,8 +25,8 @@ async def get_all_members(session: AsyncSession) -> list[Member]:
     statement = (
         select(Member)
         .options(
-            selectinload(Member.assignments)
-            .selectinload(ChitAssignment.chit) # <-- This eager load is correct
+            selectinload(Member.slots)
+            .selectinload(ChitSlot.chit)
         ) 
         .order_by(Member.full_name)
     )

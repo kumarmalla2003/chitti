@@ -1,6 +1,6 @@
 # backend/app/schemas/chits.py
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import List, Optional
 from datetime import date, datetime
 from enum import Enum
@@ -22,28 +22,11 @@ class ChitNested(BaseModel):
     chit_type: str = "fixed"
     chit_value: int = 0
     size: int = 0
-    monthly_installment: int = 0
+    base_contribution: int = 0
+    premium_contribution: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
     notes: Optional[str] = Field(default=None, max_length=1000000)
-    
-    @computed_field
-    @property
-    def installment_before_payout(self) -> int:
-        """Calculate installment for members who haven't received payout."""
-        if self.chit_type == "variable":
-            return int(self.chit_value / self.size) if self.size > 0 else 0
-        return self.monthly_installment
-    
-    @computed_field
-    @property
-    def installment_after_payout(self) -> int:
-        """Calculate installment for members who have received payout."""
-        if self.chit_type == "variable":
-            base = self.chit_value / self.size if self.size > 0 else 0
-            premium = self.chit_value * self.payout_premium_percent / 100
-            return int(base + premium)
-        return self.monthly_installment
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,7 +35,7 @@ class ChitNested(BaseModel):
 # READ SCHEMA - No validation (for DB reads)
 # ============================================
 class ChitRead(BaseModel):
-    """Base schema for reading chits from DB - no installment validation."""
+    """Base schema for reading chits from DB - no contribution validation."""
     name: str
     chit_value: int
     size: int
@@ -61,37 +44,20 @@ class ChitRead(BaseModel):
     collection_day: int = Field(..., ge=1, le=27)
     payout_day: int = Field(..., ge=1, le=28)
     
-    # Chit type and installment fields (no validation)
+    # Chit type and contribution fields (no validation)
     chit_type: str = "fixed"
-    monthly_installment: int = 0
+    base_contribution: int = 0
+    premium_contribution: int = 0
     payout_premium_percent: float = 0.0
     foreman_commission_percent: float = 0.0
     notes: Optional[str] = Field(default=None, max_length=1000000)
-    
-    @computed_field
-    @property
-    def installment_before_payout(self) -> int:
-        """Calculate installment for members who haven't received payout."""
-        if self.chit_type == "variable":
-            return int(self.chit_value / self.size) if self.size > 0 else 0
-        return self.monthly_installment
-    
-    @computed_field
-    @property
-    def installment_after_payout(self) -> int:
-        """Calculate installment for members who have received payout."""
-        if self.chit_type == "variable":
-            base = self.chit_value / self.size if self.size > 0 else 0
-            premium = self.chit_value * self.payout_premium_percent / 100
-            return int(base + premium)
-        return self.monthly_installment
 
 
 # ============================================
 # WRITE SCHEMAS - With validation (for Create/Update)
 # ============================================
 class ChitBase(BaseModel):
-    """Base schema for creating/updating chits - WITH installment validation."""
+    """Base schema for creating/updating chits - WITH validation."""
     name: str = Field(..., min_length=3, max_length=50)
     chit_value: int = Field(..., ge=10000, le=1000000000)
     size: int = Field(..., ge=10, le=100)
@@ -103,9 +69,16 @@ class ChitBase(BaseModel):
     # Chit type field
     chit_type: str = Field(default="fixed")
     
-    # Installment fields (validated based on chit_type)
-    monthly_installment: int = Field(default=0, ge=0, le=100000000)
+    # Contribution fields
+    # For Fixed: base_contribution = monthly installment (set by user)
+    # For Variable/Auction: calculated from chit_value/size
+    base_contribution: int = Field(default=0, ge=0, le=100000000)
+    premium_contribution: int = Field(default=0, ge=0, le=100000000)
+    
+    # Variable Chit: percentage for premium calculation
     payout_premium_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    
+    # Auction/Variable Chit: Foreman Commission percentage
     foreman_commission_percent: float = Field(default=0.0, ge=0.0, le=100.0)
     
     # Optional notes field
@@ -125,12 +98,12 @@ class ChitBase(BaseModel):
             if self.collection_day >= self.payout_day:
                 raise ValueError('Collection day must be before the payout day.')
         
-        # Validate installment fields based on chit_type
+        # Validate contribution fields based on chit_type
         if self.chit_type == "fixed":
-            if self.monthly_installment <= 0:
-                raise ValueError('Monthly installment is required for Fixed chits.')
-            if self.monthly_installment < 1000:
-                raise ValueError('Monthly installment must be at least ₹1,000 for Fixed chits.')
+            if self.base_contribution <= 0:
+                raise ValueError('Base contribution is required for Fixed chits.')
+            if self.base_contribution < 1000:
+                raise ValueError('Base contribution must be at least ₹1,000 for Fixed chits.')
         elif self.chit_type == "variable":
             # Payout premium is required for Variable chits (must be >= 0.5)
             if self.payout_premium_percent is None or self.payout_premium_percent <= 0:
@@ -169,9 +142,10 @@ class ChitPatch(BaseModel):
     collection_day: Optional[int] = Field(default=None, ge=1, le=27)
     payout_day: Optional[int] = Field(default=None, ge=1, le=28)
     
-    # Chit type and installment fields
+    # Chit type and contribution fields
     chit_type: Optional[str] = None
-    monthly_installment: Optional[int] = Field(default=None, ge=0, le=100000000)
+    base_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)
+    premium_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)
     payout_premium_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     foreman_commission_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     notes: Optional[str] = Field(default=None, max_length=1000000)
@@ -202,7 +176,7 @@ class ChitResponse(ChitRead):
     end_date: date
     status: str
     chit_cycle: str
-    members_count: int = 0  # Number of members assigned to this chit
+    members_count: int = 0  # Number of assigned slots for this chit
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
@@ -210,3 +184,10 @@ class ChitResponse(ChitRead):
 
 class ChitListResponse(BaseModel):
     chits: List[ChitResponse]
+
+
+class AuctionRequest(BaseModel):
+    """Schema for recording an auction for a specific month."""
+    month: int = Field(..., ge=1, le=100)
+    bid_amount: int = Field(..., ge=0)
+    member_id: int = Field(..., ge=1)  # The winner of the auction

@@ -1,6 +1,6 @@
 import api from '../lib/api';
 
-const BASE_URL = '/assignments';
+const SLOTS_URL = '/slots';
 const MEMBERS_URL = '/members';
 const CHITS_URL = '/chits';
 
@@ -11,55 +11,86 @@ const handleError = (error, defaultMessage) => {
   throw new Error(defaultMessage);
 };
 
-export const createAssignment = async (assignmentData) => {
+/**
+ * Assign a member to a slot for a specific month.
+ * POST /slots/chit/{chitId}/assign/{month}
+ */
+export const assignMemberToSlot = async (chitId, month, memberId) => {
   try {
-    const response = await api.post(BASE_URL, assignmentData);
+    const response = await api.post(`${SLOTS_URL}/chit/${chitId}/assign/${month}`, { member_id: memberId });
     return response.data;
   } catch (error) {
-    handleError(error, "Failed to create chit assignment.");
+    handleError(error, "Failed to assign member to slot.");
   }
 };
 
-export const createBulkAssignments = async (chitId, assignments) => {
+/**
+ * Bulk assign members to slots.
+ * POST /slots/chit/{chitId}/bulk-assign
+ */
+export const bulkAssignMembers = async (chitId, assignments) => {
   try {
-    const response = await api.post(`${BASE_URL}/chit/${chitId}/bulk-assign`, { assignments });
+    const response = await api.post(`${SLOTS_URL}/chit/${chitId}/bulk-assign`, { assignments });
     return response.data;
   } catch (error) {
     handleError(error, "Failed to save assignments.");
   }
 };
 
+/**
+ * Get unassigned months for a chit.
+ * GET /slots/chit/{chitId}/unassigned
+ */
 export const getUnassignedMonths = async (chitId) => {
   try {
-    const response = await api.get(`${BASE_URL}/unassigned-months/${chitId}`);
+    const response = await api.get(`${SLOTS_URL}/chit/${chitId}/unassigned`);
     return response.data;
   } catch (error) {
     handleError(error, "Failed to fetch available months for the chit.");
   }
 };
 
-export const getAssignmentsForMember = async (memberId) => {
+/**
+ * Get all slots for a specific chit.
+ * GET /chits/{chitId}/slots
+ */
+export const getSlotsForChit = async (chitId) => {
   try {
-    const response = await api.get(`${MEMBERS_URL}/${memberId}/assignments`);
+    const response = await api.get(`${CHITS_URL}/${chitId}/slots`);
     return response.data;
   } catch (error) {
-    handleError(error, "Failed to member's assignments.");
+    handleError(error, "Failed to fetch slots for the chit.");
   }
 };
 
-export const getAssignmentsForChit = async (chitId) => {
+/**
+ * Get all slots assigned to a member.
+ * GET /members/{memberId}/slots
+ */
+export const getSlotsForMember = async (memberId) => {
   try {
-    const response = await api.get(`${CHITS_URL}/${chitId}/assignments`);
+    const response = await api.get(`${MEMBERS_URL}/${memberId}/slots`);
     return response.data;
   } catch (error) {
-    handleError(error, "Failed to fetch assignments for the chit.");
+    handleError(error, "Failed to fetch member's slots.");
   }
 };
 
-export const deleteAssignment = async (assignmentId) => {
+/**
+ * Unassign a member from a slot.
+ * DELETE /slots/chit/{chitId}/unassign/{month}
+ */
+export const unassignMemberFromSlot = async (chitId, month) => {
   try {
-    await api.delete(`${BASE_URL}/${assignmentId}`);
+    await api.delete(`${SLOTS_URL}/chit/${chitId}/unassign/${month}`);
   } catch (error) {
     handleError(error, "Failed to unassign member.");
   }
 };
+
+// Legacy exports for backwards compatibility
+export const createAssignment = assignMemberToSlot;
+export const createBulkAssignments = bulkAssignMembers;
+export const getAssignmentsForChit = getSlotsForChit;
+export const getAssignmentsForMember = getSlotsForMember;
+export const deleteAssignment = unassignMemberFromSlot;

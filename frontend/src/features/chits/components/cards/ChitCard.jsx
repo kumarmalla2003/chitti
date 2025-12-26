@@ -130,7 +130,7 @@ const ChitCard = ({ chit, onView, onEdit, onDelete, onPrint, isPrinting }) => {
             ) : (
               <>
                 <IndianRupee className="w-[1em] h-[1em]" />
-                {chit.monthly_installment?.toLocaleString("en-IN")}
+                {chit.base_contribution?.toLocaleString("en-IN")}
               </>
             )}
           </span>

@@ -25,7 +25,7 @@ const DEFAULT_VALUES = {
   chit_value: "",
   size: "",
   chit_type: "fixed",
-  monthly_installment: "",
+  base_contribution: "",
   payout_premium_percent: "",
   foreman_commission_percent: "",
   duration_months: "",
@@ -157,7 +157,7 @@ export const useChitForm = (id, mode) => {
     lastEditedField.current = "duration";
   }, []);
 
-  // Auto-calculate monthly_installment for Variable chits (base installment = chit_value / size)
+  // Auto-calculate base_contribution for Variable chits (base contribution = chit_value / size)
   useEffect(() => {
     if (watchedChitType !== "variable") return;
 
@@ -167,7 +167,7 @@ export const useChitForm = (id, mode) => {
     // Only calculate if BOTH chit_value AND size are VALID
     if (isValidChitValue(wChitValue) && isValidSizeDuration(wSize)) {
       const calculated = Math.floor(chitValue / size);
-      setValue("monthly_installment", calculated, { shouldValidate: true });
+      setValue("base_contribution", calculated, { shouldValidate: true });
     }
   }, [wChitValue, wSize, watchedChitType, setValue]);
 
@@ -187,18 +187,18 @@ export const useChitForm = (id, mode) => {
       setValue("payout_premium_percent", "", { shouldValidate: false });
       setValue("foreman_commission_percent", "", { shouldValidate: false });
       form.clearErrors(["payout_premium_percent", "foreman_commission_percent"]);
-      // Do NOT trigger monthly_installment validation - let user interact first
+      // Do NOT trigger base_contribution validation - let user interact first
     } else if (watchedChitType === "variable") {
-      // Variable: clear ONLY fixed fields (monthly_installment)
+      // Variable: clear ONLY fixed fields (base_contribution)
       // Keep foreman_commission_percent - Variable chits also require it!
-      setValue("monthly_installment", "", { shouldValidate: false });
-      form.clearErrors(["monthly_installment"]);
+      setValue("base_contribution", "", { shouldValidate: false });
+      form.clearErrors(["base_contribution"]);
       // Do NOT trigger payout_premium_percent or foreman_commission_percent validation - let user interact first
     } else if (watchedChitType === "auction") {
       // Auction: clear fixed and variable fields
-      setValue("monthly_installment", "", { shouldValidate: false });
+      setValue("base_contribution", "", { shouldValidate: false });
       setValue("payout_premium_percent", "", { shouldValidate: false });
-      form.clearErrors(["monthly_installment", "payout_premium_percent"]);
+      form.clearErrors(["base_contribution", "payout_premium_percent"]);
       // Do NOT trigger foreman_commission_percent validation - let user interact first
     }
   }, [watchedChitType, setValue, form]);

@@ -57,7 +57,7 @@ const DetailsSectionComponent = ({
     <hr className="border-border mb-4" />
     {showEditWarning && (
       <Message type="warning" title="Limited Editing" className="mb-4">
-        Some fields are locked — this chit has {membersCount} {membersCount === 1 ? "member" : "members"} assigned.
+        Some fields are locked — this chit has {membersCount} {membersCount === 1 ? "assignment" : "assignments"}.
       </Message>
     )}
     {lockedFieldWarning && (

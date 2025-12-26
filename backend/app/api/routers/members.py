@@ -8,12 +8,13 @@ from dateutil.relativedelta import relativedelta
 from app.db.session import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auth import AuthorizedPhone
+from app.models.payments import PaymentType
 from app.security.dependencies import get_current_user
-from app.crud import crud_members, crud_assignments, crud_collections, crud_chits, crud_payouts
+from app.crud import crud_members, crud_slots, crud_chits, crud_payments
 from app.schemas import members as members_schemas
-from app.schemas import assignments as assignments_schemas
+from app.schemas import slots as slots_schemas
 from app.schemas.chits import ChitResponse
-from app.schemas.payouts import PayoutListResponse
+from app.schemas.slots import ChitSlotListPublicResponse
 
 router = APIRouter(prefix="/members", tags=["members"])
 
@@ -105,19 +106,24 @@ async def read_member_by_id(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     return db_member
 
-@router.get("/{member_id}/assignments", response_model=List[assignments_schemas.ChitAssignmentPublic])
-async def get_member_assignments(
+@router.get("/{member_id}/slots", response_model=ChitSlotListPublicResponse)
+async def get_member_slots(
     member_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    assignments = await crud_assignments.get_assignments_by_member_id(session, member_id=member_id)
+    """Retrieves all slots assigned to a specific member."""
+    db_member = await crud_members.get_member_by_id(session, member_id=member_id)
+    if not db_member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     
-    response_assignments = []
+    member_slots = await crud_slots.get_by_member(session, member_id=member_id)
+    
+    response_slots = []
     today = date.today()
 
-    for assignment in assignments:
-        chit = assignment.chit
+    for slot in member_slots:
+        chit = slot.chit
         status_str = "Active" if chit.start_date <= today <= chit.end_date else "Inactive"
         
         if status_str == "Active":
@@ -127,58 +133,96 @@ async def get_member_assignments(
         else:
             chit_cycle_str = f"-/{chit.duration_months}"
 
-        chit_response = ChitResponse(
-            id=chit.id, name=chit.name, chit_value=chit.chit_value,
-            size=chit.size, monthly_installment=chit.monthly_installment,
-            duration_months=chit.duration_months, start_date=chit.start_date,
-            end_date=chit.end_date, status=status_str, chit_cycle=chit_cycle_str,
-            collection_day=chit.collection_day, payout_day=chit.payout_day
-        )
+        # Calculate expected contribution
+        if chit.chit_type.value == "fixed":
+            expected = chit.base_contribution
+        elif chit.chit_type.value == "variable":
+            # Check if member has received payout
+            payout_payments = [p for p in (slot.payments or []) if p.payment_type == PaymentType.PAYOUT]
+            expected = chit.premium_contribution if payout_payments else chit.base_contribution
+        else:  # auction
+            expected = slot.expected_contribution or (chit.chit_value // chit.size if chit.size > 0 else 0)
         
-        monthly_installment = assignment.chit.monthly_installment
-        
-        # --- FIXED CALL HERE ---
-        collections = await crud_collections.collections.get_by_assignment(session, assignment.id)
-        
-        # Sum actual payment amounts from the payments relationship (in rupees)
-        total_paid = sum(
-            payment.amount 
-            for collection in collections 
-            for payment in (collection.payments or [])
-            if payment.amount is not None
-        )
-        due_amount = monthly_installment - total_paid
+        # Get collection payments for this member in this month
+        all_payments = await crud_payments.get_by_member(session, member_id=member_id)
+        member_collection_payments = [
+            p for p in all_payments
+            if p.chit_id == chit.id and p.month == slot.month and p.payment_type == PaymentType.COLLECTION
+        ]
+        total_paid = sum(p.amount for p in member_collection_payments)
+        due_amount = expected - total_paid
 
-        if total_paid == 0: collection_status = "Unpaid"
-        elif due_amount > 0: collection_status = "Partial"
-        else: collection_status = "Paid"
+        if total_paid == 0: 
+            collection_status = "Unpaid"
+        elif due_amount > 0: 
+            collection_status = "Partial"
+        else: 
+            collection_status = "Paid"
         
-        assignment_public = assignments_schemas.ChitAssignmentPublic(
-            id=assignment.id,
-            chit_month=assignment.chit_month,
-            member=assignment.member,
-            chit=chit_response,
+        member_public = members_schemas.MemberPublic.model_validate(slot.member) if slot.member else None
+        
+        slot_public = slots_schemas.ChitSlotPublic(
+            id=slot.id,
+            month=slot.month,
+            payout_amount=slot.payout_amount,
+            bid_amount=slot.bid_amount,
+            expected_contribution=slot.expected_contribution,
+            status=slot.status,
+            member=member_public,
             total_paid=total_paid,
             due_amount=due_amount,
-            collection_status=collection_status
+            collection_status=collection_status,
+            created_at=slot.created_at,
+            updated_at=slot.updated_at
         )
-        response_assignments.append(assignment_public)
+        response_slots.append(slot_public)
         
-    return response_assignments
+    return {"slots": response_slots}
 
-@router.get("/{member_id}/payouts", response_model=PayoutListResponse)
+@router.get("/{member_id}/payouts", response_model=ChitSlotListPublicResponse)
 async def get_member_payouts(
     member_id: int,
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Retrieves all payouts received by a specific member."""
+    """Retrieves all slots (payouts) assigned to a specific member."""
     db_member = await crud_members.get_member_by_id(session, member_id=member_id)
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     
-    payouts = await crud_payouts.payouts.get_by_member(session, member_id=member_id)
-    return {"payouts": payouts}
+    member_slots = await crud_slots.get_by_member(session, member_id=member_id)
+    
+    result = []
+    for slot in member_slots:
+        payout_payments = [p for p in (slot.payments or []) if p.payment_type == PaymentType.PAYOUT]
+        amount_paid = sum(p.amount for p in payout_payments)
+        due_amount = slot.payout_amount - amount_paid
+        
+        if amount_paid == 0:
+            collection_status = "Unpaid"
+        elif due_amount > 0:
+            collection_status = "Partial"
+        else:
+            collection_status = "Paid"
+        
+        member_public = members_schemas.MemberPublic.model_validate(slot.member) if slot.member else None
+        
+        result.append(slots_schemas.ChitSlotPublic(
+            id=slot.id,
+            month=slot.month,
+            payout_amount=slot.payout_amount,
+            bid_amount=slot.bid_amount,
+            expected_contribution=slot.expected_contribution,
+            status=slot.status,
+            member=member_public,
+            total_paid=amount_paid,
+            due_amount=due_amount,
+            collection_status=collection_status,
+            created_at=slot.created_at,
+            updated_at=slot.updated_at
+        ))
+    
+    return {"slots": result}
 
 @router.get("", response_model=members_schemas.MemberListResponse)
 async def read_all_members(
@@ -198,11 +242,11 @@ async def delete_member(
     if not db_member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
-    assignments = await crud_assignments.get_assignments_by_member_id(session, member_id=member_id)
-    if assignments:
+    member_slots = await crud_slots.get_by_member(session, member_id=member_id)
+    if member_slots:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete member: They are still assigned to one or more chits."
+            detail="Cannot delete member: They are still assigned to one or more chit slots."
         )
 
     await crud_members.delete_member_by_id(session=session, db_member=db_member)

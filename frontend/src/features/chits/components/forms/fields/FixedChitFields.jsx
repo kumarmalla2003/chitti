@@ -35,7 +35,7 @@ const FixedChitFields = ({
             {/* Monthly Installment (Fixed Chit) */}
             <div>
                 <label
-                    htmlFor="monthly_installment"
+                    htmlFor="base_contribution"
                     className="block text-lg font-medium text-text-secondary mb-1"
                 >
                     Monthly Installment
@@ -46,21 +46,21 @@ const FixedChitFields = ({
                     </span>
                     <div className="absolute left-10 h-6 w-px bg-border"></div>
                     <FormattedInput
-                        name="monthly_installment"
+                        name="base_contribution"
                         control={control}
                         format={formatNumber}
                         parse={parseNumber}
-                        id="monthly_installment"
-                        className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.monthly_installment ? "border-red-500" : "border-border"
+                        id="base_contribution"
+                        className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 disabled:cursor-not-allowed ${errors.base_contribution ? "border-red-500" : "border-border"
                             }`}
                         placeholder="20,000"
                         disabled={isFormDisabled}
                         onKeyDown={handleKeyDown}
                     />
                 </div>
-                {errors.monthly_installment && (
+                {errors.base_contribution && (
                     <p className="mt-1 text-sm text-red-500">
-                        {errors.monthly_installment.message}
+                        {errors.base_contribution.message}
                     </p>
                 )}
             </div>

@@ -133,3 +133,33 @@ export const useDeleteAssignment = () => {
         },
     });
 };
+
+/**
+ * Query key factory for month members queries.
+ */
+export const monthMembersKeys = {
+    all: ['monthMembers'],
+    byChitMonth: (chitId, month) => [...monthMembersKeys.all, chitId, month],
+};
+
+/**
+ * Hook to fetch per-member breakdown for a specific month.
+ * Only fetches when enabled is true (e.g., when a row is expanded).
+ * 
+ * @param {string|number} chitId - The ID of the chit
+ * @param {number} month - The month number (1-based)
+ * @param {boolean} enabled - Whether to enable the query
+ * @returns {import('@tanstack/react-query').UseQueryResult} Query result with month members data
+ * @example
+ * const { data, isLoading } = useMonthMembers(chitId, 3, isExpanded);
+ */
+import { getMonthMembers } from '../../../services/chitsService';
+
+export const useMonthMembers = (chitId, month, enabled = false) => {
+    return useQuery({
+        queryKey: monthMembersKeys.byChitMonth(chitId, month),
+        queryFn: () => getMonthMembers(chitId, month),
+        enabled: enabled && Boolean(chitId) && Boolean(month),
+        staleTime: 30 * 1000, // 30 seconds
+    });
+};

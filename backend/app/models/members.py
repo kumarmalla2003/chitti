@@ -1,19 +1,14 @@
 # backend/app/models/members.py
 
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
 
+from app.core.utils import utc_now
+
 if TYPE_CHECKING:
-    from app.models.assignments import ChitAssignment
-    from app.models.collections import Collection
-    from app.models.payouts import Payout
+    from app.models.slots import ChitSlot
     from app.models.payments import Payment
-
-
-def utc_now() -> datetime:
-    """Return current UTC time (timezone-aware)."""
-    return datetime.now(timezone.utc)
 
 
 class Member(SQLModel, table=True):
@@ -26,7 +21,5 @@ class Member(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
-    assignments: List["ChitAssignment"] = Relationship(back_populates="member")
-    collections: List["Collection"] = Relationship(back_populates="member")
-    payouts: List["Payout"] = Relationship(back_populates="member")
+    slots: List["ChitSlot"] = Relationship(back_populates="member")
     payments: List["Payment"] = Relationship(back_populates="member")

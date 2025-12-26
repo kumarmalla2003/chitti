@@ -34,25 +34,23 @@ import { formatCurrency } from "../../../utils/formatters"; // Imported shared u
 
 import api from "../../../lib/api";
 
-// API calls
+// API calls - Note: Collections endpoint removed, using payments for actual transactions
 const fetchDashboardData = async () => {
-  const [chitsRes, membersRes, collectionsRes, payoutsRes] = await Promise.all([
+  const [chitsRes, membersRes, payoutsRes] = await Promise.all([
     api.get("/chits"),
     api.get("/members"),
-    api.get("/collections"),
     api.get("/payouts"),
   ]);
 
   const chits = chitsRes.data;
   const members = membersRes.data;
-  const collections = collectionsRes.data;
   const payouts = payoutsRes.data;
 
   return {
     chits: chits.chits || [],
     members: members.members || [],
-    collections: collections.collections || [],
-    payouts: payouts.payouts || [],
+    collections: [], // Collections are now calculated dynamically
+    payouts: payouts.slots || payouts.payouts || [],
   };
 };
 
@@ -103,7 +101,7 @@ const DashboardPage = () => {
     const monthlyTarget = activeChits.reduce((sum, c) => {
       let chitTotal = 0;
       if (c.chit_type === "fixed" || !c.chit_type) {
-        chitTotal = (c.monthly_installment || 0) * (c.size || 0);
+        chitTotal = (c.base_contribution || 0) * (c.size || 0);
       } else if (c.chit_type === "variable") {
         // Calculate current cycle from chit start date
         const startDate = new Date(c.start_date);
@@ -212,7 +210,7 @@ const DashboardPage = () => {
         let expectedAmount = 0;
         const chit = assignment.chit;
         if (chit.chit_type === "fixed" || !chit.chit_type) {
-          expectedAmount = chit.monthly_installment || 0;
+          expectedAmount = chit.base_contribution || 0;
         } else if (chit.chit_type === "variable") {
           // Use before_payout as default (simplified - backend has more complex logic)
           expectedAmount = chit.installment_before_payout || 0;

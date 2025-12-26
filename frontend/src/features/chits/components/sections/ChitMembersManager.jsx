@@ -312,7 +312,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
       headerClassName: "text-center",
       cell: (row) => {
         // For Variable chits, the backend provides expected_installment per assignment
-        // For Fixed chits, use monthly_installment
+        // For Fixed chits, use base_contribution
         // For Auction chits, show "Varies"
         const chit = chitDetails;
         if (!chit) return <span className="text-text-secondary">-</span>;
@@ -330,7 +330,7 @@ const ChitMembersManager = ({ mode, chitId, onLogCollectionClick }) => {
         }
         return (
           <span className="text-text-primary">
-            ₹{formatAmount(chit.monthly_installment)}
+            ₹{formatAmount(chit.base_contribution)}
           </span>
         );
       },

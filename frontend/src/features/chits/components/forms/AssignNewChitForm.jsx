@@ -99,7 +99,7 @@ const AssignNewChitForm = forwardRef(
         name: "",
         chit_value: "",
         size: undefined,
-        monthly_installment: "",
+        base_contribution: "",
         duration_months: undefined,
         start_date: "",
         end_date: "",
@@ -216,7 +216,7 @@ const AssignNewChitForm = forwardRef(
           start_date: getFirstDayOfMonth(data.start_date),
           chit_value: Number(data.chit_value),
           size: Number(data.size),
-          monthly_installment: Number(data.monthly_installment),
+          base_contribution: Number(data.base_contribution),
           duration_months: Number(data.duration_months),
           collection_day: Number(data.collection_day),
           payout_day: Number(data.payout_day),
@@ -270,8 +270,8 @@ const AssignNewChitForm = forwardRef(
         if (patchData.chit_value)
           patchData.chit_value = Number(patchData.chit_value);
         if (patchData.size) patchData.size = Number(patchData.size);
-        if (patchData.monthly_installment)
-          patchData.monthly_installment = Number(patchData.monthly_installment);
+        if (patchData.base_contribution)
+          patchData.base_contribution = Number(patchData.base_contribution);
         if (patchData.duration_months)
           patchData.duration_months = Number(patchData.duration_months);
         if (patchData.collection_day)

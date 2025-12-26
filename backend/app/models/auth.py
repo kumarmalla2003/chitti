@@ -1,13 +1,10 @@
 # backend/app/models/auth.py
 
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlmodel import Field, SQLModel
 
-
-def utc_now() -> datetime:
-    """Return current UTC time (timezone-aware)."""
-    return datetime.now(timezone.utc)
+from app.core.utils import utc_now
 
 
 class AuthorizedPhone(SQLModel, table=True):

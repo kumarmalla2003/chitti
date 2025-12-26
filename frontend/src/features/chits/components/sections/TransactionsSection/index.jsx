@@ -15,6 +15,7 @@ import TransactionStats from "./components/TransactionStats";
 import CollectionForm from "./components/CollectionForm";
 import PayoutForm from "./components/PayoutForm";
 import { formatAmount, formatDate, ITEMS_PER_PAGE } from "./utils/helpers";
+import AuctionsSection from "../AuctionsSection";
 
 import {
     useCollectionsByChit,
@@ -41,6 +42,7 @@ import {
     Trash2,
     WalletMinimal,
     TrendingUp,
+    Gavel,
 } from "lucide-react";
 
 const TABS = ["all", "collections", "payouts"];
@@ -271,8 +273,8 @@ const TransactionsSection = ({ mode, chitId }) => {
                 cell: (row) => (
                     <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${row.type === "collection"
-                                ? "bg-success-bg text-success-accent"
-                                : "bg-error-bg text-error-accent"
+                            ? "bg-success-bg text-success-accent"
+                            : "bg-error-bg text-error-accent"
                             }`}
                     >
                         {row.type === "collection" ? (
@@ -481,6 +483,10 @@ const TransactionsSection = ({ mode, chitId }) => {
 
     // --- Render Content ---
     const renderContent = () => {
+        if (activeTab === "auctions") {
+            return <AuctionsSection chitId={chitId} mode={mode} />;
+        }
+
         if (view === "add_collection") {
             return (
                 <CollectionForm
@@ -744,6 +750,15 @@ const TransactionsSection = ({ mode, chitId }) => {
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
+                    {chitData?.chit_type === "auction" && (
+                        <TabButton
+                            name="auctions"
+                            icon={Gavel}
+                            label="Auctions"
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                        />
+                    )}
                 </div>
             )}
 

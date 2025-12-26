@@ -185,7 +185,7 @@ const ChitsPage = () => {
     const monthlyCollectionTarget = activeChits.reduce((sum, c) => {
       let chitTotal = 0;
       if (c.chit_type === "fixed" || !c.chit_type) {
-        chitTotal = (c.monthly_installment || 0) * (c.size || 0);
+        chitTotal = (c.base_contribution || 0) * (c.size || 0);
       } else if (c.chit_type === "variable") {
         // Calculate current cycle from chit start date
         const startDate = new Date(c.start_date);
@@ -515,7 +515,7 @@ const ChitsPage = () => {
     },
     {
       header: "Installment",
-      accessor: "monthly_installment",
+      accessor: "base_contribution",
       className: "text-center w-1/6",
       cell: (row) => {
         if (row.chit_type === "variable") {
@@ -530,7 +530,7 @@ const ChitsPage = () => {
         }
         return (
           <FormattedCurrency
-            amount={row.monthly_installment}
+            amount={row.base_contribution}
             className="justify-center"
           />
         );
