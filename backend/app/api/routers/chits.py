@@ -50,6 +50,30 @@ def calculate_variable_payout_schedule(chit_value: int, size: int, premium_perce
     return schedule
 
 
+def normalize_chit_fields_for_type(chit_type: str, data: dict) -> dict:
+    """Set irrelevant fields to None based on chit type.
+    
+    - Fixed: Only base_contribution is used, others NULL
+    - Variable: All fields used
+    - Auction: Only foreman_commission_percent used, others NULL
+    """
+    if chit_type == "fixed":
+        data["premium_contribution"] = None
+        data["payout_premium_percent"] = None
+        data["foreman_commission_percent"] = None
+    elif chit_type == "auction":
+        data["base_contribution"] = None
+        data["premium_contribution"] = None
+        data["payout_premium_percent"] = None
+    # Variable: all fields are used
+    
+    # Normalize empty notes to None
+    if not data.get("notes") or str(data.get("notes", "")).strip() == "":
+        data["notes"] = None
+    
+    return data
+
+
 from app.schemas.chits import (
     ChitCreate, ChitUpdate, ChitResponse, ChitListResponse,
     ChitPatch, AuctionRequest
@@ -96,29 +120,39 @@ async def create_chit(
     end_date = calculate_end_date_with_last_day(chit.start_date, chit.duration_months)
 
     # Calculate contribution fields based on chit type
-    base_contribution = chit.base_contribution
-    premium_contribution = chit.premium_contribution
+    base_contribution = None
+    premium_contribution = None
+    payout_premium_percent = None
+    foreman_commission_percent = None
+    duration = chit.duration_months
     
-    # For Variable Chits, Enforce Duration = Size and calculate contributions
-    if chit.chit_type == ChitType.VARIABLE or chit.chit_type == "variable":
-        duration = chit.size  # Duration = Size for variable chits
+    chit_type_str = chit.chit_type.value if hasattr(chit.chit_type, 'value') else chit.chit_type
+    
+    if chit_type_str == "fixed":
+        # Fixed: Only base_contribution from user, others NULL
+        base_contribution = chit.base_contribution
+        # premium_contribution, payout_premium_percent, foreman_commission_percent stay None
+        
+    elif chit_type_str == "variable":
+        # Variable: Duration = Size
+        duration = chit.size
         end_date = calculate_end_date_with_last_day(chit.start_date, duration)
         
         # Calculate contributions
         base_contribution = chit.chit_value // chit.size if chit.size > 0 else 0
-        premium_amount = int(chit.chit_value * chit.payout_premium_percent / 100)
+        premium_amount = int(chit.chit_value * (chit.payout_premium_percent or 0) / 100)
         premium_contribution = base_contribution + premium_amount
-    else:
-        duration = chit.duration_months
+        payout_premium_percent = chit.payout_premium_percent
+        foreman_commission_percent = chit.foreman_commission_percent
         
-    # For Auction Chits, calculate base contribution
-    if chit.chit_type == ChitType.AUCTION or chit.chit_type == "auction":
-        base_contribution = chit.chit_value // chit.size if chit.size > 0 else 0
-        premium_contribution = base_contribution  # Same for auction (per-month contribution stored in slot)
-    
-    # For Fixed Chits, premium equals base
-    if chit.chit_type == ChitType.FIXED or chit.chit_type == "fixed":
-        premium_contribution = base_contribution
+    elif chit_type_str == "auction":
+        # Auction: Only foreman_commission_percent from user, others NULL
+        # base_contribution is NULL (calculated per-slot during auction recording)
+        foreman_commission_percent = chit.foreman_commission_percent
+        # base_contribution, premium_contribution, payout_premium_percent stay None
+
+    # Normalize empty notes to None
+    notes = chit.notes if chit.notes and str(chit.notes).strip() else None
 
     db_chit = Chit(
         name=trimmed_name,
@@ -129,14 +163,13 @@ async def create_chit(
         end_date=end_date,
         collection_day=chit.collection_day,
         payout_day=chit.payout_day,
-        # Chit type fields
+        # Chit type fields - normalized per type
         chit_type=chit.chit_type,
         base_contribution=base_contribution,
         premium_contribution=premium_contribution,
-        payout_premium_percent=chit.payout_premium_percent,
-        foreman_commission_percent=chit.foreman_commission_percent,
-        # Optional notes field
-        notes=chit.notes,
+        payout_premium_percent=payout_premium_percent,
+        foreman_commission_percent=foreman_commission_percent,
+        notes=notes,
     )
     session.add(db_chit)
     
@@ -144,33 +177,44 @@ async def create_chit(
         await session.commit()
         await session.refresh(db_chit)
         
-        # Determine payout amounts based on Chit Type
-        payout_amount = 0
+        # Determine slot values based on Chit Type
+        payout_amount = None  # NULL for Fixed/Auction
         payout_map = None
-        expected_contribution = 0  # Per-member or total expected collection
+        expected_contribution = None  # NULL for Auction
+        contribution_map = None
 
-        if db_chit.chit_type.value == "fixed":
-            # Fixed: Payout varies monthly, entered manually by user (start with 0)
-            payout_amount = 0
-            # Expected contribution = total monthly collection from all members
-            expected_contribution = db_chit.base_contribution * db_chit.size
-        elif db_chit.chit_type.value == "variable":
-            # Variable: Calculate per-month payout schedule
+        if chit_type_str == "fixed":
+            # Fixed: payout_amount = NULL (user enters later)
+            # expected_contribution = base × size
+            payout_amount = None
+            expected_contribution = (db_chit.base_contribution or 0) * db_chit.size
+            
+        elif chit_type_str == "variable":
+            # Variable: Calculate per-month payout and contribution schedules
             payout_map = calculate_variable_payout_schedule(
-                db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent, 
-                db_chit.foreman_commission_percent, db_chit.duration_months
+                db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent or 0, 
+                db_chit.foreman_commission_percent or 0, db_chit.duration_months
             )
-            # For variable, contribution is base_contribution (pre-payout) or premium (post-payout)
-            # This is per-member, not total
-            expected_contribution = db_chit.base_contribution
-        # Auction: both start at 0, calculated when auction is recorded
+            # Calculate per-month contribution schedule (Total Collection)
+            contribution_map = {}
+            base = db_chit.base_contribution or 0
+            premium = db_chit.premium_contribution or 0
+            for m in range(1, db_chit.duration_months + 1):
+                paid_count = m - 1
+                unpaid_count = db_chit.size - paid_count
+                total = (paid_count * premium) + (unpaid_count * base)
+                contribution_map[m] = total
+                
+        # Auction: payout_amount, expected_contribution = NULL (calculated when auction recorded)
         
         # Create Slot records for each month
         await crud_slots.create_slots_for_chit(
             session, db_chit.id, db_chit.duration_months, 
             payout_amount=payout_amount, 
             payout_map=payout_map,
-            expected_contribution=expected_contribution
+            expected_contribution=expected_contribution,
+            contribution_map=contribution_map,
+            chit_type=chit_type_str
         )
         await session.commit()
     except IntegrityError:
@@ -189,6 +233,7 @@ async def read_chits(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
+    # Fetch all chits
     statement = select(Chit)
     result = await session.execute(statement)
     chits = result.scalars().all()
@@ -225,27 +270,36 @@ async def get_chit_slots(
                 phone_number=slot.member.phone_number,
             )
         
-        # Calculate expected contribution based on chit type
+        # Calculate expected contribution (Total Monthly Collection) based on chit type
         if db_chit.chit_type.value == "fixed":
-            expected_contribution = db_chit.base_contribution
+            # For fixed, everyone pays base
+            expected_total = (db_chit.base_contribution or 0) * db_chit.size
         elif db_chit.chit_type.value == "variable":
-            # Check if member has received a payout (has payout payments on this slot)
-            has_payout_payment = any(p.payment_type == PaymentType.PAYOUT for p in slot.payments) if slot.payments else False
-            expected_contribution = db_chit.premium_contribution if has_payout_payment else db_chit.base_contribution
+            # For variable, Monthly Total = (m-1)*Premium + (Size-(m-1))*Base
+            m = slot.month
+            paid_count = m - 1
+            unpaid_count = db_chit.size - paid_count
+            base = db_chit.base_contribution or 0
+            premium = db_chit.premium_contribution or 0
+            expected_total = (paid_count * premium) + (unpaid_count * base)
         else:  # auction
-            expected_contribution = slot.expected_contribution or (db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0)
+            # For auction, expected_contribution in slot stores the TOTAL.
+            # STRICT RULE: If bid_amount is None, Auction hasn't happened. Collection must be 0.
+            # This overrides any stored 'default' or 'legacy' values.
+            if slot.bid_amount is None:
+                expected_total = 0
+            else:
+                expected_total = slot.expected_contribution or 0
         
-        # Get collection payments for this member in this month
-        total_paid = 0
-        if slot.member_id:
-            all_payments = await crud_payments.get_by_chit_and_month(session, chit_id=chit_id, month=slot.month)
-            member_collection_payments = [
-                p for p in all_payments 
-                if p.member_id == slot.member_id and p.payment_type == PaymentType.COLLECTION
-            ]
-            total_paid = sum(p.amount for p in member_collection_payments)
+        # Get TOTAL collection payments for ALL members in this month
+        all_month_payments = await crud_payments.get_by_chit_and_month(session, chit_id=chit_id, month=slot.month)
+        collection_payments = [
+            p for p in all_month_payments 
+            if p.payment_type == PaymentType.COLLECTION
+        ]
+        total_paid = sum(p.amount for p in collection_payments)
         
-        due_amount = expected_contribution - total_paid
+        due_amount = max(expected_total - total_paid, 0)
 
         if total_paid == 0: 
             collection_status = "Unpaid"
@@ -259,7 +313,7 @@ async def get_chit_slots(
             month=slot.month,
             payout_amount=slot.payout_amount,
             bid_amount=slot.bid_amount,
-            expected_contribution=slot.expected_contribution,
+            expected_contribution=expected_total,  # Return Total for the month
             status=slot.status,
             member=member_public,
             total_paid=total_paid,
@@ -300,22 +354,30 @@ async def update_chit(
     for key, value in chit_data.items():
         setattr(db_chit, key, value)
     
-    # For Variable Chits, Enforce Duration = Size
-    if db_chit.chit_type == ChitType.VARIABLE:
+    # Get effective chit_type
+    chit_type_str = db_chit.chit_type.value if hasattr(db_chit.chit_type, 'value') else db_chit.chit_type
+    
+    # Apply NULL normalization and recalculate contributions based on chit type
+    if chit_type_str == "fixed":
+        # Fixed: Only base_contribution is set, others NULL
+        db_chit.premium_contribution = None
+        db_chit.payout_premium_percent = None
+        db_chit.foreman_commission_percent = None
+    elif chit_type_str == "variable":
+        # Variable: Duration = Size, calculate contributions
         db_chit.duration_months = db_chit.size
-        # Recalculate contributions
         db_chit.base_contribution = db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0
-        premium_amount = int(db_chit.chit_value * db_chit.payout_premium_percent / 100)
+        premium_amount = int(db_chit.chit_value * (db_chit.payout_premium_percent or 0) / 100)
         db_chit.premium_contribution = db_chit.base_contribution + premium_amount
+    elif chit_type_str == "auction":
+        # Auction: Only foreman_commission_percent is set, others NULL
+        db_chit.base_contribution = None
+        db_chit.premium_contribution = None
+        db_chit.payout_premium_percent = None
 
-    # For Auction Chits, recalculate base contribution
-    if db_chit.chit_type == ChitType.AUCTION:
-        db_chit.base_contribution = db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0
-        db_chit.premium_contribution = db_chit.base_contribution
-
-    # For Fixed Chits, premium equals base
-    if db_chit.chit_type == ChitType.FIXED:
-        db_chit.premium_contribution = db_chit.base_contribution
+    # Normalize empty notes to None
+    if not db_chit.notes or str(db_chit.notes).strip() == "":
+        db_chit.notes = None
 
     # Recalculate end_date
     db_chit.end_date = calculate_end_date_with_last_day(db_chit.start_date, db_chit.duration_months)
@@ -326,15 +388,15 @@ async def update_chit(
     await session.refresh(db_chit)
     
     # Sync slot schedule and update payout amounts
-    payout_amount = 0
+    payout_amount = None  # NULL for Fixed/Auction
     payout_map = None
 
     if db_chit.chit_type.value == "fixed":
-        payout_amount = db_chit.chit_value
+        payout_amount = None  # User enters manually
     elif db_chit.chit_type.value == "variable":
         payout_map = calculate_variable_payout_schedule(
-            db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent,
-            db_chit.foreman_commission_percent, db_chit.duration_months
+            db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent or 0,
+            db_chit.foreman_commission_percent or 0, db_chit.duration_months
         )
     
     await crud_slots.sync_schedule(
@@ -381,16 +443,29 @@ async def patch_chit(
     for key, value in chit_data.items():
         setattr(db_chit, key, value)
     
-    # Recalculate contributions based on chit type
-    if db_chit.chit_type == ChitType.VARIABLE:
+    # Get effective chit_type
+    chit_type_str = db_chit.chit_type.value if hasattr(db_chit.chit_type, 'value') else db_chit.chit_type
+    
+    # Apply NULL normalization and recalculate contributions based on chit type
+    if chit_type_str == "fixed":
+        # Fixed: Only base_contribution is set, others NULL
+        db_chit.premium_contribution = None
+        db_chit.payout_premium_percent = None
+        db_chit.foreman_commission_percent = None
+    elif chit_type_str == "variable":
+        # Variable: Calculate contributions
         db_chit.base_contribution = db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0
-        premium_amount = int(db_chit.chit_value * db_chit.payout_premium_percent / 100)
+        premium_amount = int(db_chit.chit_value * (db_chit.payout_premium_percent or 0) / 100)
         db_chit.premium_contribution = db_chit.base_contribution + premium_amount
-    elif db_chit.chit_type == ChitType.AUCTION:
-        db_chit.base_contribution = db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0
-        db_chit.premium_contribution = db_chit.base_contribution
-    elif db_chit.chit_type == ChitType.FIXED:
-        db_chit.premium_contribution = db_chit.base_contribution
+    elif chit_type_str == "auction":
+        # Auction: Only foreman_commission_percent is set, others NULL
+        db_chit.base_contribution = None
+        db_chit.premium_contribution = None
+        db_chit.payout_premium_percent = None
+    
+    # Normalize empty notes to None
+    if not db_chit.notes or str(db_chit.notes).strip() == "":
+        db_chit.notes = None
     
     if date_or_duration_changed:
         db_chit.end_date = calculate_end_date_with_last_day(db_chit.start_date, db_chit.duration_months)
@@ -403,15 +478,15 @@ async def patch_chit(
         await session.refresh(db_chit)
         
         # Calculate payout amounts
-        payout_amount = 0
+        payout_amount = None  # NULL for Fixed/Auction
         payout_map = None
 
         if db_chit.chit_type.value == "fixed":
-            payout_amount = db_chit.chit_value
+            payout_amount = None  # User enters manually
         elif db_chit.chit_type.value == "variable":
             payout_map = calculate_variable_payout_schedule(
-                db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent,
-                db_chit.foreman_commission_percent, db_chit.duration_months
+                db_chit.chit_value, db_chit.size, db_chit.payout_premium_percent or 0,
+                db_chit.foreman_commission_percent or 0, db_chit.duration_months
             )
         
         if "duration_months" in chit_data or date_or_duration_changed:
@@ -573,11 +648,24 @@ async def get_month_members(
     
     # Calculate total expected based on chit type
     if db_chit.chit_type.value == "fixed":
-        per_member_expected = db_chit.base_contribution
+        per_member_expected = db_chit.base_contribution or 0
     elif db_chit.chit_type.value == "variable":
-        per_member_expected = db_chit.base_contribution  # Will be adjusted per member below
+        per_member_expected = db_chit.base_contribution or 0  # Will be adjusted per member below
     else:  # auction
-        per_member_expected = month_slot.expected_contribution if month_slot and month_slot.expected_contribution else (db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0)
+        # For auction, expected_contribution in slot now stores the TOTAL collection.
+        # For the per-member breakdown, we must divide by size if it's a total.
+        stored = month_slot.expected_contribution if month_slot else 0
+        if stored and stored > 0:
+            # Auction: base_contribution is NULL, use chit_value / size as reference
+            reference = db_chit.chit_value // db_chit.size if db_chit.size > 0 else 0
+            # If stored amount is significantly higher than reference, it's a Total
+            if reference > 0 and stored > (reference * 1.5):
+                per_member_expected = stored // db_chit.size
+            else:
+                per_member_expected = stored
+        else:
+            # For auctions not yet recorded, expected is 0
+            per_member_expected = 0
     
     # Build per-member data
     members_data = []
@@ -591,35 +679,20 @@ async def get_month_members(
         
         # Calculate per-member expected amount based on chit type
         if db_chit.chit_type.value == "fixed":
-            member_expected = db_chit.base_contribution
+            member_expected = db_chit.base_contribution or 0
             
         elif db_chit.chit_type.value == "variable":
-            # Check if member has received a payout (their slot has payout payments before this month)
-            member_slot = assigned_slot
-            payout_payments = [p for p in (member_slot.payments or []) if p.payment_type == PaymentType.PAYOUT]
-            
-            if payout_payments:
-                # Get earliest payout date
-                payout_dates = [p.date for p in payout_payments if p.date]
-                if payout_dates:
-                    earliest_payout = min(payout_dates)
-                    # Calculate month date for comparison
-                    month_date = db_chit.start_date + relativedelta(months=month - 1)
-                    
-                    # Use premium if payout was before this month
-                    if (month_date.year, month_date.month) > (earliest_payout.year, earliest_payout.month):
-                        member_expected = db_chit.premium_contribution
-                    else:
-                        member_expected = db_chit.base_contribution
-                else:
-                    member_expected = db_chit.base_contribution
+            # Logic: If member's assigned prize month is in the past, they pay Premium.
+            # Otherwise (current or future), they pay Base.
+            if assigned_slot.month < month:
+                member_expected = db_chit.premium_contribution or 0
             else:
-                member_expected = db_chit.base_contribution
+                member_expected = db_chit.base_contribution or 0
                 
         else:  # auction
             member_expected = per_member_expected
         
-        total_expected += member_expected
+        total_expected += member_expected or 0
         
         # Get payments made by this member for this month
         member_payments = [p for p in month_payments if p.member_id == member.id and p.payment_type == PaymentType.COLLECTION]

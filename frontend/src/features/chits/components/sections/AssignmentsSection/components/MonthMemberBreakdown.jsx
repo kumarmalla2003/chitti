@@ -182,8 +182,8 @@ const MonthMemberBreakdown = ({
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredMembers.map((member) => (
-                                        <tr key={member.member_id} className="border-t border-border hover:bg-background-tertiary/30 transition-colors">
+                                    filteredMembers.map((member, index) => (
+                                        <tr key={`${member.member_id}-${index}`} className="border-t border-border hover:bg-background-tertiary/30 transition-colors">
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-text-primary">{member.member_name}</span>

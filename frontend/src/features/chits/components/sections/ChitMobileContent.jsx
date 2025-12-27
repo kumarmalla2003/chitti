@@ -29,10 +29,13 @@ const ChitMobileContent = ({
     handleMiddle,
     handleMobileFormSubmit,
     isPostCreation,
+    isSubmitting,
     hasActiveOperations,
     onLogCollectionClick,
     collectionDefaults,
     setCollectionDefaults,
+    onCancel,
+    success, // Success message from form submission
     // Form Hook Props
     control,
     register,
@@ -68,8 +71,8 @@ const ChitMobileContent = ({
 
     return (
         <div className="w-full max-w-2xl mx-auto">
-            {/* Only show tab bar after chit is created (or not in create mode) */}
-            {(mode !== "create" || chitId) && (
+            {/* Tab bar only visible when more than 1 tab (not during creation) */}
+            {TABS.length > 1 && (
                 <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
                     <TabButton
                         ref={(el) => (tabRefs.current["details"] = el)}
@@ -120,13 +123,16 @@ const ChitMobileContent = ({
                             control={control}
                             register={register}
                             errors={errors}
+                            success={success}
                             isPostCreation={isPostCreation}
+                            isSubmitting={isSubmitting}
                             hasActiveOperations={hasActiveOperations}
                             setValue={setValue}
                             setError={setError}
                             clearErrors={clearErrors}
                             trigger={trigger}
                             onEnterKeyOnLastInput={handleNext}
+                            onCancel={onCancel}
                             onNameValid={onNameValid}
                             onNameInvalid={onNameInvalid}
                             onSizeChange={onSizeChange}
@@ -136,7 +142,8 @@ const ChitMobileContent = ({
                             onShowLockedFieldWarning={onShowLockedFieldWarning}
                         />
                     </Card>
-                    {mode !== "view" && (
+                    {/* StepperButtons only shown when there are multiple tabs (edit mode) */}
+                    {mode !== "view" && TABS.length > 1 && (
                         <StepperButtons
                             currentStep={activeTabIndex}
                             totalSteps={TABS.length}
@@ -216,10 +223,13 @@ ChitMobileContent.propTypes = {
     handleMiddle: PropTypes.func.isRequired,
     handleMobileFormSubmit: PropTypes.func.isRequired,
     isPostCreation: PropTypes.bool.isRequired,
+    isSubmitting: PropTypes.bool,
     hasActiveOperations: PropTypes.bool,
     onLogCollectionClick: PropTypes.func.isRequired,
     collectionDefaults: PropTypes.object,
     setCollectionDefaults: PropTypes.func.isRequired,
+    onCancel: PropTypes.func,
+    success: PropTypes.string,
     // RHForm props
     control: PropTypes.object.isRequired,
     register: PropTypes.func.isRequired,

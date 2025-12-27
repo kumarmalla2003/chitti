@@ -5,12 +5,13 @@ from typing import List, Optional
 from datetime import datetime
 from app.models.slots import SlotStatus
 from app.schemas.members import MemberPublic
+from app.schemas.chits import ChitNested
 
 
 class ChitSlotBase(BaseModel):
     """Base schema for chit slots."""
     month: int = Field(ge=1)
-    payout_amount: int = Field(default=0, ge=0)
+    payout_amount: Optional[int] = Field(default=None, ge=0)
     bid_amount: Optional[int] = None
     expected_contribution: Optional[int] = None  # For auction chits
 
@@ -33,7 +34,7 @@ class ChitSlotSimple(BaseModel):
     """Minimal slot info for nesting."""
     id: int
     month: int
-    payout_amount: int = 0
+    payout_amount: Optional[int] = None
     bid_amount: Optional[int] = None
     expected_contribution: Optional[int] = None
     status: SlotStatus = SlotStatus.SCHEDULED
@@ -75,11 +76,12 @@ class ChitSlotPublic(BaseModel):
     """Public slot info with member and calculated fields for assignment list view."""
     id: int
     month: int
-    payout_amount: int = 0
+    payout_amount: Optional[int] = None
     bid_amount: Optional[int] = None
     expected_contribution: Optional[int] = None
     status: SlotStatus = SlotStatus.SCHEDULED
     member: Optional[MemberPublic] = None
+    chit: Optional[ChitNested] = None  # Add chit info for member assignments view
     
     # Collection status for the member (calculated)
     total_paid: float = 0

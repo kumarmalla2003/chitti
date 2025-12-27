@@ -15,13 +15,12 @@ import Skeleton from "../../../components/ui/Skeleton";
 import MemberDetailsForm from "../components/forms/MemberDetailsForm";
 import MemberChitsManager from "../components/sections/MemberChitsManager";
 import MemberMobileContent from "../components/sections/MemberMobileContent";
-import MemberDesktopActionButton from "../components/ui/MemberDesktopActionButton";
 import CollectionHistoryList from "../components/sections/CollectionHistoryList";
 import MemberViewDashboard from "./MemberViewDashboard";
 
 import {
   Loader2,
-  User,
+  Info,
   Layers,
   ArrowLeft,
   SquarePen,
@@ -34,12 +33,14 @@ const DetailsSection = ({
   control,
   register,
   errors,
+  isSubmitting,
   onEnterKeyOnLastInput,
+  onCancel,
   isPostCreation,
 }) => (
   <Card className="h-full">
     <h2 className="text-xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
-      <User className="w-6 h-6" /> Member Details
+      <Info className="w-6 h-6" /> Details
     </h2>
     <hr className="border-border mb-4" />
     <MemberDetailsForm
@@ -47,7 +48,9 @@ const DetailsSection = ({
       control={control}
       register={register}
       errors={errors}
+      isSubmitting={isSubmitting}
       onEnterKeyOnLastInput={onEnterKeyOnLastInput}
+      onCancel={onCancel}
       isPostCreation={isPostCreation}
     />
   </Card>
@@ -107,8 +110,17 @@ const MemberDetailPage = () => {
   });
 
   // --- Derived Values ---
-  const TABS = ["details", "chits", "collections"];
-  const activeTabIndex = useMemo(() => TABS.indexOf(activeTab), [activeTab]);
+  const effectiveMemberId = id || createdMemberId;
+
+  // TABS are dynamic: only show "details" during creation until member is saved
+  const TABS = useMemo(() => {
+    if (mode === "create" && !effectiveMemberId) {
+      return ["details"];
+    }
+    return ["details", "assignments", "collections"];
+  }, [mode, effectiveMemberId]);
+
+  const activeTabIndex = useMemo(() => TABS.indexOf(activeTab), [TABS, activeTab]);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   // --- Scroll to Top on Messages ---
@@ -141,16 +153,19 @@ const MemberDetailPage = () => {
   const handleFormSubmit = useCallback(
     async (data) => {
       await onSubmit(data, {
-        onSuccessCallback: () => {
-          if (mode === "create" && !createdMemberId) {
-            setActiveTab("chits");
+        onSuccessCallback: (newMember) => {
+          if (mode === "create") {
+            // Navigate to edit mode with assignments tab after successful creation
+            navigate(`/members/edit/${newMember.id}`, {
+              state: { initialTab: "assignments" }
+            });
           } else if (mode === "edit" && activeTabIndex < TABS.length - 1) {
             setActiveTab(TABS[activeTabIndex + 1]);
           }
         },
       });
     },
-    [onSubmit, mode, createdMemberId, activeTabIndex, TABS]
+    [onSubmit, mode, navigate, activeTabIndex, TABS]
   );
 
   // --- Page Title ---
@@ -178,17 +193,19 @@ const MemberDetailPage = () => {
   }, [activeTabIndex, TABS]);
 
   const handleNext = useCallback(async () => {
-    if (activeTabIndex === 0) {
+    // In CREATE mode on first tab, submit the form first
+    if (mode === "create" && activeTabIndex === 0) {
       const isValidForm = await trigger();
       if (isValidForm) {
         await handleSubmit(handleFormSubmit)();
       }
       return;
     }
+    // In EDIT mode or other tabs, just navigate to next tab
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
-  }, [activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
+  }, [mode, activeTabIndex, trigger, handleSubmit, handleFormSubmit, TABS]);
 
   const handleFinalAction = useCallback(() => {
     const memberIdToView = mode === "create" ? createdMemberId : id;
@@ -217,13 +234,14 @@ const MemberDetailPage = () => {
     async (e) => {
       if (activeTab !== "details") return;
 
-      if (activeTabIndex === TABS.length - 1) {
+      // In create/edit mode on details tab, always submit the form first
+      if ((mode === "create" || mode === "edit") && activeTabIndex === 0) {
+        await handleSubmit(handleFormSubmit)(e);
+      } else if (activeTabIndex === TABS.length - 1) {
+        // On the last tab (after details), trigger final action
         handleFinalAction();
-      } else if (mode === "create" && activeTabIndex === 0) {
-        await handleSubmit(handleFormSubmit)(e);
-      } else if (mode === "edit" && activeTabIndex === 0) {
-        await handleSubmit(handleFormSubmit)(e);
       } else if (activeTabIndex < TABS.length - 1) {
+        // Otherwise, move to next tab
         setActiveTab(TABS[activeTabIndex + 1]);
       }
     },
@@ -264,7 +282,6 @@ const MemberDetailPage = () => {
     );
   }
 
-  const effectiveMemberId = id || createdMemberId;
 
   return (
     <>
@@ -358,9 +375,12 @@ const MemberDetailPage = () => {
                 handleMiddle={handleMiddle}
                 handleMobileFormSubmit={handleMobileFormSubmit}
                 isPostCreation={isPostCreation}
+                isSubmitting={isSubmitting}
                 onLogCollectionClick={handleLogCollectionClick}
                 collectionDefaults={collectionDefaults}
                 setCollectionDefaults={setCollectionDefaults}
+                onCancel={() => navigate("/members")}
+                success={success}
                 control={control}
                 register={register}
                 errors={errors}
@@ -380,32 +400,30 @@ const MemberDetailPage = () => {
                     control={control}
                     register={register}
                     errors={errors}
+                    isSubmitting={isSubmitting}
                     onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                    onCancel={() => navigate("/members")}
                     isPostCreation={isPostCreation}
                   />
 
-                  {mode !== "view" && (
-                    <MemberDesktopActionButton
-                      mode={mode}
-                      loading={isSubmitting}
-                      isPostCreation={isPostCreation}
-                    />
+                  {/* Chits Section - only show when member exists */}
+                  {effectiveMemberId && (
+                    <>
+                      <MemberChitsManager
+                        mode={mode}
+                        memberId={effectiveMemberId}
+                        onLogCollectionClick={handleLogCollectionClick}
+                      />
+
+                      {/* Collections Section */}
+                      <CollectionHistoryList
+                        memberId={effectiveMemberId}
+                        mode={mode}
+                        collectionDefaults={collectionDefaults}
+                        setCollectionDefaults={setCollectionDefaults}
+                      />
+                    </>
                   )}
-
-                  {/* Chits Section */}
-                  <MemberChitsManager
-                    mode={mode}
-                    memberId={effectiveMemberId}
-                    onLogCollectionClick={handleLogCollectionClick}
-                  />
-
-                  {/* Collections Section */}
-                  <CollectionHistoryList
-                    memberId={effectiveMemberId}
-                    mode={mode}
-                    collectionDefaults={collectionDefaults}
-                    setCollectionDefaults={setCollectionDefaults}
-                  />
                 </div>
               </form>
             )}

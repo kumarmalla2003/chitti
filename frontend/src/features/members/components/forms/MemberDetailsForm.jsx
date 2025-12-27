@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import Message from "../../../../components/ui/Message";
-import { User, Phone } from "lucide-react";
+import Button from "../../../../components/ui/Button";
+import { User, Phone, Loader2, Plus, SquarePen } from "lucide-react";
 import FormattedInput from "../../../../components/ui/FormattedInput";
 
 const MemberDetailsForm = ({
@@ -13,7 +14,9 @@ const MemberDetailsForm = ({
   errors,
   success,
   isPostCreation = false,
+  isSubmitting = false,
   onEnterKeyOnLastInput,
+  onCancel,
 }) => {
   const nameInputRef = useRef(null);
   const isFormDisabled = mode === "view";
@@ -28,7 +31,13 @@ const MemberDetailsForm = ({
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !isFormDisabled) {
       const inputName = e.target.name;
-      if (inputName === "phone_number") {
+      if (inputName === "full_name") {
+        // Move focus to phone number field instead of submitting
+        e.preventDefault();
+        const phoneInput = document.getElementById("phone_number");
+        if (phoneInput) phoneInput.focus();
+      } else if (inputName === "phone_number") {
+        // Only submit on Enter from the last field
         if (onEnterKeyOnLastInput) {
           e.preventDefault();
           onEnterKeyOnLastInput();
@@ -118,6 +127,33 @@ const MemberDetailsForm = ({
             </p>
           )}
         </div>
+
+        {/* Action Buttons - only show in create/edit mode */}
+        {!isFormDisabled && (
+          <div className="flex justify-end gap-3 pt-4">
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+            )}
+            <Button
+              type="submit"
+              variant={mode === "create" && !isPostCreation ? "success" : "warning"}
+              disabled={isSubmitting}
+              className="w-full md:w-auto"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin mx-auto w-5 h-5" />
+              ) : (
+                <>
+                  {mode === "create" && !isPostCreation ? (
+                    <><Plus className="inline-block w-5 h-5" />Create Member</>
+                  ) : (
+                    <><SquarePen className="inline-block w-5 h-5" />Update Member</>
+                  )}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </fieldset>
     </>
   );
@@ -130,7 +166,9 @@ MemberDetailsForm.propTypes = {
   errors: PropTypes.object.isRequired,
   success: PropTypes.string,
   isPostCreation: PropTypes.bool,
+  isSubmitting: PropTypes.bool,
   onEnterKeyOnLastInput: PropTypes.func,
+  onCancel: PropTypes.func,
 };
 
 export default MemberDetailsForm;

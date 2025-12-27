@@ -9,10 +9,13 @@ from app.models.members import Member
 from app.models.slots import ChitSlot
 from app.schemas.members import MemberCreate, MemberUpdate
 
+
 async def get_member_by_phone(session: AsyncSession, phone_number: str) -> Member | None:
+    """Get member by phone number."""
     statement = select(Member).where(Member.phone_number == phone_number)
     result = await session.execute(statement)
     return result.scalar_one_or_none()
+
 
 async def create_member(session: AsyncSession, member_in: MemberCreate) -> Member:
     db_member = Member.model_validate(member_in)
@@ -21,20 +24,24 @@ async def create_member(session: AsyncSession, member_in: MemberCreate) -> Membe
     await session.refresh(db_member)
     return db_member
 
+
 async def get_all_members(session: AsyncSession) -> list[Member]:
+    """Get all members."""
     statement = (
         select(Member)
         .options(
             selectinload(Member.slots)
             .selectinload(ChitSlot.chit)
-        ) 
+        )
         .order_by(Member.full_name)
     )
     result = await session.execute(statement)
     # Use .unique() to handle potential duplicates from eager loading
     return result.scalars().unique().all()
 
+
 async def search_members(session: AsyncSession, query: str) -> list[Member]:
+    """Search members by name or phone."""
     search_term = f"%{query.lower()}%"
     statement = select(Member).where(
         or_(
@@ -45,22 +52,25 @@ async def search_members(session: AsyncSession, query: str) -> list[Member]:
     result = await session.execute(statement)
     return result.scalars().all()
 
+
 async def get_member_by_id(session: AsyncSession, member_id: int) -> Member | None:
-    member = await session.get(Member, member_id)
-    return member
+    """Get member by ID."""
+    return await session.get(Member, member_id)
+
 
 async def update_member(session: AsyncSession, db_member: Member, member_in: MemberUpdate) -> Member:
-    from datetime import datetime, timezone
+    """Update member data. Timestamp is auto-updated via event listener."""
     member_data = member_in.model_dump(exclude_unset=True)
     for key, value in member_data.items():
         setattr(db_member, key, value)
-    db_member.updated_at = datetime.now(timezone.utc)
+    # Note: updated_at is now automatically set by the event listener
     session.add(db_member)
     await session.commit()
     await session.refresh(db_member)
     return db_member
 
+
 async def delete_member_by_id(session: AsyncSession, db_member: Member):
-    """Deletes a member from the database."""
+    """Permanently deletes a member from the database."""
     await session.delete(db_member)
     await session.commit()

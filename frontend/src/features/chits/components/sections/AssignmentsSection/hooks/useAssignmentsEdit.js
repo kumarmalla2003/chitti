@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createAssignment, deleteAssignment } from "../../../../../../services/assignmentsService";
 import { updatePayout } from "../../../../../../services/payoutsService";
-import { patchCollection } from "../../../../../../services/collectionsService";
 import { collectionKeys } from "../../../../../collections/hooks/useCollections";
 
 /**
@@ -16,13 +15,11 @@ export const useAssignmentsEdit = ({
     chitDetails,
     allMonthsData,
     payouts,
-    collections,
     allMembers,
     isAuctionType,
     refetchAssignments,
     refetchMonths,
     refetchPayouts,
-    refetchCollections,
 }) => {
     const queryClient = useQueryClient();
 
@@ -60,7 +57,7 @@ export const useAssignmentsEdit = ({
     const handleEnterMembersEditMode = useCallback(() => {
         const memberEdits = {};
         allMonthsData.forEach((row) => {
-            if (row.assignment) {
+            if (row.assignment?.member?.id) {
                 memberEdits[row.monthLabel] = row.assignment.member.id.toString();
             }
         });
@@ -75,7 +72,7 @@ export const useAssignmentsEdit = ({
     const handleEnterPayoutsEditMode = useCallback(() => {
         const payoutEdits = {};
         payouts.forEach((p) => {
-            payoutEdits[p.id] = p.planned_amount?.toString() || "";
+            payoutEdits[p.id] = p.payout_amount?.toString() || "";
         });
         setEditedPayouts(payoutEdits);
         setEditPayoutsMode(true);
@@ -88,7 +85,7 @@ export const useAssignmentsEdit = ({
     const handleEnterAuctionsEditMode = useCallback(() => {
         const auctionEdits = {};
         payouts.forEach((p) => {
-            auctionEdits[p.id] = p.bid_amount?.toString() || p.planned_amount?.toString() || "";
+            auctionEdits[p.id] = p.bid_amount?.toString() || "";
         });
         setEditedAuctions(auctionEdits);
         setEditAuctionsMode(true);
@@ -124,7 +121,7 @@ export const useAssignmentsEdit = ({
 
     // --- Per-Row Edit Handlers ---
     const handleEnterRowMemberEdit = useCallback((row) => {
-        if (row.assignment) {
+        if (row.assignment?.member?.id) {
             setEditedMembers({ [row.monthLabel]: row.assignment.member.id.toString() });
         } else {
             setEditedMembers({ [row.monthLabel]: "" });
@@ -137,25 +134,23 @@ export const useAssignmentsEdit = ({
     }, []);
 
     const handleEnterRowPayoutEdit = useCallback((row) => {
-        if (row.payout) {
-            setEditedPayouts({ [row.payout.id]: row.payout.planned_amount?.toString() || "" });
-            setEditingRowPayout(row.payout.id);
-            setTimeout(() => {
-                const input = document.getElementById(`payout_input_row_${row.payout.id}`);
-                if (input) input.focus();
-            }, 100);
-        }
+        const payoutKey = row.payout?.id ?? `month_${row.monthIndex}`;
+        setEditedPayouts({ [payoutKey]: row.payout?.payout_amount?.toString() || "" });
+        setEditingRowPayout(payoutKey);
+        setTimeout(() => {
+            const input = document.getElementById(`payout_input_row_${payoutKey}`);
+            if (input) input.focus();
+        }, 100);
     }, []);
 
     const handleEnterRowAuctionEdit = useCallback((row) => {
-        if (row.payout) {
-            setEditedAuctions({ [row.payout.id]: row.payout.bid_amount?.toString() || "" });
-            setEditingRowAuction(row.payout.id);
-            setTimeout(() => {
-                const input = document.getElementById(`auction_input_row_${row.payout.id}`);
-                if (input) input.focus();
-            }, 100);
-        }
+        const auctionKey = row.payout?.id ?? `month_${row.monthIndex}`;
+        setEditedAuctions({ [auctionKey]: row.payout?.bid_amount?.toString() || "" });
+        setEditingRowAuction(auctionKey);
+        setTimeout(() => {
+            const input = document.getElementById(`auction_input_row_${auctionKey}`);
+            if (input) input.focus();
+        }, 100);
     }, []);
 
     const handleEnterRowCollectionEdit = useCallback((row) => {
@@ -169,23 +164,26 @@ export const useAssignmentsEdit = ({
     }, []);
 
     const handleEnterRowAllEdit = useCallback((row) => {
-        if (row.assignment) {
+        if (row.assignment?.member?.id) {
             setEditedMembers({ [row.monthLabel]: row.assignment.member.id.toString() });
         } else {
             setEditedMembers({ [row.monthLabel]: "" });
         }
         setEditingRowMember(row.monthLabel);
-        if (row.payout) {
-            setEditedPayouts({ [row.payout.id]: row.payout.planned_amount?.toString() || "" });
-            setEditingRowPayout(row.payout.id);
-            if (isAuctionType) {
-                setEditedAuctions({ [row.payout.id]: row.payout.bid_amount?.toString() || "" });
-                setEditingRowAuction(row.payout.id);
-            }
-            const collectionKey = `month_${row.monthIndex}`;
-            setEditedCollections({ [collectionKey]: row.expectedAmount?.toString() || "" });
-            setEditingRowCollection(row.monthIndex);
+
+        // Use monthIndex as fallback key when payout doesn't exist
+        const payoutKey = row.payout?.id ?? `month_${row.monthIndex}`;
+        setEditedPayouts({ [payoutKey]: row.payout?.payout_amount?.toString() || "" });
+        setEditingRowPayout(payoutKey);
+
+        if (isAuctionType) {
+            setEditedAuctions({ [payoutKey]: row.payout?.bid_amount?.toString() || "" });
+            setEditingRowAuction(payoutKey);
         }
+
+        const collectionKey = `month_${row.monthIndex}`;
+        setEditedCollections({ [collectionKey]: row.expectedAmount?.toString() || "" });
+        setEditingRowCollection(row.monthIndex);
         setTimeout(() => {
             const input = document.getElementById(`member_select_row_${row.monthLabel}`);
             if (input) input.focus();
@@ -276,41 +274,45 @@ export const useAssignmentsEdit = ({
                 if (newMemberId !== currentMemberId) {
                     savingSet.add(`member_${row.monthLabel}`);
 
-                    // Delete existing assignment if there's a change
-                    if (row.assignment && newMemberId !== currentMemberId) {
+                    // Delete existing assignment only if there was a member assigned before
+                    // deleteAssignment expects (chitId, month) not just an ID
+                    if (currentMemberId && row.monthIndex && newMemberId !== currentMemberId) {
                         promises.push(
-                            deleteAssignment(row.assignment.id).catch((err) => {
+                            deleteAssignment(chitId, row.monthIndex).catch((err) => {
                                 errors.push(`Failed to delete assignment: ${err.message}`);
                             })
                         );
                     }
                     // Create new assignment if a member was selected
-                    if (newMemberId && newMemberId !== "") {
-                        const isoDate = monthLabelToISODate(row.monthLabel);
-                        if (isoDate) {
-                            promises.push(
-                                createAssignment({
-                                    chit_id: chitId,
-                                    member_id: parseInt(newMemberId),
-                                    chit_month: isoDate,
-                                }).catch((err) => {
-                                    errors.push(`Failed to create assignment: ${err.message}`);
-                                })
-                            );
-                        }
+                    if (newMemberId && newMemberId !== "" && row.monthIndex) {
+                        promises.push(
+                            // createAssignment expects (chitId, month, memberId)
+                            createAssignment(chitId, row.monthIndex, parseInt(newMemberId)).catch((err) => {
+                                errors.push(`Failed to create assignment: ${err.message}`);
+                            })
+                        );
                     }
                 }
             }
 
             // 2. Process payout changes
-            for (const [payoutId, newAmount] of Object.entries(editedPayouts)) {
-                const originalPayout = payouts.find((p) => p.id === parseInt(payoutId));
+            for (const [payoutKey, newAmount] of Object.entries(editedPayouts)) {
+                // Handle both numeric slot IDs and month_X string keys
+                let originalPayout;
+                if (payoutKey.startsWith('month_')) {
+                    const monthNum = parseInt(payoutKey.replace('month_', ''));
+                    originalPayout = payouts.find((p) => p.month === monthNum);
+                } else {
+                    originalPayout = payouts.find((p) => p.id === parseInt(payoutKey));
+                }
+
                 if (originalPayout) {
-                    const newAmountNum = parseFloat(newAmount) || 0;
-                    if (originalPayout.planned_amount !== newAmountNum) {
-                        savingSet.add(`payout_${payoutId}`);
+                    // Empty string → null (not entered), otherwise parse as number
+                    const newAmountNum = newAmount.trim() === "" ? null : (parseFloat(newAmount) || 0);
+                    if (originalPayout.payout_amount !== newAmountNum) {
+                        savingSet.add(`payout_${payoutKey}`);
                         promises.push(
-                            updatePayout(parseInt(payoutId), { planned_amount: newAmountNum }).catch((err) => {
+                            updatePayout(originalPayout.id, { payout_amount: newAmountNum }).catch((err) => {
                                 errors.push(`Failed to update payout: ${err.message}`);
                             })
                         );
@@ -320,14 +322,23 @@ export const useAssignmentsEdit = ({
 
             // 3. Process auction changes
             if (isAuctionType) {
-                for (const [payoutId, newBidAmount] of Object.entries(editedAuctions)) {
-                    const originalPayout = payouts.find((p) => p.id === parseInt(payoutId));
+                for (const [auctionKey, newBidAmount] of Object.entries(editedAuctions)) {
+                    // Handle both numeric slot IDs and month_X string keys
+                    let originalPayout;
+                    if (auctionKey.startsWith('month_')) {
+                        const monthNum = parseInt(auctionKey.replace('month_', ''));
+                        originalPayout = payouts.find((p) => p.month === monthNum);
+                    } else {
+                        originalPayout = payouts.find((p) => p.id === parseInt(auctionKey));
+                    }
+
                     if (originalPayout) {
-                        const newBidNum = parseFloat(newBidAmount) || 0;
+                        // Empty string → null (not entered), otherwise parse as number
+                        const newBidNum = newBidAmount.trim() === "" ? null : (parseFloat(newBidAmount) || 0);
                         if (originalPayout.bid_amount !== newBidNum) {
-                            savingSet.add(`auction_${payoutId}`);
+                            savingSet.add(`auction_${auctionKey}`);
                             promises.push(
-                                updatePayout(parseInt(payoutId), { bid_amount: newBidNum }).catch((err) => {
+                                updatePayout(originalPayout.id, { bid_amount: newBidNum }).catch((err) => {
                                     errors.push(`Failed to update auction: ${err.message}`);
                                 })
                             );
@@ -336,31 +347,22 @@ export const useAssignmentsEdit = ({
                 }
             }
 
-            // 4. Process collection changes (key format: "month_X" where X is month number)
-            // Input is Total Monthly Collection, save directly to DB
+            // 4. Process collection changes (expected_contribution stored in slots)
             for (const [collectionKey, newAmount] of Object.entries(editedCollections)) {
-                // Parse month number from key (e.g., "month_1" -> 1)
-                const monthMatch = collectionKey.match(/^month_(\d+)$/);
-                if (!monthMatch) continue;
-                const monthNumber = parseInt(monthMatch[1]);
+                // Collection keys are always month_X format
+                const monthNum = parseInt(collectionKey.replace('month_', ''));
+                const originalSlot = payouts.find((p) => p.month === monthNum);
 
-                const totalAmount = parseFloat(newAmount) || 0;
-
-                // Find ALL collections for this month to update them all
-                const monthCollections = collections.filter((c) => c.month === monthNumber);
-
-                if (monthCollections.length > 0) {
-                    // If existing is different, update ALL.
-                    if (monthCollections[0].expected_amount !== totalAmount) {
+                if (originalSlot) {
+                    // Empty string → null (not entered), otherwise parse as number
+                    const newAmountNum = newAmount.trim() === "" ? null : (parseFloat(newAmount) || 0);
+                    if (originalSlot.expected_contribution !== newAmountNum) {
                         savingSet.add(`collection_${collectionKey}`);
-
-                        // Update all records for this month with the Total amount
-                        const collectionPromises = monthCollections.map(col =>
-                            patchCollection(col.id, { expected_amount: totalAmount }).catch((err) => {
-                                errors.push(`Failed to update collection ${col.id}: ${err.message}`);
+                        promises.push(
+                            updatePayout(originalSlot.id, { expected_contribution: newAmountNum }).catch((err) => {
+                                errors.push(`Failed to update collection: ${err.message}`);
                             })
                         );
-                        promises.push(...collectionPromises);
                     }
                 }
             }
@@ -373,7 +375,6 @@ export const useAssignmentsEdit = ({
                 refetchAssignments(),
                 refetchMonths(),
                 refetchPayouts(),
-                refetchCollections(),
                 queryClient.invalidateQueries({ queryKey: collectionKeys.byChit(chitId) }),
             ]);
 
@@ -392,8 +393,8 @@ export const useAssignmentsEdit = ({
         }
     }, [
         chitId, allMonthsData, editedMembers, editedPayouts, editedAuctions, editedCollections,
-        payouts, collections, isAuctionType, monthLabelToISODate,
-        refetchAssignments, refetchMonths, refetchPayouts, refetchCollections, queryClient, handleCancelEditMode
+        payouts, isAuctionType, monthLabelToISODate,
+        refetchAssignments, refetchMonths, refetchPayouts, queryClient, handleCancelEditMode
     ]);
 
     return {

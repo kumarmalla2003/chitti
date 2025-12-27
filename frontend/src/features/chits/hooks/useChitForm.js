@@ -135,10 +135,13 @@ export const useChitForm = (id, mode) => {
   }, [originalData]);
 
   // --- Memoized TABS ---
+  // TABS are dynamic: only show "details" during creation
   const TABS = useMemo(() => {
-    // New simplified 3-tab structure
+    if (mode === "create") {
+      return ["details"];
+    }
     return ["details", "assignments", "transactions"];
-  }, []);
+  }, [mode]);
 
   // --- Auto-Calculation Effects ---
 

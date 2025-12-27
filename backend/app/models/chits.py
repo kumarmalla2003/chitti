@@ -34,18 +34,18 @@ class Chit(SQLModel, table=True):
     # Chit Type - determines contribution calculation behavior
     chit_type: ChitType = Field(default=ChitType.FIXED)
     
-    # Contribution fields (in rupees)
-    # - Fixed chit: base_contribution = premium_contribution = monthly installment
-    # - Variable chit: base_contribution = chit_value/size, premium_contribution = base + (chit_value * premium%)
-    # - Auction chit: base_contribution = chit_value/size, premium_contribution = same (contributions stored per-slot)
-    base_contribution: int = Field(default=0, ge=0, le=100000000)  # max ₹10Cr
-    premium_contribution: int = Field(default=0, ge=0, le=100000000)  # max ₹10Cr
+    # Contribution fields (in rupees) - Optional based on chit_type
+    # - Fixed: base_contribution = user-entered monthly installment; others NULL
+    # - Variable: base_contribution = chit_value/size; premium_contribution calculated; percentages required
+    # - Auction: all NULL except foreman_commission_percent
+    base_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)  # max ₹10Cr
+    premium_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)  # max ₹10Cr
     
     # Variable Chit: percentage applied to chit_value for premium calculation
-    payout_premium_percent: float = Field(default=0.0, ge=0, le=100)
+    payout_premium_percent: Optional[float] = Field(default=None, ge=0, le=100)
 
     # Auction/Variable Chit: Foreman Commission percentage
-    foreman_commission_percent: float = Field(default=0.0, ge=0, le=100)
+    foreman_commission_percent: Optional[float] = Field(default=None, ge=0, le=100)
     
     # Optional notes field (using TEXT type for large content)
     notes: Optional[str] = Field(default=None, sa_type=Text)

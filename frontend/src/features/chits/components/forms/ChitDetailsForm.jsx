@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Controller, useWatch, useFormState } from "react-hook-form";
 import Message from "../../../../components/ui/Message";
+import Button from "../../../../components/ui/Button";
 import CustomMonthInput from "../../../../components/ui/CustomMonthInput";
 import FormattedInput from "../../../../components/ui/FormattedInput";
 import SegmentedControl from "../../../../components/ui/SegmentedControl";
@@ -29,6 +30,8 @@ import {
   FileText,
   Check,
   Loader2,
+  Plus,
+  SquarePen,
 } from "lucide-react";
 
 /**
@@ -170,6 +173,7 @@ const ChitDetailsForm = ({
   errors,
   success,
   isPostCreation = false,
+  isSubmitting = false,
   hasActiveOperations = false,
   setValue,
   setError,
@@ -177,6 +181,7 @@ const ChitDetailsForm = ({
   trigger,
   chitId = null,
   onEnterKeyOnLastInput,
+  onCancel,
   onNameValid,
   onNameInvalid,
   onSizeChange,
@@ -1527,6 +1532,33 @@ const ChitDetailsForm = ({
           maxLength={1000000}
           disabled={isFormDisabled}
         />
+
+        {/* Action Buttons - only show in create/edit mode */}
+        {!isFormDisabled && (
+          <div className="flex justify-end gap-3 pt-4">
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+            )}
+            <Button
+              type="submit"
+              variant={mode === "create" && !isPostCreation ? "success" : "warning"}
+              disabled={isSubmitting}
+              className="w-full md:w-auto"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin mx-auto w-5 h-5" />
+              ) : (
+                <>
+                  {mode === "create" && !isPostCreation ? (
+                    <><Plus className="inline-block w-5 h-5" />Create Chit</>
+                  ) : (
+                    <><SquarePen className="inline-block w-5 h-5" />Update Chit</>
+                  )}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </fieldset>
     </>
   );
@@ -1539,6 +1571,7 @@ ChitDetailsForm.propTypes = {
   errors: PropTypes.object,
   success: PropTypes.string,
   isPostCreation: PropTypes.bool,
+  isSubmitting: PropTypes.bool,
   hasActiveOperations: PropTypes.bool,
   setValue: PropTypes.func,
   setError: PropTypes.func,
@@ -1546,6 +1579,7 @@ ChitDetailsForm.propTypes = {
   trigger: PropTypes.func,
   chitId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   onEnterKeyOnLastInput: PropTypes.func,
+  onCancel: PropTypes.func,
   onNameValid: PropTypes.func,
   onNameInvalid: PropTypes.func,
   onSizeChange: PropTypes.func,

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { User, Layers, IndianRupee } from "lucide-react";
+import { User, ClipboardList, IndianRupee } from "lucide-react";
 import Card from "../../../../components/ui/Card";
 import TabButton from "../../../../components/ui/TabButton";
 import StepperButtons from "../../../../components/ui/StepperButtons";
@@ -30,9 +30,12 @@ const MemberMobileContent = ({
     handleMiddle,
     handleMobileFormSubmit,
     isPostCreation,
+    isSubmitting,
     onLogCollectionClick,
     collectionDefaults,
     setCollectionDefaults,
+    onCancel,
+    success, // Success message from form submission
     // RHForm props
     control,
     register,
@@ -54,34 +57,35 @@ const MemberMobileContent = ({
 
     return (
         <div className="w-full max-w-2xl mx-auto">
-            <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-                <TabButton
-                    ref={(el) => (tabRefs.current["details"] = el)}
-                    name="details"
-                    icon={User}
-                    label="Details"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                />
-                <TabButton
-                    ref={(el) => (tabRefs.current["chits"] = el)}
-                    name="chits"
-                    icon={Layers}
-                    label="Chits"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !createdMemberId}
-                />
-                <TabButton
-                    ref={(el) => (tabRefs.current["collections"] = el)}
-                    name="collections"
-                    icon={IndianRupee}
-                    label="Collections"
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    disabled={mode === "create" && !createdMemberId}
-                />
-            </div>
+            {/* Tab bar only visible after member is created (when more than 1 tab) */}
+            {TABS.length > 1 && (
+                <div className="flex items-center border-b border-border mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
+                    <TabButton
+                        ref={(el) => (tabRefs.current["details"] = el)}
+                        name="details"
+                        icon={User}
+                        label="Details"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                    <TabButton
+                        ref={(el) => (tabRefs.current["assignments"] = el)}
+                        name="assignments"
+                        icon={ClipboardList}
+                        label="Assignments"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                    <TabButton
+                        ref={(el) => (tabRefs.current["collections"] = el)}
+                        name="collections"
+                        icon={IndianRupee}
+                        label="Collections"
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                    />
+                </div>
+            )}
 
             {activeTab === "details" && (
                 <form onSubmit={handleMobileFormSubmit}>
@@ -95,11 +99,15 @@ const MemberMobileContent = ({
                             control={control}
                             register={register}
                             errors={errors}
+                            success={success}
+                            isSubmitting={isSubmitting}
                             onEnterKeyOnLastInput={handleNext}
+                            onCancel={onCancel}
                             isPostCreation={isPostCreation}
                         />
                     </Card>
-                    {mode !== "view" && (
+                    {/* StepperButtons only shown when there are multiple tabs (edit mode) */}
+                    {mode !== "view" && TABS.length > 1 && (
                         <StepperButtons
                             currentStep={activeTabIndex}
                             totalSteps={TABS.length}
@@ -115,7 +123,7 @@ const MemberMobileContent = ({
                 </form>
             )}
 
-            {activeTab === "chits" && (
+            {activeTab === "assignments" && (
                 <>
                     <MemberChitsManager
                         mode={mode}
@@ -177,9 +185,12 @@ MemberMobileContent.propTypes = {
     handleMiddle: PropTypes.func.isRequired,
     handleMobileFormSubmit: PropTypes.func.isRequired,
     isPostCreation: PropTypes.bool.isRequired,
+    isSubmitting: PropTypes.bool,
     onLogCollectionClick: PropTypes.func.isRequired,
     collectionDefaults: PropTypes.object,
     setCollectionDefaults: PropTypes.func.isRequired,
+    onCancel: PropTypes.func,
+    success: PropTypes.string,
     // RHForm props
     control: PropTypes.object.isRequired,
     register: PropTypes.func.isRequired,

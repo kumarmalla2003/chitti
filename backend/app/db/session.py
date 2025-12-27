@@ -17,6 +17,10 @@ AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 
+# Register event listeners for auto-updating timestamps
+from app.db.listeners import register_listeners
+register_listeners()
+
 async def get_session() -> AsyncSession:
     """Dependency to get an async database session."""
     async with AsyncSessionLocal() as session:

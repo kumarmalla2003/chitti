@@ -13,6 +13,7 @@ from app.security.dependencies import get_current_user
 from app.crud import crud_members, crud_slots, crud_chits, crud_payments
 from app.schemas import members as members_schemas
 from app.schemas import slots as slots_schemas
+from app.schemas import chits as chits_schemas
 from app.schemas.chits import ChitResponse
 from app.schemas.slots import ChitSlotListPublicResponse
 
@@ -24,6 +25,7 @@ async def create_member(
     current_user: Annotated[AuthorizedPhone, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
+    # Check if member with this phone number already exists
     db_member = await crud_members.get_member_by_phone(session, phone_number=member_in.phone_number)
     if db_member:
         raise HTTPException(
@@ -160,6 +162,7 @@ async def get_member_slots(
             collection_status = "Paid"
         
         member_public = members_schemas.MemberPublic.model_validate(slot.member) if slot.member else None
+        chit_nested = chits_schemas.ChitNested.model_validate(chit) if chit else None
         
         slot_public = slots_schemas.ChitSlotPublic(
             id=slot.id,
@@ -169,6 +172,7 @@ async def get_member_slots(
             expected_contribution=slot.expected_contribution,
             status=slot.status,
             member=member_public,
+            chit=chit_nested,
             total_paid=total_paid,
             due_amount=due_amount,
             collection_status=collection_status,

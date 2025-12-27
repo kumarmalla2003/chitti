@@ -45,7 +45,11 @@ import MembersListReportPDF from "../components/reports/MembersListReportPDF";
 import MemberReportPDF from "../components/reports/MemberReportPDF";
 import { pdf } from "@react-pdf/renderer";
 
-const ITEMS_PER_PAGE = 10;
+// Responsive items per page based on screen size
+const getItemsPerPage = () => {
+  if (window.innerWidth >= 1024) return 12; // Desktop (lg+)
+  return 10;                                 // Tablet & Mobile (minimum 10)
+};
 const VIEW_MODE_STORAGE_KEY = "membersViewMode";
 
 const STATUS_OPTIONS = [
@@ -58,6 +62,8 @@ const SORT_OPTIONS = [
   { value: "name_desc", label: "Name (Z-A)" },
   { value: "phone_asc", label: "Phone (Ascending)" },
   { value: "phone_desc", label: "Phone (Descending)" },
+  { value: "date_asc", label: "Added (Oldest First)" },
+  { value: "date_desc", label: "Added (Newest First)" },
 ];
 
 /**
@@ -88,13 +94,19 @@ const MembersPage = () => {
   const [sortBy, setSortBy] = useState("name_asc");
   const [currentPage, setCurrentPage] = useState(1);
 
+  // State for responsive items per page
+  const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage);
+
   // Initialize view mode from localStorage, fallback to responsive default
   const [viewMode, setViewMode] = useState(() => {
+    // If mobile, force card view regardless of storage to prevent broken tables
+    if (window.innerWidth < 768) return "card";
+
     const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
     if (stored === "table" || stored === "card") {
       return stored;
     }
-    return window.innerWidth < 768 ? "card" : "table";
+    return "table";
   });
 
   const [isPrintingAll, setIsPrintingAll] = useState(false);
@@ -130,6 +142,20 @@ const MembersPage = () => {
   const error = localError || (queryError?.message ?? null);
 
   useScrollToTop(success || error);
+
+  // Handle resize for items per page and initial view mode on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPage(getItemsPerPage());
+      // Only force card view on mobile, let desktop users keep their choice
+      if (window.innerWidth < 768) {
+        setViewMode("card");
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Persist view mode to localStorage
   useEffect(() => {
@@ -208,17 +234,21 @@ const MembersPage = () => {
         return sorted.sort((a, b) => a.phone_number.localeCompare(b.phone_number));
       case "phone_desc":
         return sorted.sort((a, b) => b.phone_number.localeCompare(a.phone_number));
+      case "date_asc":
+        return sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      case "date_desc":
+        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       default:
         return sorted;
     }
   }, [filteredMembers, sortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(sortedMembers.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedMembers.length / itemsPerPage);
   const paginatedMembers = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return sortedMembers.slice(start, start + ITEMS_PER_PAGE);
-  }, [sortedMembers, currentPage]);
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedMembers.slice(start, start + itemsPerPage);
+  }, [sortedMembers, currentPage, itemsPerPage]);
 
   // Keyboard navigation
   const { focusedRowIndex, resetFocus } = useTableKeyboardNavigation({
@@ -324,16 +354,16 @@ const MembersPage = () => {
         // Calculate current cycle from chit start date
         const startDate = new Date(c.start_date);
         const today = new Date();
-        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                          (today.getMonth() - startDate.getMonth()) + 1;
+        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 +
+          (today.getMonth() - startDate.getMonth()) + 1;
         const currentCycle = Math.max(1, Math.min(monthsDiff, c.duration_months || 1));
         const totalCycle = c.duration_months || 1;
-        
+
         // Formula: (total - current + 1) × before + (current - 1) × after
         const membersBefore = totalCycle - currentCycle + 1;
         const membersAfter = currentCycle - 1;
-        chitTotal = membersBefore * (c.installment_before_payout || 0) + 
-                   membersAfter * (c.installment_after_payout || 0);
+        chitTotal = membersBefore * (c.installment_before_payout || 0) +
+          membersAfter * (c.installment_after_payout || 0);
       }
       return sum + chitTotal;
     }, 0);
@@ -342,17 +372,17 @@ const MembersPage = () => {
     const payoutMetrics = payouts.reduce(
       (metrics, p) => {
         if (!p.chit || !p.chit.start_date) return metrics;
-        
+
         const chitStartDate = new Date(p.chit.start_date);
         const scheduledDate = new Date(chitStartDate);
         scheduledDate.setMonth(chitStartDate.getMonth() + (p.month - 1));
-        
+
         const isThisMonth =
           scheduledDate.getMonth() === currentMonth &&
           scheduledDate.getFullYear() === currentYear;
-        
+
         if (!isThisMonth) return metrics;
-        
+
         return {
           paidAmount: metrics.paidAmount + (p.paid_date ? (p.amount || 0) : 0),
           targetAmount: metrics.targetAmount + (p.planned_amount || 0),
@@ -442,29 +472,42 @@ const MembersPage = () => {
     {
       header: "S.No",
       accessor: "s_no",
-      className: "text-center",
-      cell: (row, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+      className: "text-center w-16",
+      cell: (row, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
       header: "Full Name",
       accessor: "full_name",
-      className: "text-left",
+      className: "text-center w-1/4",
     },
     {
       header: "Phone Number",
       accessor: "phone_number",
-      className: "text-center",
+      className: "text-center w-1/5",
+    },
+    {
+      header: "Active Chits",
+      accessor: "active_chits",
+      className: "text-center w-24",
+      cell: (row) => {
+        const count = row.assignments?.length || 0;
+        return (
+          <span className={count > 0 ? "text-success-accent font-medium" : "text-text-secondary"}>
+            {count}
+          </span>
+        );
+      },
     },
     {
       header: "Status",
       accessor: "status",
-      className: "text-center",
+      className: "text-center w-24",
       cell: (row) => <StatusBadge status={row.calculatedStatus} />,
     },
     {
       header: "Actions",
       accessor: "actions",
-      className: "text-center",
+      className: "text-center w-32",
       cell: (row) => (
         <div className="flex items-center justify-center space-x-2">
           <ActionButton
@@ -538,21 +581,22 @@ const MembersPage = () => {
             {/* Table/Card Skeleton */}
             {viewMode === "table" ? (
               <Skeleton.Table
-                rows={ITEMS_PER_PAGE}
+                rows={itemsPerPage}
                 columnWidths={[
                   "w-16",   // S.No
-                  "w-1/3",  // Full Name
-                  "w-1/4",  // Phone Number
+                  "w-1/4",  // Full Name
+                  "w-1/5",  // Phone Number
+                  "w-24",   // Active Chits
                   "w-24",   // Status
                   "w-32",   // Actions (3 buttons)
                 ]}
                 serialColumnIndex={0}
-                statusColumnIndex={3}
-                actionColumnIndex={4}
+                statusColumnIndex={4}
+                actionColumnIndex={5}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                {[...Array(itemsPerPage)].map((_, i) => (
                   <MemberCardSkeleton key={i} />
                 ))}
               </div>

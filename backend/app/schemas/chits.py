@@ -22,6 +22,7 @@ class ChitNested(BaseModel):
     chit_type: str = "fixed"
     chit_value: int = 0
     size: int = 0
+    duration_months: int = 0  # Added for month display
     base_contribution: int = 0
     premium_contribution: int = 0
     payout_premium_percent: float = 0.0
@@ -44,12 +45,12 @@ class ChitRead(BaseModel):
     collection_day: int = Field(..., ge=1, le=27)
     payout_day: int = Field(..., ge=1, le=28)
     
-    # Chit type and contribution fields (no validation)
+    # Chit type and contribution fields (Optional - NULL for irrelevant types)
     chit_type: str = "fixed"
-    base_contribution: int = 0
-    premium_contribution: int = 0
-    payout_premium_percent: float = 0.0
-    foreman_commission_percent: float = 0.0
+    base_contribution: Optional[int] = None
+    premium_contribution: Optional[int] = None
+    payout_premium_percent: Optional[float] = None
+    foreman_commission_percent: Optional[float] = None
     notes: Optional[str] = Field(default=None, max_length=1000000)
 
 
@@ -69,17 +70,15 @@ class ChitBase(BaseModel):
     # Chit type field
     chit_type: str = Field(default="fixed")
     
-    # Contribution fields
-    # For Fixed: base_contribution = monthly installment (set by user)
-    # For Variable/Auction: calculated from chit_value/size
-    base_contribution: int = Field(default=0, ge=0, le=100000000)
-    premium_contribution: int = Field(default=0, ge=0, le=100000000)
+    # Contribution fields - Optional (NULL for irrelevant chit types)
+    base_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)
+    premium_contribution: Optional[int] = Field(default=None, ge=0, le=100000000)
     
     # Variable Chit: percentage for premium calculation
-    payout_premium_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    payout_premium_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     
     # Auction/Variable Chit: Foreman Commission percentage
-    foreman_commission_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    foreman_commission_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     
     # Optional notes field
     notes: Optional[str] = Field(default=None, max_length=1000000)

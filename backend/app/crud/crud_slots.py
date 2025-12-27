@@ -16,10 +16,11 @@ class CRUDSlot:
         db: AsyncSession, 
         chit_id: int, 
         duration_months: int, 
-        payout_amount: int = 0,
+        payout_amount: Optional[int] = None,
         payout_map: Optional[dict[int, int]] = None,
-        expected_contribution: int = 0,
-        contribution_map: Optional[dict[int, int]] = None
+        expected_contribution: Optional[int] = None,
+        contribution_map: Optional[dict[int, int]] = None,
+        chit_type: str = "fixed"
     ):
         """Create slot entries for all months of a chit.
         
@@ -27,20 +28,31 @@ class CRUDSlot:
             db: Database session
             chit_id: ID of the chit
             duration_months: Number of months for the chit
-            payout_amount: Default payout amount (for fixed chits)
+            payout_amount: Default payout amount (NULL for fixed/auction)
             payout_map: Optional map of month->payout_amount for variable schedules
-            expected_contribution: Default expected contribution per member (for fixed chits)
+            expected_contribution: Default expected contribution (NULL for auction)
             contribution_map: Optional map of month->expected_contribution for variable schedules
+            chit_type: Type of chit (fixed/variable/auction)
         """
         slots = []
         for month in range(1, duration_months + 1):
-            amount = payout_map.get(month, payout_amount) if payout_map else payout_amount
-            contribution = contribution_map.get(month, expected_contribution) if contribution_map else expected_contribution
+            # Determine payout_amount for this slot
+            if payout_map:
+                amount = payout_map.get(month, payout_amount)
+            else:
+                amount = payout_amount  # Can be None for Fixed/Auction
+            
+            # Determine expected_contribution for this slot
+            if contribution_map:
+                contribution = contribution_map.get(month, expected_contribution)
+            else:
+                contribution = expected_contribution  # Can be None for Auction
+            
             slots.append(
                 ChitSlot(
                     chit_id=chit_id, 
                     month=month, 
-                    payout_amount=amount, 
+                    payout_amount=amount,
                     expected_contribution=contribution,
                     status=SlotStatus.SCHEDULED
                 )
@@ -195,7 +207,7 @@ class CRUDSlot:
         db: AsyncSession, 
         chit_id: int, 
         new_duration: int,
-        payout_amount: int = 0,
+        payout_amount: Optional[int] = None,
         payout_map: Optional[dict[int, int]] = None
     ):
         """Sync slot schedule when chit duration changes."""
@@ -233,10 +245,18 @@ class CRUDSlot:
         self, 
         db: AsyncSession, 
         chit_id: int, 
-        payout_amount: int,
+        payout_amount: Optional[int],
         payout_map: Optional[dict[int, int]] = None
     ):
-        """Update payout_amount for all slots of a chit."""
+        """Update payout_amount for all slots of a chit.
+        
+        For Fixed/Auction chits where payout_amount is None (user-entered manually),
+        this function should NOT be called - users enter values individually.
+        """
+        # Skip if payout_amount is None and no payout_map (Fixed/Auction chits)
+        if payout_amount is None and not payout_map:
+            return
+            
         result = await db.execute(
             select(ChitSlot).where(ChitSlot.chit_id == chit_id)
         )

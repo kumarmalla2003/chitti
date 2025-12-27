@@ -40,8 +40,8 @@ class ChitSlot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     month: int = Field(ge=1)  # Which month number (1, 2, 3...)
     
-    # Payout Data (in rupees)
-    payout_amount: int = Field(default=0, ge=0)  # Expected payout to the winner
+    # Payout Data (in rupees) - Optional for Fixed/Auction (NULL until entered/calculated)
+    payout_amount: Optional[int] = Field(default=None, ge=0)  # Expected payout to the winner
     bid_amount: Optional[int] = Field(default=None)  # Auction bid amount (for auction chits)
     
     # For Auction chits: per-member expected collection for this month
@@ -54,7 +54,7 @@ class ChitSlot(SQLModel, table=True):
     
     # Foreign Keys
     chit_id: int = Field(foreign_key="chit.id", ge=1)
-    member_id: Optional[int] = Field(default=None, foreign_key="member.id")  # Assigned after auction/selection
+    member_id: Optional[int] = Field(default=None, foreign_key="member.id", index=True)  # Assigned after auction/selection
     
     # Audit timestamps
     created_at: datetime = Field(default_factory=utc_now)

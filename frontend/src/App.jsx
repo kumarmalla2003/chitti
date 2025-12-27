@@ -42,6 +42,7 @@ const PayoutDetailPage = lazy(() => import("./features/payouts/pages/PayoutDetai
 
 const LedgerPage = lazy(() => import("./features/ledger/pages/LedgerPage"));
 const LedgerPageSkeleton = lazy(() => import("./features/ledger/pages/LedgerPageSkeleton"));
+const TransactionDetailsPage = lazy(() => import("./features/ledger/pages/TransactionDetailsPage"));
 
 const NotFoundPage = lazy(() => import("./features/errors/pages/NotFoundPage"));
 
@@ -265,6 +266,26 @@ const App = () => {
                         <AnimatedPage key="ledger">
                           <Suspense fallback={<LedgerPageSkeleton />}>
                             <LedgerPage />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/ledger/create"
+                      element={
+                        <AnimatedPage key="ledger-create">
+                          <Suspense fallback={<DetailPageSkeleton />}>
+                            <TransactionDetailsPage />
+                          </Suspense>
+                        </AnimatedPage>
+                      }
+                    />
+                    <Route
+                      path="/ledger/edit/:id"
+                      element={
+                        <AnimatedPage key={location.pathname}>
+                          <Suspense fallback={<DetailPageSkeleton />}>
+                            <TransactionDetailsPage />
                           </Suspense>
                         </AnimatedPage>
                       }

@@ -3,7 +3,7 @@
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, Index
 import enum
 
 from app.core.utils import utc_now
@@ -48,12 +48,15 @@ class Payment(SQLModel, table=True):
             "(payment_type = 'payout' AND slot_id IS NOT NULL)",
             name='ck_payment_type_slot_consistency'
         ),
+        # Composite indexes for common query patterns
+        Index('ix_payment_chit_member_month', 'chit_id', 'member_id', 'month'),
+        Index('ix_payment_chit_month', 'chit_id', 'month'),
     )
     
     id: Optional[int] = Field(default=None, primary_key=True)
     
-    # Transaction details (amount in rupees)
-    amount: int = Field(ge=0)
+    # Transaction details (amount in rupees, must be positive, max ₹10Cr)
+    amount: int = Field(gt=0, le=100000000)
     date: date  # When payment was made
     method: PaymentMethod = Field(default=PaymentMethod.CASH)
     notes: Optional[str] = Field(default=None, max_length=1000)

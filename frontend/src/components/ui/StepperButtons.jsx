@@ -130,8 +130,8 @@ const StepperButtons = ({
     );
   }
 
-  // --- LAST STEP (Collections Section) ---
-  // Both CREATE and EDIT: Prev | Skip | Finish/Update
+  // --- LAST STEP (Transactions Section) ---
+  // Both CREATE and EDIT: Prev | Skip | Done
   return (
     <div className="mt-8 md:hidden">
       <hr className="my-4 border-border" />
@@ -159,7 +159,7 @@ const StepperButtons = ({
         <Button
           type="button"
           onClick={onMiddle}
-          variant={mode === "create" ? "success" : "warning"}
+          variant="primary"
           disabled={loading}
           className="flex items-center"
         >
@@ -167,12 +167,8 @@ const StepperButtons = ({
             <Loader2 className="animate-spin mx-auto w-5 h-5" />
           ) : (
             <>
-              {mode === "create" ? "Finish" : "Update"}
-              {mode === "create" ? (
-                <Check className="inline-block ml-1 w-5 h-5" />
-              ) : (
-                <SquarePen className="inline-block ml-1 w-5 h-5" />
-              )}
+              Done
+              <Check className="inline-block ml-1 w-5 h-5" />
             </>
           )}
         </Button>

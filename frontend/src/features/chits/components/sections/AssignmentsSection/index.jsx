@@ -45,7 +45,7 @@ import {
 } from "../../../../assignments/hooks/useAssignments";
 import { useChitDetails } from "../../../hooks/useChits";
 import { usePayoutsByChit } from "../../../../payouts/hooks/usePayouts";
-import { useCollectionsByChit, collectionKeys } from "../../../../collections/hooks/useCollections";
+import { collectionKeys } from "../../../../collections/hooks/useCollections";
 import { useMembers } from "../../../../members/hooks/useMembers";
 import { createAssignment } from "../../../../../services/assignmentsService";
 
@@ -90,19 +90,20 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
     const { data: monthsResponse, refetch: refetchMonths } = useUnassignedMonths(chitId);
     const { data: chitData, isLoading: chitLoading } = useChitDetails(chitId);
     const { data: payoutsResponse, isLoading: payoutsLoading, refetch: refetchPayouts } = usePayoutsByChit(chitId);
-    const { data: collectionsResponse, isLoading: collectionsLoading, refetch: refetchCollections } = useCollectionsByChit(chitId);
+    // Note: Collections API is deprecated - collection data is now in assignment.expected_contribution
     const { data: membersData, isLoading: membersLoading } = useMembers();
     const deleteAssignmentMutation = useDeleteAssignment();
 
     // --- Extract Data ---
-    const assignments = assignmentsResponse?.assignments ?? [];
+    // API returns { slots: [...] }, not { assignments: [...] }
+    const assignments = assignmentsResponse?.slots ?? [];
     const availableMonths = monthsResponse?.available_months ?? [];
     const chitDetails = chitData ?? null;
-    const payouts = payoutsResponse?.payouts ?? [];
-    const collections = collectionsResponse?.collections ?? [];
+    // Note: Payouts API also returns { slots: [...] } not { payouts: [...] }
+    const payouts = payoutsResponse?.slots ?? [];
     const allMembers = membersData?.members ?? [];
 
-    const loading = assignmentsLoading || chitLoading || payoutsLoading || collectionsLoading;
+    const loading = assignmentsLoading || chitLoading || payoutsLoading;
     const error = localError || (assignmentsError?.message ?? null);
 
     const isAuctionType = chitDetails?.chit_type === "auction";
@@ -115,17 +116,13 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
 
         for (let i = 1; i <= totalMonths; i++) {
             const expectedDateStr = calculateMonthDate(chitDetails.start_date, i);
-            const assignment = assignments.find((a) => {
-                const d = new Date(a.chit_month);
-                const m = (d.getMonth() + 1).toString().padStart(2, "0");
-                const y = d.getFullYear();
-                return `${m}/${y}` === expectedDateStr;
-            });
+            // Match assignment by month number (API returns 'month' as number, not 'chit_month' as date)
+            const assignment = assignments.find((a) => a.month === i);
             const payout = payouts.find((p) => p.month === i);
 
-            // Find collection by month number to get expected_amount (now stores Total for all chit types)
-            const collection = collections.find((c) => c.month === i);
-            const expectedAmount = collection?.expected_amount || 0;
+            // Expected amount comes from assignment.expected_contribution (slots data)
+            // Backend now handles the formula for Variable and Fixed chits to return Monthly TOTAL
+            const expectedAmount = assignment?.expected_contribution || 0;
 
             const auctionCompleted = isAuctionType && payout?.bid_amount != null;
 
@@ -134,14 +131,13 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 monthLabel: expectedDateStr,
                 assignment: assignment || null,
                 payout: payout || null,
-                collection: collection || null,
-                expectedAmount, // Total Monthly Collection (stored directly in DB)
+                expectedAmount, // From slot's expected_contribution
                 auctionCompleted,
                 bidAmount: payout?.bid_amount || null,
             });
         }
         return rows;
-    }, [chitDetails, assignments, payouts, collections, isAuctionType]);
+    }, [chitDetails, assignments, payouts, isAuctionType]);
 
     // --- Edit Hook ---
     const editHook = useAssignmentsEdit({
@@ -149,13 +145,11 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
         chitDetails,
         allMonthsData,
         payouts,
-        collections,
         allMembers,
         isAuctionType,
         refetchAssignments,
         refetchMonths,
         refetchPayouts,
-        refetchCollections,
     });
 
     const {
@@ -204,9 +198,9 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
         } else if (statusFilter === "members_unassigned") {
             data = data.filter((row) => row.assignment === null);
         } else if (statusFilter === "payouts_assigned") {
-            data = data.filter((row) => row.payout?.planned_amount > 0);
+            data = data.filter((row) => row.payout?.payout_amount > 0);
         } else if (statusFilter === "payouts_unassigned") {
-            data = data.filter((row) => !row.payout?.planned_amount);
+            data = data.filter((row) => !row.payout?.payout_amount);
         } else if (statusFilter === "auctions_assigned") {
             data = data.filter((row) => row.bidAmount > 0);
         } else if (statusFilter === "auctions_unassigned") {
@@ -224,7 +218,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 const monthNum = row.monthIndex.toString();
                 const dateStr = row.monthLabel.toLowerCase();
                 const memberName = row.assignment?.member.full_name.toLowerCase() || "";
-                const payoutAmount = row.payout?.planned_amount?.toString() || "";
+                const payoutAmount = row.payout?.payout_amount?.toString() || "";
                 const auctionAmount = row.bidAmount?.toString() || "";
                 const collectionAmount = row.expectedAmount?.toString() || "";
                 return (
@@ -396,7 +390,7 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                             </div>
                         );
                     }
-                    return row.assignment ? (
+                    return row.assignment?.member ? (
                         <span className="text-text-primary">{row.assignment.member.full_name}</span>
                     ) : (
                         <span className="text-text-secondary">-</span>
@@ -408,39 +402,56 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 className: "text-center",
                 headerClassName: "text-center",
                 cell: (row, rowIndex) => {
-                    const isEditing = editPayoutsMode || editingRowPayout === row.payout?.id;
-                    const isLoading = savingCells.has(`payout_${row.payout?.id}`);
+                    const payoutKey = row.payout?.id ?? `month_${row.monthIndex}`;
+                    const isEditing = editPayoutsMode || editingRowPayout === payoutKey;
+                    const isLoading = savingCells.has(`payout_${payoutKey}`);
 
-                    if (isEditing && row.payout) {
+                    if (isEditing) {
                         const nextRowIndex = rowIndex + 1;
-                        const isLastRow = rowIndex === paginatedData.length - 1;
+                        const isLastRowOnPage = rowIndex === paginatedData.length - 1;
+                        const hasMorePages = currentPage < totalPages;
                         const isEditAllRowMode = editingRowPayout !== null && editingRowCollection !== null;
+                        const hasNextRow = nextRowIndex < paginatedData.length;
+
                         const getNextInputId = () => {
                             if (isEditAllRowMode) {
-                                if (isAuctionType) return `auction_input_row_${row.payout.id}`;
+                                if (isAuctionType) return `auction_input_row_${payoutKey}`;
                                 return `collection_input_row_${row.monthIndex}`;
                             }
-                            return editPayoutsMode ? `payout_row_${nextRowIndex}` : "";
+                            if (editPayoutsMode) {
+                                return hasNextRow ? `payout_row_${nextRowIndex}` : "";
+                            }
+                            return "";
                         };
+
+                        // Only save on Enter if: 
+                        // - Per-row edit mode (not column mode)
+                        // - OR column mode AND last row AND no more pages
+                        const shouldSaveOnEnter = (!isEditAllRowMode && !editPayoutsMode) ||
+                            (editPayoutsMode && isLastRowOnPage && !hasMorePages);
+
+                        // Pass pagination handler if more pages exist
+                        const shouldPaginate = editPayoutsMode && isLastRowOnPage && hasMorePages;
+
                         return (
                             <FormattedCurrencyInput
-                                value={editedPayouts[row.payout.id] ?? row.payout.planned_amount?.toString() ?? ""}
-                                onChange={(val) => handlePayoutChange(row.payout.id, val)}
+                                value={editedPayouts[payoutKey] ?? row.payout?.payout_amount?.toString() ?? ""}
+                                onChange={(val) => handlePayoutChange(payoutKey, val)}
                                 className="min-w-[120px]"
-                                inputId={editingRowPayout !== null ? `payout_input_row_${row.payout.id}` : `payout_row_${rowIndex}`}
+                                inputId={editingRowPayout !== null ? `payout_input_row_${payoutKey}` : `payout_row_${rowIndex}`}
                                 nextInputId={getNextInputId()}
-                                isLastRow={isLastRow}
-                                onNextPage={editPayoutsMode ? handleNextPageFocus : null}
+                                isLastRow={isLastRowOnPage}
+                                onNextPage={shouldPaginate ? handleNextPageFocus : null}
                                 columnPrefix="payout"
-                                onEnterSubmit={!isEditAllRowMode && !editPayoutsMode ? handleSaveChanges : null}
+                                onEnterSubmit={shouldSaveOnEnter ? handleSaveChanges : null}
                                 isLoading={isLoading}
                             />
                         );
                     }
                     return (
-                        <span className={row.payout?.planned_amount > 0 ? "text-text-primary" : "text-text-secondary"}>
-                            {row.payout?.planned_amount > 0
-                                ? `₹${formatAmount(row.payout.planned_amount)}`
+                        <span className={row.payout?.payout_amount > 0 ? "text-text-primary" : "text-text-secondary"}>
+                            {row.payout?.payout_amount > 0
+                                ? `₹${formatAmount(row.payout.payout_amount)}`
                                 : "-"}
                         </span>
                     );
@@ -455,35 +466,49 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 className: "text-center",
                 headerClassName: "text-center",
                 cell: (row, rowIndex) => {
-                    const isEditing = editAuctionsMode || editingRowAuction === row.payout?.id;
-                    const isLoading = savingCells.has(`auction_${row.payout?.id}`);
+                    const auctionKey = row.payout?.id ?? `month_${row.monthIndex}`;
+                    const isEditing = editAuctionsMode || editingRowAuction === auctionKey;
+                    const isLoading = savingCells.has(`auction_${auctionKey}`);
 
-                    if (isEditing && row.payout) {
+                    if (isEditing) {
                         const nextRowIndex = rowIndex + 1;
-                        const isLastRow = rowIndex === paginatedData.length - 1;
+                        const isLastRowOnPage = rowIndex === paginatedData.length - 1;
+                        const hasMorePages = currentPage < totalPages;
                         const isEditAllRowMode = editingRowAuction !== null && editingRowCollection !== null;
+                        const hasNextRow = nextRowIndex < paginatedData.length;
+
                         const getNextInputId = () => {
                             if (isEditAllRowMode) return `collection_input_row_${row.monthIndex}`;
-                            return editAuctionsMode ? `auction_row_${nextRowIndex}` : "";
+                            if (editAuctionsMode) {
+                                return hasNextRow ? `auction_row_${nextRowIndex}` : "";
+                            }
+                            return "";
                         };
+
+                        // Only save on Enter if no more pages
+                        const shouldSaveOnEnter = (!isEditAllRowMode && !editAuctionsMode) ||
+                            (editAuctionsMode && isLastRowOnPage && !hasMorePages);
+
+                        const shouldPaginate = editAuctionsMode && isLastRowOnPage && hasMorePages;
+
                         return (
                             <FormattedCurrencyInput
-                                value={editedAuctions[row.payout.id] ?? row.payout.bid_amount?.toString() ?? ""}
-                                onChange={(val) => handleAuctionChange(row.payout.id, val)}
+                                value={editedAuctions[auctionKey] ?? row.payout?.bid_amount?.toString() ?? ""}
+                                onChange={(val) => handleAuctionChange(auctionKey, val)}
                                 className="min-w-[120px]"
-                                inputId={editingRowAuction !== null ? `auction_input_row_${row.payout.id}` : `auction_row_${rowIndex}`}
+                                inputId={editingRowAuction !== null ? `auction_input_row_${auctionKey}` : `auction_row_${rowIndex}`}
                                 nextInputId={getNextInputId()}
-                                isLastRow={isLastRow}
-                                onNextPage={editAuctionsMode ? handleNextPageFocus : null}
+                                isLastRow={isLastRowOnPage}
+                                onNextPage={shouldPaginate ? handleNextPageFocus : null}
                                 columnPrefix="auction"
-                                onEnterSubmit={!isEditAllRowMode && !editAuctionsMode ? handleSaveChanges : null}
+                                onEnterSubmit={shouldSaveOnEnter ? handleSaveChanges : null}
                                 isLoading={isLoading}
                             />
                         );
                     }
                     return (
-                        <span className={row.bidAmount ? "text-text-primary" : "text-text-secondary"}>
-                            {row.bidAmount ? `₹${formatAmount(row.bidAmount)}` : "-"}
+                        <span className={row.bidAmount != null ? "text-text-primary" : "text-text-secondary"}>
+                            {row.bidAmount != null ? `₹${formatAmount(row.bidAmount)}` : "-"}
                         </span>
                     );
                 },
@@ -500,21 +525,30 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 const collectionKey = `month_${row.monthIndex}`;
                 const isLoading = savingCells.has(`collection_${collectionKey}`);
 
-                if (isEditing && row.collection) {
+                if (isEditing) {
                     const nextRowIndex = rowIndex + 1;
-                    const isLastRow = rowIndex === paginatedData.length - 1;
-                    const isEditAllRowMode = editingRowCollection !== null;
+                    const isLastRowOnPage = rowIndex === paginatedData.length - 1;
+                    const hasMorePages = currentPage < totalPages;
+                    const isEditAllRowMode = editingRowCollection !== null && !editCollectionsMode;
+                    const hasNextRow = nextRowIndex < paginatedData.length;
+
+                    // Only save on Enter if no more pages
+                    const shouldSaveOnEnter = isEditAllRowMode ||
+                        (editCollectionsMode && isLastRowOnPage && !hasMorePages);
+
+                    const shouldPaginate = editCollectionsMode && isLastRowOnPage && hasMorePages;
+
                     return (
                         <FormattedCurrencyInput
                             value={editedCollections[collectionKey] ?? row.expectedAmount?.toString() ?? ""}
                             onChange={(val) => handleCollectionChange(collectionKey, val)}
                             className="min-w-[120px]"
                             inputId={isEditAllRowMode ? `collection_input_row_${row.monthIndex}` : `collection_row_${rowIndex}`}
-                            nextInputId={editCollectionsMode ? `collection_row_${nextRowIndex}` : ""}
-                            isLastRow={isLastRow}
-                            onNextPage={editCollectionsMode ? handleNextPageFocus : null}
+                            nextInputId={editCollectionsMode && hasNextRow ? `collection_row_${nextRowIndex}` : ""}
+                            isLastRow={isLastRowOnPage}
+                            onNextPage={shouldPaginate ? handleNextPageFocus : null}
                             columnPrefix="collection"
-                            onEnterSubmit={!editCollectionsMode ? handleSaveChanges : null}
+                            onEnterSubmit={shouldSaveOnEnter ? handleSaveChanges : null}
                             isLoading={isLoading}
                         />
                     );
@@ -534,10 +568,12 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                 className: "text-center",
                 headerClassName: "text-center",
                 cell: (row) => {
+                    // Use same key format as inline edit handlers
+                    const payoutKey = row.payout?.id ?? `month_${row.monthIndex}`;
                     const isThisRowEditing =
                         editingRowMember === row.monthLabel ||
-                        editingRowPayout === row.payout?.id ||
-                        editingRowAuction === row.payout?.id ||
+                        editingRowPayout === payoutKey ||
+                        editingRowAuction === payoutKey ||
                         editingRowCollection === row.monthIndex;
 
                     if (isThisRowEditing) {
@@ -586,17 +622,15 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                                 >
                                     <UserPlus className="w-4 h-4" />
                                 </button>
-                                {row.payout && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleEnterRowPayoutEdit(row)}
-                                        className="p-1.5 text-sm rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
-                                        title="Edit Payout"
-                                    >
-                                        <TrendingUp className="w-4 h-4" />
-                                    </button>
-                                )}
-                                {isAuctionType && row.payout && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleEnterRowPayoutEdit(row)}
+                                    className="p-1.5 text-sm rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
+                                    title="Edit Payout"
+                                >
+                                    <TrendingUp className="w-4 h-4" />
+                                </button>
+                                {isAuctionType && (
                                     <button
                                         type="button"
                                         onClick={() => handleEnterRowAuctionEdit(row)}
@@ -606,16 +640,14 @@ const AssignmentsSection = ({ mode, chitId, onLogCollectionClick }) => {
                                         <Gavel className="w-4 h-4" />
                                     </button>
                                 )}
-                                {row.payout && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleEnterRowCollectionEdit(row)}
-                                        className="p-1.5 text-sm rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
-                                        title="Edit Collection"
-                                    >
-                                        <WalletMinimal className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => handleEnterRowCollectionEdit(row)}
+                                    className="p-1.5 text-sm rounded-md text-warning-accent hover:bg-warning-accent hover:text-white transition-colors duration-200"
+                                    title="Edit Collection"
+                                >
+                                    <WalletMinimal className="w-4 h-4" />
+                                </button>
                             </div>
                         );
                     }

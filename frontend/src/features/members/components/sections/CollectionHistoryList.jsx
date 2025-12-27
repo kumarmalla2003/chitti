@@ -1,116 +1,68 @@
 // frontend/src/features/members/components/sections/CollectionHistoryList.jsx
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import Table from "../../../../components/ui/Table";
+import Pagination from "../../../../components/ui/Pagination";
 import Message from "../../../../components/ui/Message";
-import Button from "../../../../components/ui/Button";
-import CollectionDetailsForm from "../../../collections/components/forms/CollectionDetailsForm";
-import Card from "../../../../components/ui/Card";
-import { collectionSchema } from "../../../collections/schemas/collectionSchema";
+import Skeleton from "../../../../components/ui/Skeleton";
 import {
-  Loader2,
-  AlertCircle,
   Search,
   Plus,
-  ArrowLeft,
-  ArrowRight,
-  IndianRupee,
-  LayoutGrid,
-  List,
   ArrowUpRight,
   ArrowDownLeft,
+  Receipt,
+  WalletMinimal,
 } from "lucide-react";
 import {
   useCollectionsByChit,
   useCollectionsByMember,
-  useCreateCollection,
 } from "../../../collections/hooks/useCollections";
 import {
   usePayoutsByChit,
   usePayoutsByMember,
 } from "../../../payouts/hooks/usePayouts";
-import { createCollection } from "../../../../services/collectionsService";
-import CollectionHistoryCard from "../../../collections/components/cards/CollectionHistoryCard";
-import Skeleton from "../../../../components/ui/Skeleton";
-import useScrollToTop from "../../../../hooks/useScrollToTop";
 
 const ITEMS_PER_PAGE = 10;
 
 /**
- * CollectionHistoryList component - displays transaction history (collections and payouts).
- * Uses React Query for data fetching and caching.
+ * CollectionHistoryList component - displays transaction history.
+ * Simplified to show only list, search, and log payment button.
  */
 const CollectionHistoryList = ({
   chitId,
   memberId,
   mode,
-  collectionDefaults,
-  setCollectionDefaults,
   onManage,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [view, setView] = useState("list");
-  const [layoutMode, setLayoutMode] = useState("table");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState(null);
-  const [formSuccess, setFormSuccess] = useState(null);
-
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(collectionSchema),
-    defaultValues: {
-      member_id: memberId ? String(memberId) : "",
-      chit_id: chitId ? String(chitId) : "",
-      chit_assignment_id: "",
-      amount_paid: "",
-      collection_date: new Date().toISOString().split("T")[0],
-      collection_method: "Cash",
-      notes: "",
-    },
-  });
-
-  useScrollToTop(formSuccess || formError);
-
-  const viewType = chitId ? "chit" : "member";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // React Query hooks for collections
   const {
     data: collectionsDataByChit,
     isLoading: collectionsChitLoading,
     error: collectionsChitError,
-    refetch: refetchCollectionsByChit,
   } = useCollectionsByChit(chitId);
 
   const {
     data: collectionsDataByMember,
     isLoading: collectionsMemberLoading,
     error: collectionsMemberError,
-    refetch: refetchCollectionsByMember,
   } = useCollectionsByMember(memberId);
 
   // React Query hooks for payouts
   const {
     data: payoutsDataByChit,
     isLoading: payoutsChitLoading,
+    error: payoutsChitError,
   } = usePayoutsByChit(chitId);
 
   const {
     data: payoutsDataByMember,
     isLoading: payoutsMemberLoading,
+    error: payoutsMemberError,
   } = usePayoutsByMember(memberId);
 
   // Determine which data to use based on chitId or memberId
@@ -119,9 +71,10 @@ const CollectionHistoryList = ({
   const collectionsLoading = chitId ? collectionsChitLoading : collectionsMemberLoading;
   const payoutsLoading = chitId ? payoutsChitLoading : payoutsMemberLoading;
   const collectionsError = chitId ? collectionsChitError : collectionsMemberError;
+  const payoutsError = chitId ? payoutsChitError : payoutsMemberError;
 
   const loading = collectionsLoading || payoutsLoading;
-  const error = collectionsError?.message ?? null;
+  const error = collectionsError?.message || payoutsError?.message || null;
 
   // Process transactions
   const transactions = useMemo(() => {
@@ -131,462 +84,224 @@ const CollectionHistoryList = ({
       date: c.collection_date,
       amount: c.amount_paid,
       method: c.collection_method,
+      plan_amount: c.expected_amount || 0,
     }));
 
     const payouts = (payoutsData?.payouts || [])
-      // .filter((p) => p.paid_date) // Show ALL Payouts including Pending
+      .filter((p) => p.paid_date)
       .map((p) => ({
         ...p,
         type: "Payout",
         date: p.paid_date,
-        amount: p.amount, 
-        planned: p.planned_amount, 
+        amount: p.amount,
+        planned: p.planned_amount,
         method: p.method,
       }));
 
     return [...collections, ...payouts].sort(
       (a, b) => {
-          // Sort by date desc (handle null dates for pending items - put them on top or bottom?)
-          // Usually pending items are "future" or "recent".
-          // If no date, use created_at or put at top.
-          const dateA = a.date ? new Date(a.date) : new Date('2999-01-01');
-          const dateB = b.date ? new Date(b.date) : new Date('2999-01-01');
-          return dateB - dateA;
+        const dateA = a.date ? new Date(a.date) : new Date('2999-01-01');
+        const dateB = b.date ? new Date(b.date) : new Date('2999-01-01');
+        return dateB - dateA;
       }
     );
   }, [collectionsData, payoutsData]);
 
-  // ... (useEffect hooks unchanged) ...
-
   const filteredTransactions = useMemo(() => {
-    // ... logic unchanged ...
-    if (!searchQuery) return transactions;
-    const lowercasedQuery = searchQuery.toLowerCase();
-    return transactions.filter((t) => {
-      const amountMatch = t.amount.toString().includes(lowercasedQuery);
-      const plannedMatch = (t.type === 'Collection' ? t.expected_amount : t.planned).toString().includes(lowercasedQuery);
-      const method = t.method || "";
-      const methodMatch = method.toLowerCase().includes(lowercasedQuery);
-      const typeMatch = t.type.toLowerCase().includes(lowercasedQuery);
-      const statusMatch = (t.status || "").toLowerCase().includes(lowercasedQuery);
+    let data = transactions;
+    if (searchQuery) {
+      const lowercasedQuery = searchQuery.toLowerCase();
+      data = data.filter((t) => {
+        const amountMatch = (t.amount || 0).toString().includes(lowercasedQuery);
+        const methodMatch = (t.method || "").toLowerCase().includes(lowercasedQuery);
+        const typeMatch = t.type.toLowerCase().includes(lowercasedQuery);
 
-      if (viewType === "chit") {
-        const memberMatch = t.member.full_name
-          .toLowerCase()
-          .includes(lowercasedQuery);
-        return memberMatch || amountMatch || plannedMatch || methodMatch || typeMatch || statusMatch;
-      } else {
-        const chitMatch = t.chit.name.toLowerCase().includes(lowercasedQuery);
-        return chitMatch || amountMatch || plannedMatch || methodMatch || typeMatch || statusMatch;
+        // Check for member or chit name depending on context
+        const entityName = t.member?.full_name || t.chit?.name || "";
+        const entityMatch = entityName.toLowerCase().includes(lowercasedQuery);
+
+        return amountMatch || methodMatch || typeMatch || entityMatch;
+      });
+    }
+    return data;
+  }, [transactions, searchQuery]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredTransactions, currentPage]);
+
+  const handleLogPayment = () => {
+    // If we are in member view, pass memberId
+    // If we are in chit view, pass chitId
+    navigate("/ledger/create", {
+      state: {
+        chitId: chitId ? parseInt(chitId) : undefined,
+        memberId: memberId ? parseInt(memberId) : undefined,
+        type: "collection"
       }
     });
-  }, [transactions, searchQuery, viewType]);
+  };
 
-  // ... (pagination logic unchanged) ...
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       header: "S.No",
-      cell: (row, index) =>
-        (mode === "view" ? (currentPage - 1) * ITEMS_PER_PAGE : 0) + index + 1,
+      cell: (row, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
       className: "text-center w-16",
+    },
+    {
+      header: "Type",
+      className: "text-center",
+      cell: (row) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${row.type === "Collection"
+            ? "bg-success-bg text-success-accent"
+            : "bg-error-bg text-error-accent"
+            }`}
+        >
+          {row.type === "Collection" ? (
+            <>
+              <ArrowDownLeft className="w-3 h-3" /> In
+            </>
+          ) : (
+            <>
+              <ArrowUpRight className="w-3 h-3" /> Out
+            </>
+          )}
+        </span>
+      ),
     },
     {
       header: "Date",
       accessor: "date",
-      cell: (row) => row.date ? formatDate(row.date) : <span className="text-text-secondary italic">Pending</span>,
+      cell: (row) => row.date ? formatDate(row.date) : "Pending",
       className: "text-center",
     },
-    ...(memberId
-      ? [
-        {
-          header: "Chit",
-          accessor: "chit.name",
-          className: "text-left",
-        },
-      ]
-      : []),
-    ...(chitId
-      ? [
-        {
-          header: "Member",
-          accessor: "member.full_name",
-          className: "text-center",
-        },
-      ]
-      : []),
-    {
-      header: "Type",
-      accessor: "type",
+    // Show Chit Name if in Member View
+    ...(memberId ? [{
+      header: "Chit",
+      accessor: "chit.name",
+      className: "text-left",
+      cell: (row) => row.chit?.name || "-"
+    }] : []),
+    // Show Member Name if in Chit View
+    ...(chitId ? [{
+      header: "Member",
+      accessor: "member.full_name",
       className: "text-center",
-      cell: (row) => (
-        <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center justify-center gap-1">
-              {row.type === "Collection" ? (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-bg text-success-accent text-xs font-semibold">
-                  <ArrowDownLeft className="w-3 h-3" /> Collection
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-bg text-error-accent text-xs font-semibold">
-                  <ArrowUpRight className="w-3 h-3" /> Payout
-                </span>
-              )}
-            </div>
-            {/* Status Badge */}
-            <span className={`text-[10px] uppercase font-bold tracking-wide
-              ${row.status === 'paid' ? 'text-success-accent' : 
-                row.status === 'partial' ? 'text-warning-accent' : 
-                'text-text-secondary'}`}>
-                {row.status || 'Pending'}
-            </span>
-        </div>
-      ),
-    },
+      cell: (row) => row.member?.full_name || "-"
+    }] : []),
     {
-      header: "Amount (Paid / Expected)",
+      header: "Amount",
       accessor: "amount",
-      cell: (row) => {
-          const paid = row.amount || 0;
-          const expected = row.type === 'Collection' ? (row.expected_amount || 0) : (row.planned || 0);
-          return (
-            <div className="flex flex-col">
-                <span className={`font-bold ${row.type === 'Collection' ? 'text-success-accent' : 'text-error-accent'}`}>
-                    ₹{paid.toLocaleString("en-IN")}/-
-                </span>
-                <span className="text-xs text-text-secondary">
-                    of ₹{expected.toLocaleString("en-IN")}
-                </span>
-            </div>
-          );
-      },
+      cell: (row) => (
+        <span className={`font-bold ${row.type === 'Collection' ? 'text-success-accent' : 'text-error-accent'}`}>
+          {row.type === 'Collection' ? "+" : "-"}₹{row.amount?.toLocaleString("en-IN")}
+        </span>
+      ),
       className: "text-center font-medium",
     },
     {
       header: "Method",
       accessor: "method",
       className: "text-center",
+      cell: (row) => row.method || "-"
     },
-    {
-      header: "Notes",
-      accessor: "notes",
-      className: "text-center truncate max-w-xs",
-      cell: (row) => <span title={row.notes}>{row.notes || "-"}</span>,
-    },
-  ];
-
-  const onSubmit = async (data) => {
-    setFormLoading(true);
-    setFormError(null);
-    setFormSuccess(null);
-
-    try {
-      const dataToSend = {
-        ...data,
-        // If chitId/memberId are disabled in form, they might be missing in data depending on browser behavior?
-        // But RHF usually captures them if registered even if disabled properly?
-        // Safeguard: use props if data is missing
-        chit_id: parseInt(data.chit_id || chitId),
-        member_id: parseInt(data.member_id || memberId),
-        amount_paid: data.amount_paid, // already number from FormattedInput
-        chit_assignment_id: parseInt(data.chit_assignment_id),
-        // collection_date and method are strings
-      };
-
-      await createCollection(dataToSend);
-      setFormSuccess("Collection logged successfully!");
-
-      reset({
-        member_id: memberId ? String(memberId) : "",
-        chit_id: chitId ? String(chitId) : "",
-        chit_assignment_id: "",
-        amount_paid: "",
-        collection_date: new Date().toISOString().split("T")[0],
-        collection_method: "Cash",
-        notes: "",
-      });
-      setView("list");
-
-      // Refetch data
-      if (chitId) {
-        await refetchCollectionsByChit();
-      } else if (memberId) {
-        await refetchCollectionsByMember();
-      }
-
-      if (setCollectionDefaults) {
-        setCollectionDefaults(null);
-      }
-    } catch (err) {
-      console.error(err);
-      setFormError(err.message || "Failed to create collection");
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleShowForm = () => {
-    setView("create");
-    setFormError(null);
-    setFormSuccess(null);
-    if (setCollectionDefaults) {
-      setCollectionDefaults(null);
-    }
-    // Reset to defaults
-    reset({
-      member_id: memberId ? String(memberId) : "",
-      chit_id: chitId ? String(chitId) : "",
-      chit_assignment_id: "",
-      amount_paid: "",
-      collection_date: new Date().toISOString().split("T")[0],
-      collection_method: "Cash",
-      notes: "",
-    });
-  };
-
-  const handleShowList = () => {
-    setView("list");
-    setFormError(null);
-    if (setCollectionDefaults) {
-      setCollectionDefaults(null);
-    }
-  };
-
-  const headerTitle = view === "list" ? "Transactions" : "Log New Collection";
-
-  if (loading) {
-    // ...
-    return (
-      <Card className="flex-1 flex flex-col">
-        <div className="p-4">
-          <Skeleton.Table rows={5} columns={6} />
-        </div>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return <Message type="error">{error}</Message>;
-  }
+  ], [currentPage, memberId, chitId]);
 
   return (
-    <Card className="flex-1 flex flex-col">
-      <div className="relative flex justify-center items-center mb-2">
-        {view === "create" && (
-          <button
-            type="button"
-            onClick={handleShowList}
-            className="absolute left-0 text-text-primary hover:text-accent"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-        )}
+    <div className="flex-1 flex flex-col">
+      <div className="relative flex justify-center items-center mb-4">
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <IndianRupee className="w-6 h-6 text-green-600" /> {headerTitle}
+          <Receipt className="w-6 h-6" /> Payments
         </h2>
 
-        {mode === "view" && view === "list" && (
+        {mode !== "view" && (
           <button
-            onClick={onManage || handleAddCollectionClick}
-            className="absolute right-0 p-1 text-success-accent hover:bg-success-bg rounded-full transition-colors duration-200 print:hidden"
-            title="Add Collection"
+            onClick={handleLogPayment}
+            className="absolute right-0 flex items-center gap-1.5 px-3 py-1.5 bg-success-bg text-success-accent hover:bg-success-accent hover:text-white rounded-full transition-all duration-200 text-sm font-medium"
+            title="Log Payment"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" /> Log Payment
           </button>
         )}
       </div>
       <hr className="border-border mb-4" />
 
-      {view === "create" ? (
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {formSuccess && <Message type="success">{formSuccess}</Message>}
-          {formError && (
-            <Message type="error" onClose={() => setFormError(null)}>
-              {formError}
-            </Message>
-          )}
+      {error && <Message type="error">{error}</Message>}
 
-          <CollectionDetailsForm
-            mode="create"
-            control={control}
-            register={register}
-            setValue={setValue}
-            errors={errors}
-            defaultAssignmentId={collectionDefaults?.assignmentId}
-            defaultChitId={collectionDefaults?.chitId || chitId}
-            defaultMemberId={collectionDefaults?.memberId || memberId}
-          />
-          <div className="flex justify-end mt-6">
-            <Button
-              type="submit"
-              variant="success"
-              disabled={formLoading}
-              className="w-full"
-            >
-              {formLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-              ) : (
-                <>
-                  <Plus className="w-5 h-5 inline-block mr-2" />
-                  Submit Collection
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+      {loading && !transactions.length ? (
+        <div className="p-4">
+          <Skeleton.Table rows={5} columns={6} />
+        </div>
       ) : (
         <>
-          {/* VIEW MODE LIST */}
-          {formSuccess && <Message type="success">{formSuccess}</Message>}
-          {mode !== "view" && (
-            <div className="mb-4">
-              <Button
-                variant="primary"
-                className="w-full md:w-auto flex items-center justify-center"
-                onClick={handleShowForm}
-              >
-                <IndianRupee className="w-6 h-6 text-green-600" /> Log New
-                Collection
-              </Button>
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative flex items-center">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="w-5 h-5 text-text-secondary" />
+              </span>
+              <div className="absolute left-10 h-6 w-px bg-border"></div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
+              />
             </div>
-          )}
+          </div>
 
-          {transactions.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertCircle className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
-              <p className="mt-2 text-sm text-text-secondary">
-                No transactions recorded yet.
+          {filteredTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <div className="w-16 h-16 mb-4 rounded-full bg-background-secondary flex items-center justify-center">
+                <WalletMinimal className="w-8 h-8 text-text-secondary" />
+              </div>
+              <p className="text-text-secondary text-center text-sm">
+                {searchQuery
+                  ? "No payments match your search"
+                  : "No payments recorded yet"}
               </p>
             </div>
           ) : (
             <>
-              {/* --- CONTROLS ROW: Search + Layout Toggle --- */}
-              <div className="flex flex-row gap-2 items-stretch justify-between mb-4">
-                {transactions.length > 1 ? (
-                  <div className="relative flex-grow">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Search className="w-5 h-5 text-text-secondary" />
-                    </span>
-                    <div className="absolute left-10 h-6 w-px bg-border my-auto top-0 bottom-0"></div>
-                    <input
-                      type="text"
-                      placeholder={searchPlaceholder}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-background-secondary border rounded-md focus:outline-none focus:ring-2 border-border focus:ring-accent"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-grow"></div>
-                )}
-
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() =>
-                      setLayoutMode((prev) =>
-                        prev === "table" ? "grid" : "table"
-                      )
-                    }
-                    className="h-full px-4 rounded-md bg-background-secondary text-text-secondary hover:bg-background-tertiary transition-all shadow-sm border border-border flex items-center justify-center"
-                    title={
-                      layoutMode === "table"
-                        ? "Switch to Grid View"
-                        : "Switch to Table View"
-                    }
-                  >
-                    {layoutMode === "table" ? (
-                      <LayoutGrid className="w-5 h-5" />
-                    ) : (
-                      <List className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
+              {/* Table View */}
+              <div className="block overflow-x-auto">
+                <Table
+                  columns={columns}
+                  data={paginatedTransactions}
+                  variant="secondary"
+                  onRowClick={(row) => {
+                    navigate(`/ledger/edit/${row.id}`, { state: { type: row.type.toLowerCase() } });
+                  }}
+                />
               </div>
 
-              {filteredTransactions.length === 0 ? (
-                <div className="text-center py-8">
-                  <Search className="mx-auto h-8 w-8 text-text-secondary opacity-50" />
-                  <p className="mt-2 text-sm text-text-secondary">
-                    No transactions found matching "{searchQuery}".
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* --- TABLE VIEW --- */}
-                  {layoutMode === "table" ? (
-                    <div className="block overflow-x-auto">
-                      <Table
-                        columns={columns}
-                        data={paginatedTransactions}
-                        variant="secondary"
-                        onRowClick={(row) => {
-                          if (row.type === "Collection") {
-                            navigate(`/collections/view/${row.id}`);
-                          } else {
-                            navigate(`/payouts/view/${row.id}`);
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    // --- GRID VIEW ---
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {paginatedTransactions.map((t) => (
-                        <CollectionHistoryCard
-                          key={`${t.type}-${t.id}`}
-                          collection={{
-                            ...t,
-                            amount_paid: t.amount,
-                            collection_date: t.date,
-                          }}
-                          viewType={viewType}
-                          centered={mode === "view"}
-                          onClick={() => {
-                            if (t.type === "Collection") {
-                              navigate(`/collections/view/${t.id}`);
-                            } else {
-                              navigate(`/payouts/view/${t.id}`);
-                            }
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* --- PAGINATION --- */}
-                  {mode === "view" && totalPages > 1 && (
-                    <div className="flex justify-between items-center mt-4 w-full px-2 text-sm text-text-secondary">
-                      <button
-                        onClick={() =>
-                          setCurrentPage((p) => Math.max(1, p - 1))
-                        }
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-
-                      <span className="font-medium">
-                        Page {currentPage} of {totalPages}
-                      </span>
-
-                      <button
-                        onClick={() =>
-                          setCurrentPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-full hover:bg-background-secondary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                      >
-                        <ArrowRight className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
         </>
       )}
-    </Card>
+    </div>
   );
 };
 

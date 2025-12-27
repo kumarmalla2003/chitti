@@ -10,6 +10,7 @@ from app.schemas.chits import ChitResponse
 
 
 async def get_chit_by_id(session: AsyncSession, chit_id: int) -> Chit | None:
+    """Get chit by ID."""
     return await session.get(Chit, chit_id)
 
 
@@ -66,13 +67,12 @@ async def get_chit_by_id_with_details(session: AsyncSession, chit_id: int) -> Ch
 
 
 async def delete_chit_by_id(session: AsyncSession, db_chit: Chit):
+    """Permanently deletes a chit from the database."""
     await session.delete(db_chit)
     await session.commit()
 
 
-async def update_chit_timestamp(db_chit: Chit) -> None:
-    """Update the updated_at timestamp for a chit."""
-    db_chit.updated_at = datetime.now(timezone.utc)
+# Note: update_chit_timestamp is no longer needed - event listeners handle updated_at automatically
 
 
 async def record_auction_month(
@@ -134,7 +134,7 @@ async def record_auction_month(
             db_slot.member_id = member_id
         db_slot.payout_amount = payout_amount
         db_slot.bid_amount = bid_amount
-        db_slot.expected_contribution = net_payable  # Store per-member contribution for auction
+        db_slot.expected_contribution = net_payable * total_slots # Store TOTAL (net_payable per member * size)
         db_slot.updated_at = datetime.now(timezone.utc)
         session.add(db_slot)
     else:
@@ -145,7 +145,7 @@ async def record_auction_month(
             member_id=member_id,
             payout_amount=payout_amount,
             bid_amount=bid_amount,
-            expected_contribution=net_payable
+            expected_contribution=net_payable * total_slots # Store TOTAL
         )
         session.add(db_slot)
 

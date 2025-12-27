@@ -46,7 +46,7 @@ const FormattedInput = ({
       }}
       value={displayValue}
       onChange={handleChange}
-      className={`${className} ${error ? "border-red-500" : ""}`}
+      className={`${className} ${error ? "border-error-accent" : ""}`}
       autoComplete="on"
       autoCapitalize="off"
       autoCorrect="off"

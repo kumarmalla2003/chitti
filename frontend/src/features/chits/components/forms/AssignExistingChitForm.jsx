@@ -14,6 +14,23 @@ import { getAllChits } from "../../../../services/chitsService";
 import { getUnassignedMonths } from "../../../../services/assignmentsService";
 import Skeleton from "../../../../components/ui/Skeleton";
 
+// --- Helper Functions ---
+// Format month display to show both month number and actual date
+// e.g., "Month 1 - 01/2025"
+const formatMonthDisplay = (monthNum, startDate) => {
+  const num = typeof monthNum === 'number' ? monthNum : parseInt(monthNum, 10);
+
+  if (startDate) {
+    const datePart = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+    const [year, month] = datePart.split('-').map(Number);
+    const actualDate = new Date(year, month - 1 + (num - 1), 1);
+    const actualMonth = String(actualDate.getMonth() + 1).padStart(2, '0');
+    const actualYear = actualDate.getFullYear();
+    return `Month ${num} - ${actualMonth}/${actualYear}`;
+  }
+  return `Month ${num}`;
+};
+
 const AssignExistingChitForm = forwardRef(
   (
     {
@@ -91,10 +108,7 @@ const AssignExistingChitForm = forwardRef(
     };
 
     // Form submission handler
-    const handleConfirmAssignment = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
+    const handleConfirmAssignment = async () => {
       if (!selectedChitId || !selectedMonth) {
         setError("Please select a chit and a month.");
         return;
@@ -123,10 +137,16 @@ const AssignExistingChitForm = forwardRef(
       );
     }, [selectedChitId, existingAssignments]);
 
+    // Get the selected chit's data (for start_date)
+    const selectedChit = useMemo(() => {
+      if (!selectedChitId) return null;
+      return allChits.find((c) => c.id === parseInt(selectedChitId));
+    }, [selectedChitId, allChits]);
+
     const isFormInvalid = !selectedMonth;
 
     return (
-      <form className="my-4" onSubmit={handleConfirmAssignment}>
+      <div className="my-4">
         {error && (
           <Message type="error" onClose={() => setError(null)}>
             {error}
@@ -136,12 +156,12 @@ const AssignExistingChitForm = forwardRef(
         {loading && (
           <div className="space-y-6">
             <div className="space-y-1">
-                 <Skeleton.Text width="w-32" />
-                 <Skeleton.Input />
+              <Skeleton.Text width="w-32" />
+              <Skeleton.Input />
             </div>
-             <div className="space-y-1">
-                 <Skeleton.Text width="w-32" />
-                 <Skeleton.Input />
+            <div className="space-y-1">
+              <Skeleton.Text width="w-32" />
+              <Skeleton.Input />
             </div>
           </div>
         )}
@@ -229,7 +249,7 @@ const AssignExistingChitForm = forwardRef(
                   </option>
                   {availableMonths.map((month) => (
                     <option key={month} value={month}>
-                      {formatDate(month)}
+                      {formatMonthDisplay(month, selectedChit?.start_date)}
                     </option>
                   ))}
                 </select>
@@ -241,10 +261,11 @@ const AssignExistingChitForm = forwardRef(
               {" "}
               {/* Removed flex justify-end */}
               <Button
-                type="submit"
+                type="button"
                 variant="success"
                 disabled={isFormInvalid || isSubmitting}
-                className="w-full flex items-center justify-center" // Added full width & centering
+                onClick={handleConfirmAssignment}
+                className="w-full flex items-center justify-center"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin w-5 h-5" />
@@ -258,7 +279,7 @@ const AssignExistingChitForm = forwardRef(
             </div>
           </div>
         )}
-      </form>
+      </div>
     );
   }
 );

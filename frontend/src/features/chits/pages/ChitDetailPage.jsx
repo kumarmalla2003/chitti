@@ -21,7 +21,6 @@ import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import ChitMobileContent from "../components/sections/ChitMobileContent";
 import AssignmentsSection from "../components/sections/AssignmentsSection";
 import TransactionsSection from "../components/sections/TransactionsSection";
-import ChitDesktopActionButton from "../components/ui/ChitDesktopActionButton";
 import ChitViewDashboard from "./ChitViewDashboard";
 import { capitalizeFirstLetter } from "../utils/normalizeChit";
 import { Info, Loader2, ArrowLeft, SquarePen, Printer } from "lucide-react";
@@ -33,12 +32,14 @@ const DetailsSectionComponent = ({
   register,
   errors,
   isPostCreation,
+  isSubmitting,
   hasActiveOperations,
   setValue, // Received from parent
   setError,
   clearErrors,
   trigger,
   onEnterKeyOnLastInput,
+  onCancel,
   onNameValid,
   onNameInvalid,
   onSizeChange,
@@ -71,12 +72,14 @@ const DetailsSectionComponent = ({
       register={register}
       errors={errors}
       isPostCreation={isPostCreation}
+      isSubmitting={isSubmitting}
       hasActiveOperations={hasActiveOperations}
       setValue={setValue} // Passed to form
       setError={setError}
       clearErrors={clearErrors}
       trigger={trigger}
       onEnterKeyOnLastInput={onEnterKeyOnLastInput}
+      onCancel={onCancel}
       onNameValid={onNameValid}
       onNameInvalid={onNameInvalid}
       onSizeChange={onSizeChange}
@@ -217,17 +220,19 @@ const ChitDetailPage = () => {
   const handleFormSubmit = useCallback(
     async (data) => {
       await onSubmit(data, {
-        onSuccessCallback: () => {
-          // Move to next tab after successful submission
-          if (mode === "create" && !createdChitId) {
-            setActiveTab("payouts");
+        onSuccessCallback: (newChit) => {
+          if (mode === "create") {
+            // Navigate to edit mode with assignments tab after successful creation
+            navigate(`/chits/edit/${newChit.id}`, {
+              state: { initialTab: "assignments" }
+            });
           } else if (mode === "edit" && activeTabIndex < TABS.length - 1) {
             setActiveTab(TABS[activeTabIndex + 1]);
           }
         },
       });
     },
-    [onSubmit, mode, createdChitId, activeTabIndex, TABS]
+    [onSubmit, mode, navigate, activeTabIndex, TABS]
   );
 
   // --- Header Update Handlers ---
@@ -281,7 +286,8 @@ const ChitDetailPage = () => {
   }, [activeTabIndex, TABS]);
 
   const handleNext = useCallback(async () => {
-    if ((mode === "create" || mode === "edit") && activeTabIndex === 0) {
+    // In CREATE mode on first tab, submit the form first
+    if (mode === "create" && activeTabIndex === 0) {
       const isValidForm = await trigger();
       if (isValidForm) {
         await handleSubmit(handleFormSubmit)();
@@ -289,6 +295,7 @@ const ChitDetailPage = () => {
       return;
     }
 
+    // In EDIT mode or other tabs, just navigate to next tab
     if (activeTabIndex < TABS.length - 1) {
       setActiveTab(TABS[activeTabIndex + 1]);
     }
@@ -328,11 +335,14 @@ const ChitDetailPage = () => {
     async (e) => {
       if (activeTab !== "details") return;
 
-      if (activeTabIndex === TABS.length - 1) {
-        handleFinalAction();
-      } else if (mode === "create" && activeTabIndex === 0) {
+      // In create/edit mode on details tab, submit the form
+      if ((mode === "create" || mode === "edit") && activeTabIndex === 0) {
         await handleSubmit(handleFormSubmit)(e);
+      } else if (activeTabIndex === TABS.length - 1) {
+        // On the last tab, trigger final action
+        handleFinalAction();
       } else {
+        // Otherwise, move to next tab
         if (activeTabIndex < TABS.length - 1) {
           setActiveTab(TABS[activeTabIndex + 1]);
         }
@@ -473,9 +483,12 @@ const ChitDetailPage = () => {
               handleMiddle={handleMiddle}
               handleMobileFormSubmit={handleMobileFormSubmit}
               isPostCreation={isPostCreation}
+              isSubmitting={isSubmitting}
               onLogCollectionClick={handleLogCollectionClick}
               collectionDefaults={collectionDefaults}
               setCollectionDefaults={setCollectionDefaults}
+              onCancel={() => navigate("/chits")}
+              success={success}
               control={control}
               register={register}
               errors={errors}
@@ -511,12 +524,14 @@ const ChitDetailPage = () => {
                   register={register}
                   errors={errors}
                   isPostCreation={isPostCreation}
+                  isSubmitting={isSubmitting}
                   hasActiveOperations={hasActiveOperations}
                   setValue={setValue} // Passed down
                   setError={setFormError}
                   clearErrors={clearFormErrors}
                   trigger={trigger}
                   onEnterKeyOnLastInput={() => handleSubmit(handleFormSubmit)()}
+                  onCancel={() => navigate("/chits")}
                   onNameValid={handleNameValid}
                   onNameInvalid={handleNameInvalid}
                   onSizeChange={handleSizeChange}
@@ -527,12 +542,6 @@ const ChitDetailPage = () => {
                   lockedFieldWarning={warning}
                   showEditWarning={showEditWarning}
                   membersCount={membersCount}
-                />
-
-                <ChitDesktopActionButton
-                  mode={mode}
-                  loading={isSubmitting}
-                  isPostCreation={isPostCreation}
                 />
 
                 {/* Assignments Section (Members, Payouts, Auctions, Collections) */}
