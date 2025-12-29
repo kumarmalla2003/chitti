@@ -1,61 +1,71 @@
 // frontend/src/features/ledger/hooks/useLedger.js
 
 import { useMemo } from 'react';
-import { useCollections } from '../../collections/hooks/useCollections';
-import { usePayouts } from '../../payouts/hooks/usePayouts';
-import { useChits } from '../../chits/hooks/useChits';
+import { useQuery } from '@tanstack/react-query';
+import { getPayments } from '../../../services/paymentsService';
 
 /**
- * Combined hook for fetching both collections and payouts data.
- * Provides unified access to transaction data for the Ledger page.
+ * Combined hook for fetching both collections and payouts (payments) for the Ledger.
+ * Uses the unified Payment API with payment_type filter.
  * 
  * @returns {Object} Combined ledger data and state
  */
 export const useLedger = () => {
-  const collectionsQuery = useCollections();
-  const payoutsQuery = usePayouts();
-  const chitsQuery = useChits();
+  // Fetch collection payments
+  const collectionsQuery = useQuery({
+    queryKey: ['payments', 'collection'],
+    queryFn: () => getPayments({ payment_type: 'collection' }),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
 
-  const isLoading = collectionsQuery.isLoading || payoutsQuery.isLoading || chitsQuery.isLoading;
-  const error = collectionsQuery.error || payoutsQuery.error || chitsQuery.error;
+  // Fetch payout payments
+  const payoutsQuery = useQuery({
+    queryKey: ['payments', 'payout'],
+    queryFn: () => getPayments({ payment_type: 'payout' }),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
 
-  // Extract raw data
+  const isLoading = collectionsQuery.isLoading || payoutsQuery.isLoading;
+  const error = collectionsQuery.error || payoutsQuery.error;
+
+  // Extract raw data - Payment API returns array directly or { payments: [] }
   const collections = useMemo(() => {
-    return collectionsQuery.data?.collections || [];
+    const data = collectionsQuery.data;
+    if (Array.isArray(data)) return data;
+    return data?.payments || [];
   }, [collectionsQuery.data]);
 
   const payouts = useMemo(() => {
-    const rawPayouts = payoutsQuery.data?.payouts ?? (Array.isArray(payoutsQuery.data) ? payoutsQuery.data : []);
-    return rawPayouts;
+    const data = payoutsQuery.data;
+    if (Array.isArray(data)) return data;
+    return data?.payments || [];
   }, [payoutsQuery.data]);
-
-  const chits = useMemo(() => {
-    return chitsQuery.data?.chits || [];
-  }, [chitsQuery.data]);
 
   // Merge and sort for "All" tab - chronological view of all transactions
   const allTransactions = useMemo(() => {
+    // Collection payments from Payment API
     const collectionItems = collections.map((c) => ({
       ...c,
       transactionType: 'collection',
-      transactionDate: c.collection_date,
-      transactionAmount: c.amount_paid,
-      transactionMethod: c.collection_method,
+      transactionDate: c.date,
+      transactionAmount: c.amount,
+      transactionMethod: c.method,
       displayName: c.member?.full_name || 'Unknown',
       chitName: c.chit?.name || 'Unknown',
     }));
 
-    const payoutItems = payouts
-      .filter((p) => p.paid_date) // Only show completed payouts in "All" tab
-      .map((p) => ({
-        ...p,
-        transactionType: 'payout',
-        transactionDate: p.paid_date,
-        transactionAmount: p.amount,
-        transactionMethod: p.method,
-        displayName: p.member?.full_name || 'Unknown',
-        chitName: p.chit?.name || 'Unknown',
-      }));
+    // Payout payments from Payment API
+    const payoutItems = payouts.map((p) => ({
+      ...p,
+      transactionType: 'payout',
+      transactionDate: p.date,
+      transactionAmount: p.amount,
+      transactionMethod: p.method,
+      displayName: p.member?.full_name || 'Unknown',
+      chitName: p.chit?.name || 'Unknown',
+    }));
 
     return [...collectionItems, ...payoutItems].sort(
       (a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)
@@ -66,26 +76,24 @@ export const useLedger = () => {
   const refetch = () => {
     collectionsQuery.refetch();
     payoutsQuery.refetch();
-    chitsQuery.refetch();
   };
 
   return {
     // Raw data
     collections,
     payouts,
-    chits,
     allTransactions,
-    
+
     // Loading and error states
     isLoading,
     error,
-    
+
     // Specific query states for granular control
     collectionsLoading: collectionsQuery.isLoading,
     payoutsLoading: payoutsQuery.isLoading,
     collectionsError: collectionsQuery.error,
     payoutsError: payoutsQuery.error,
-    
+
     // Actions
     refetch,
   };

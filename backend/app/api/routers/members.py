@@ -145,11 +145,11 @@ async def get_member_slots(
         else:  # auction
             expected = slot.expected_contribution or (chit.chit_value // chit.size if chit.size > 0 else 0)
         
-        # Get collection payments for this member in this month
-        all_payments = await crud_payments.get_by_member(session, member_id=member_id)
+        # Get collection payments for this slot (payments now linked via slot_id)
+        slot_payments = await crud_payments.get_by_slot(session, slot_id=slot.id)
         member_collection_payments = [
-            p for p in all_payments
-            if p.chit_id == chit.id and p.month == slot.month and p.payment_type == PaymentType.COLLECTION
+            p for p in slot_payments
+            if p.payment_type == PaymentType.COLLECTION
         ]
         total_paid = sum(p.amount for p in member_collection_payments)
         due_amount = expected - total_paid
@@ -200,7 +200,8 @@ async def get_member_payouts(
     for slot in member_slots:
         payout_payments = [p for p in (slot.payments or []) if p.payment_type == PaymentType.PAYOUT]
         amount_paid = sum(p.amount for p in payout_payments)
-        due_amount = slot.payout_amount - amount_paid
+        payout_amount = slot.payout_amount or 0
+        due_amount = payout_amount - amount_paid
         
         if amount_paid == 0:
             collection_status = "Unpaid"

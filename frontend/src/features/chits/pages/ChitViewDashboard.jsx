@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Card from "../../../components/ui/Card";
 import AssignmentsSection from "../components/sections/AssignmentsSection";
-import TransactionsSection from "../components/sections/TransactionsSection";
+import LedgerSection from "../components/sections/TransactionsSection";
 
 const formatCurrency = (val) => {
   if (!val) return "0";
@@ -200,10 +200,10 @@ const ChitViewDashboard = ({
         </Card>
       </div>
 
-      {/* Transactions Section */}
+      {/* Ledger Section */}
       <div className="grid grid-cols-1">
         <Card>
-          <TransactionsSection
+          <LedgerSection
             chitId={chitId}
             mode="view"
           />

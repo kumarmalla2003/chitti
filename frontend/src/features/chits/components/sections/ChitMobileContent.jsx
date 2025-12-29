@@ -1,19 +1,17 @@
-// frontend/src/features/chits/components/sections/ChitMobileContent.jsx
-
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Info, ClipboardList, Receipt } from "lucide-react";
+import { Info, ClipboardList, BookOpen } from "lucide-react";
 import Card from "../../../../components/ui/Card";
 import Message from "../../../../components/ui/Message";
 import TabButton from "../../../../components/ui/TabButton";
 import StepperButtons from "../../../../components/ui/StepperButtons";
 import ChitDetailsForm from "../forms/ChitDetailsForm";
 import AssignmentsSection from "./AssignmentsSection";
-import TransactionsSection from "./TransactionsSection";
+import LedgerSection from "./TransactionsSection";
 
 /**
  * ChitMobileContent component - renders the mobile tab navigation and content for chit detail page.
- * New 3-tab structure: Details, Assignments, Transactions
+ * New 3-tab structure: Details, Assignments, Ledger
  *
  * @param {object} props - Component props
  */
@@ -93,8 +91,8 @@ const ChitMobileContent = ({
                     <TabButton
                         ref={(el) => (tabRefs.current["transactions"] = el)}
                         name="transactions"
-                        icon={Receipt}
-                        label="Transactions"
+                        icon={BookOpen}
+                        label="Ledger"
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
@@ -187,7 +185,7 @@ const ChitMobileContent = ({
             {activeTab === "transactions" && (
                 <>
                     <Card className="flex-1 flex flex-col">
-                        <TransactionsSection
+                        <LedgerSection
                             mode={mode}
                             chitId={chitId}
                         />

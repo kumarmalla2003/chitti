@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 
 from app.security.dependencies import get_current_user
 from app.db.session import get_session
@@ -17,10 +17,22 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 @router.get("", response_model=List[PaymentResponse])
 async def get_all_payments(
     session: AsyncSession = Depends(get_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    payment_type: Optional[PaymentType] = None,
+    chit_id: Optional[int] = None,
+    member_id: Optional[int] = None,
 ):
-    """Get all payments."""
-    return await crud_payments.get_all(session)
+    """Get all payments. Optionally filter by payment_type, chit_id, or member_id."""
+    if chit_id:
+        payments = await crud_payments.get_by_chit(session, chit_id)
+    elif member_id:
+        payments = await crud_payments.get_by_member(session, member_id)
+    else:
+        payments = await crud_payments.get_all(session)
+        
+    if payment_type:
+        payments = [p for p in payments if p.payment_type == payment_type]
+    return payments
 
 
 @router.get("/{payment_id}", response_model=PaymentResponse)
@@ -45,7 +57,7 @@ async def get_payments_by_slot(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all payout payments for a specific slot."""
+    """Get all payments for a specific slot."""
     return await crud_payments.get_by_slot(session, slot_id)
 
 
@@ -86,22 +98,17 @@ async def create_payment(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new payment. Automatically updates related slot status for payout payments."""
-    # Validate that slot_id is provided for payout payments
-    if payment_in.payment_type == PaymentType.PAYOUT and not payment_in.slot_id:
+    """
+    Create a new payment linked to a slot.
+    Both collections and payouts require a valid slot_id.
+    """
+    try:
+        return await crud_payments.create(session, payment_in)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="slot_id is required for payout payments"
+            detail=str(e)
         )
-    
-    # For collection payments: slot_id should be None
-    if payment_in.payment_type == PaymentType.COLLECTION and payment_in.slot_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="slot_id should not be provided for collection payments"
-        )
-    
-    return await crud_payments.create(session, payment_in)
 
 
 @router.patch("/{payment_id}", response_model=PaymentResponse)
@@ -111,7 +118,7 @@ async def update_payment(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    """Update a payment. Automatically recalculates related slot status for payout payments."""
+    """Update a payment. Only amount, date, method, and notes can be updated."""
     payment = await crud_payments.get_by_id(session, payment_id)
     if not payment:
         raise HTTPException(

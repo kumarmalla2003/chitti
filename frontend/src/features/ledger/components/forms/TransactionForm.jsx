@@ -14,6 +14,7 @@ import {
     TrendingUp,
     Save,
     SquarePen,
+    Loader2,
 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getAllChits } from "../../../../services/chitsService";
 import { getAllMembers } from "../../../../services/membersService";
 import { getAssignmentsForMember, getAssignmentsForChit } from "../../../../services/assignmentsService";
-import { createPayment, updatePayment } from "../../../../services/paymentsService";
+import { createPayment, updatePayment, getPaymentById } from "../../../../services/paymentsService";
 import { updatePayout } from "../../../../services/payoutsService";
 
 import Message from "../../../../components/ui/Message";
@@ -29,11 +30,13 @@ import Button from "../../../../components/ui/Button";
 import FormattedInput from "../../../../components/ui/FormattedInput";
 import CustomDateInput from "../../../../components/ui/CustomDateInput";
 
-// Schema for Collection
+// Schema for Collection - now uses slot_id (member's assigned payout slot) + collection_month
 const collectionSchema = z.object({
     member_id: z.string().min(1, "Member is required"),
     chit_id: z.string().min(1, "Chit is required"),
-    amount_paid: z.number({ invalid_type_error: "Amount must be a number" }).positive("Amount must be positive"),
+    slot_id: z.coerce.number({ invalid_type_error: "Please select an assignment" }).int().positive("Please select an assignment"),
+    collection_month: z.coerce.number({ invalid_type_error: "Please select a month" }).int().positive("Please select a month"),
+    amount_paid: z.coerce.number({ invalid_type_error: "Amount must be a number" }).positive("Amount must be positive"),
     collection_date: z.string().min(1, "Date is required"),
     collection_method: z.string().min(1, "Method is required"),
     notes: z.string().optional().nullable(),
@@ -44,7 +47,7 @@ const payoutSchema = z.object({
     chit_id: z.string().min(1, "Chit is required"),
     member_id: z.string().min(1, "Member is required"),
     chit_assignment_id: z.string().min(1, "Winning month is required"),
-    amount: z.number({ invalid_type_error: "Amount must be a number" }).positive("Amount must be positive"),
+    amount: z.coerce.number({ invalid_type_error: "Amount must be a number" }).positive("Amount must be positive"),
     paid_date: z.string().min(1, "Date is required"),
     method: z.string().min(1, "Method is required"),
     notes: z.string().optional().nullable(),
@@ -58,7 +61,8 @@ const TransactionForm = ({
     initialData,
     onSuccess,
     onCancel,
-    onTypeChange
+    onTypeChange,
+    disabled = false,
 }) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -78,9 +82,11 @@ const TransactionForm = ({
         return transactionType === "collection" ? {
             member_id: initialMemberId || "",
             chit_id: initialChitId || "",
+            slot_id: "",  // Member's assigned payout slot
+            collection_month: "",  // Which month's collection (1 to duration)
             amount_paid: "",
             collection_date: new Date().toISOString().split("T")[0],
-            collection_method: "Cash",
+            collection_method: "cash",
             notes: "",
         } : {
             chit_id: initialChitId || "",
@@ -88,7 +94,7 @@ const TransactionForm = ({
             chit_assignment_id: "",
             amount: "",
             paid_date: new Date().toISOString().split("T")[0],
-            method: "Cash",
+            method: "cash",
             notes: "",
         };
     }, [initialData, initialChitId, initialMemberId, transactionType]);
@@ -98,6 +104,7 @@ const TransactionForm = ({
         control,
         handleSubmit,
         reset,
+        setValue,
         formState: { errors },
     } = useForm({
         resolver: zodResolver(transactionType === "collection" ? collectionSchema : payoutSchema),
@@ -110,6 +117,27 @@ const TransactionForm = ({
             reset(defaultValues);
         }
     }, [transactionType, defaultValues, reset, transactionId]);
+
+    // Fetch existing payment data for edit mode
+    const [loadingExisting, setLoadingExisting] = useState(false);
+    const [existingPayment, setExistingPayment] = useState(null);
+
+    useEffect(() => {
+        if (transactionId) {
+            setLoadingExisting(true);
+            getPaymentById(transactionId)
+                .then((payment) => {
+                    if (payment) {
+                        setExistingPayment(payment);
+                        // Determine type from payment
+                        const type = payment.payment_type === 'payout' ? 'payout' : 'collection';
+                        setTransactionType(type);
+                    }
+                })
+                .catch(console.error)
+                .finally(() => setLoadingExisting(false));
+        }
+    }, [transactionId]);
 
     // Data Loading State
     const [allChits, setAllChits] = useState([]);
@@ -143,28 +171,160 @@ const TransactionForm = ({
         loadBasics();
     }, []);
 
-    // 2. Cascade: Filter Chits/Members based on selection
+    // Apply existing payment data after allMembers is loaded
+    // Split into two effects: (1) set basic fields, (2) set slot_id after memberSlots are ready
+    const [pendingSlotId, setPendingSlotId] = useState(null);
+    const [pendingCollectionMonth, setPendingCollectionMonth] = useState(null);
+
+    // 2. Member's Assigned Slots for the selected Chit+Member (for collections)
+    const [memberAssignedSlots, setMemberAssignedSlots] = useState([]);
+    const [selectedChitData, setSelectedChitData] = useState(null);
+
+    useEffect(() => {
+        if (existingPayment && allMembers.length > 0 && !isLoadingData) {
+            const payment = existingPayment;
+            const type = payment.payment_type === 'payout' ? 'payout' : 'collection';
+
+            // Map backend fields to form fields
+            const formData = type === 'collection' ? {
+                member_id: String(payment.member_id || ''),
+                chit_id: String(payment.chit_id || ''),
+                slot_id: '', // Don't set slot_id yet - wait for memberSlots to load
+                collection_month: '', // Don't set collection_month yet
+                amount_paid: payment.amount || '',
+                collection_date: payment.date || new Date().toISOString().split('T')[0],
+                collection_method: payment.method || 'cash',
+                notes: payment.notes || '',
+            } : {
+                chit_id: String(payment.chit_id || ''),
+                member_id: String(payment.member_id || ''),
+                chit_assignment_id: String(payment.slot_id || ''),
+                amount: payment.amount || '',
+                paid_date: payment.date || new Date().toISOString().split('T')[0],
+                method: payment.method || 'cash',
+                notes: payment.notes || '',
+            };
+
+            // Temporarily populate filtered members with all members to ensure the selected member exists 
+            // and the form value isn't rejected by the select input
+            setFilteredMembers(allMembers);
+
+            // Store the slot_id and collection_month values to apply later when memberSlots are ready
+            if (type === 'collection') {
+                if (payment.slot_id) setPendingSlotId(String(payment.slot_id));
+                if (payment.collection_month) setPendingCollectionMonth(String(payment.collection_month));
+            }
+
+            reset(formData);
+        }
+    }, [existingPayment, allMembers, isLoadingData, reset]);
+
+    // Load member's assigned slots for the selected Chit+Member (for collections)
+    useEffect(() => {
+        if (transactionType === "collection" && selectedChitId && selectedMemberId) {
+            const loadMemberSlots = async () => {
+                try {
+                    // Get member's assignments filtered by this chit
+                    const res = await getAssignmentsForMember(selectedMemberId);
+                    const slots = res?.slots ?? [];
+                    // Filter to only slots for this chit
+                    const chitSlots = slots.filter(s => s.chit && s.chit.id === parseInt(selectedChitId));
+                    // Sort by month
+                    const sortedSlots = [...chitSlots].sort((a, b) => a.month - b.month);
+                    setMemberAssignedSlots(sortedSlots);
+
+                    // Store chit data for date calculation
+                    if (sortedSlots.length > 0 && sortedSlots[0].chit) {
+                        setSelectedChitData(sortedSlots[0].chit);
+                    }
+
+                    // Auto-select if member has only 1 assignment
+                    if (sortedSlots.length === 1) {
+                        setValue('slot_id', String(sortedSlots[0].id));
+                    }
+                } catch (e) { console.error(e); }
+            };
+            loadMemberSlots();
+        } else if (transactionType === "collection" && selectedChitId && !selectedMemberId) {
+            // Clear member slots when member is cleared
+            setMemberAssignedSlots([]);
+            setValue('slot_id', '');
+        } else {
+            setMemberAssignedSlots([]);
+            setSelectedChitData(null);
+        }
+    }, [transactionType, selectedChitId, selectedMemberId, setValue]);
+
+    // Load chit data for duration_months (needed for collection_month dropdown)
+    useEffect(() => {
+        if (transactionType === "collection" && selectedChitId && !selectedChitData) {
+            const loadChitData = async () => {
+                try {
+                    const res = await getAssignmentsForChit(selectedChitId);
+                    if (res?.chit) {
+                        setSelectedChitData(res.chit);
+                    }
+                } catch (e) { console.error(e); }
+            };
+            loadChitData();
+        }
+    }, [transactionType, selectedChitId, selectedChitData]);
+
+    // Apply pending slot_id value once memberAssignedSlots are loaded
+    useEffect(() => {
+        if (pendingSlotId && memberAssignedSlots.length > 0) {
+            // Check if the pending slot exists in the available slots
+            const slotExists = memberAssignedSlots.some(slot => String(slot.id) === pendingSlotId);
+            if (slotExists) {
+                setValue('slot_id', pendingSlotId);
+            }
+            setPendingSlotId(null); // Clear the pending value
+        }
+    }, [pendingSlotId, memberAssignedSlots, setValue]);
+
+    // Apply pending collection_month value
+    useEffect(() => {
+        if (pendingCollectionMonth && selectedChitData) {
+            setValue('collection_month', pendingCollectionMonth);
+            setPendingCollectionMonth(null);
+        }
+    }, [pendingCollectionMonth, selectedChitData, setValue]);
+
+    // 3. Cascade: Filter Chits/Members based on selection
     useEffect(() => {
         if (selectedChitId) {
             const filterMembers = async () => {
                 try {
                     const res = await getAssignmentsForChit(selectedChitId);
-                    const chitMemberIds = new Set(res.assignments.map(a => a.member.id));
-                    setFilteredMembers(allMembers.filter(m => chitMemberIds.has(m.id)));
+                    // API returns { slots: [...] }, each slot has a member object
+                    const slots = res?.slots ?? [];
+                    const chitMemberIds = new Set(slots.filter(s => s.member).map(s => s.member.id));
+
+                    // In edit mode, always include the currently selected member
+                    let filtered = allMembers.filter(m => chitMemberIds.has(m.id));
+                    if (selectedMemberId) {
+                        const currentMember = allMembers.find(m => m.id === parseInt(selectedMemberId));
+                        if (currentMember && !chitMemberIds.has(currentMember.id)) {
+                            filtered = [currentMember, ...filtered];
+                        }
+                    }
+                    setFilteredMembers(filtered);
                 } catch (e) { console.error(e); }
             };
             filterMembers();
         } else {
             setFilteredMembers(allMembers);
         }
-    }, [selectedChitId, allMembers]);
+    }, [selectedChitId, allMembers, selectedMemberId]);
 
     useEffect(() => {
         if (selectedMemberId && !selectedChitId) {
             const filterChits = async () => {
                 try {
                     const res = await getAssignmentsForMember(selectedMemberId);
-                    const memberChitIds = new Set(res.map(a => a.chit.id));
+                    // API returns { slots: [...] }, each slot has a chit object
+                    const slots = res?.slots ?? [];
+                    const memberChitIds = new Set(slots.filter(s => s.chit).map(s => s.chit.id));
                     setFilteredChits(allChits.filter(c => memberChitIds.has(c.id)));
                 } catch (e) { console.error(e); }
             };
@@ -174,13 +334,15 @@ const TransactionForm = ({
         }
     }, [selectedMemberId, selectedChitId, allChits]);
 
-    // 3. For Payouts: Load Winning Assignments (Eligible Slots)
+    // 4. For Payouts: Load Winning Assignments (Eligible Slots)
     useEffect(() => {
         if (transactionType === "payout" && selectedChitId && selectedMemberId) {
             const loadAssignments = async () => {
                 try {
                     const res = await getAssignmentsForMember(selectedMemberId);
-                    const chitAssignments = res.filter(a => a.chit.id === parseInt(selectedChitId));
+                    // API returns { slots: [...] }, each slot has a chit object
+                    const slots = res?.slots ?? [];
+                    const chitAssignments = slots.filter(s => s.chit && s.chit.id === parseInt(selectedChitId));
                     setAssignments(chitAssignments);
                 } catch (e) { console.error(e); }
             };
@@ -192,17 +354,40 @@ const TransactionForm = ({
     const mutation = useMutation({
         mutationFn: async (data) => {
             if (transactionType === "collection") {
-                const payload = { ...data, payment_type: "collection" };
+                // Collection payload - includes slot_id (member's assignment) + collection_month
+                const payload = {
+                    amount: data.amount_paid, // Already coerced to number by zod
+                    date: data.collection_date,
+                    method: data.collection_method || "cash",
+                    notes: data.notes || null,
+                    payment_type: "collection",
+                    slot_id: data.slot_id, // Member's assigned payout slot
+                    collection_month: data.collection_month, // Which month's collection
+                };
                 if (transactionId) {
-                    return updatePayment(transactionId, payload);
+                    return updatePayment(transactionId, {
+                        amount: typeof payload.amount === 'number' ? payload.amount : parseInt(payload.amount, 10),
+                        date: payload.date,
+                        method: payload.method,
+                        notes: payload.notes
+                    });
                 } else {
                     return createPayment(payload);
                 }
             } else {
+                // For payouts: Simplified payload - only slot_id needed
+                const payload = {
+                    amount: data.amount, // Already coerced to number by zod
+                    date: data.paid_date,
+                    method: data.method || "cash",
+                    notes: data.notes || null,
+                    payment_type: "payout",
+                    slot_id: parseInt(data.chit_assignment_id, 10),
+                };
                 if (transactionId) {
-                    return updatePayout(transactionId, data);
+                    return updatePayment(transactionId, { amount: payload.amount, date: payload.date, method: payload.method, notes: payload.notes });
                 } else {
-                    return updatePayout(data.chit_assignment_id, data);
+                    return createPayment(payload);
                 }
             }
         },
@@ -210,8 +395,12 @@ const TransactionForm = ({
             queryClient.invalidateQueries({ queryKey: ["collections"] });
             queryClient.invalidateQueries({ queryKey: ["payouts"] });
             queryClient.invalidateQueries({ queryKey: ["ledger"] });
-            navigate(-1);
-            if (onSuccess) onSuccess();
+
+            if (onSuccess) {
+                onSuccess();
+            } else {
+                navigate(-1);
+            }
         },
         onError: (err) => {
             setSubmitError(err.message || "Transaction failed");
@@ -224,31 +413,36 @@ const TransactionForm = ({
     };
 
     return (
-        <fieldset disabled={false} className="space-y-6">
-            {/* Type Switcher - Only show when creating new */}
+        <fieldset disabled={disabled || mutation.isPending} className="space-y-6">
+            {/* Type Switcher - Matches SegmentedControl style */}
             {!transactionId && (
-                <div className="flex justify-center">
-                    <div className="bg-background-tertiary p-1 rounded-lg flex gap-1">
-                        <button
-                            type="button"
-                            onClick={() => setTransactionType("collection")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${transactionType === "collection"
-                                ? "bg-background-secondary shadow-sm text-success-accent"
-                                : "text-text-secondary hover:text-text-primary"
-                                }`}
-                        >
-                            Collection
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setTransactionType("payout")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${transactionType === "payout"
-                                ? "bg-background-secondary shadow-sm text-error-accent"
-                                : "text-text-secondary hover:text-text-primary"
-                                }`}
-                        >
-                            Payout
-                        </button>
+                <div className="flex justify-center mb-8">
+                    <div className="flex gap-3" role="radiogroup">
+                        {[
+                            { value: "collection", label: "Collection", icon: WalletMinimal },
+                            { value: "payout", label: "Payout", icon: TrendingUp },
+                        ].map((option) => {
+                            const isSelected = transactionType === option.value;
+                            const Icon = option.icon;
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setTransactionType(option.value)}
+                                    className={`
+                                        relative flex items-center gap-2 px-6 py-2.5 rounded-full
+                                        border-2 transition-all duration-200 select-none
+                                        ${isSelected
+                                            ? "bg-accent text-white border-accent shadow-md scale-[1.05]"
+                                            : "bg-background-secondary text-text-secondary border-border hover:border-accent/50 hover:bg-accent/5"
+                                        }
+                                    `}
+                                >
+                                    <Icon className={`w-4 h-4 ${isSelected ? "text-white" : "text-text-secondary"}`} />
+                                    <span className="font-bold text-sm">{option.label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -272,7 +466,7 @@ const TransactionForm = ({
                                 {...register("chit_id")}
                                 id="chit_id"
                                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.chit_id ? "border-red-500" : "border-border"}`}
-                                disabled={!!initialChitId || isLoadingData}
+                                disabled={isLoadingData || loadingExisting}
                             >
                                 <option value="">{isLoadingData ? "Loading..." : "Select a chit..."}</option>
                                 {filteredChits.map(c => (
@@ -297,7 +491,7 @@ const TransactionForm = ({
                                 {...register("member_id")}
                                 id="member_id"
                                 className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.member_id ? "border-red-500" : "border-border"}`}
-                                disabled={!!initialMemberId || isLoadingData}
+                                disabled={isLoadingData || loadingExisting}
                             >
                                 <option value="">{isLoadingData ? "Loading..." : "Select a member..."}</option>
                                 {filteredMembers.map(m => (
@@ -309,9 +503,99 @@ const TransactionForm = ({
                     </div>
                 </div>
 
-                {/* 2. Payout Specific: Winning Month */}
+                {/* 2. Collection Specific: Assigned Month (member's payout slot) */}
+                {transactionType === "collection" && (
+                    <div className="animate-fade-in">
+                        <label htmlFor="slot_id" className="block text-lg font-medium text-text-secondary mb-1">
+                            Assigned Month
+                        </label>
+                        <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                                <Calendar className="w-5 h-5 text-text-secondary" />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <select
+                                {...register("slot_id")}
+                                id="slot_id"
+                                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.slot_id ? "border-red-500" : "border-border"}`}
+                                disabled={!selectedMemberId || memberAssignedSlots.length <= 1}
+                            >
+                                <option value="">
+                                    {!selectedMemberId
+                                        ? "Select member first..."
+                                        : memberAssignedSlots.length === 0
+                                            ? "No assignments found"
+                                            : memberAssignedSlots.length === 1
+                                                ? `Month ${memberAssignedSlots[0].month} (auto-selected)`
+                                                : "Select assignment..."}
+                                </option>
+                                {memberAssignedSlots.map(slot => {
+                                    // Calculate date for this month
+                                    let dateStr = "";
+                                    if (selectedChitData?.start_date) {
+                                        const startDate = new Date(selectedChitData.start_date);
+                                        const slotDate = new Date(startDate);
+                                        slotDate.setMonth(slotDate.getMonth() + slot.month - 1);
+                                        dateStr = ` - ${String(slotDate.getMonth() + 1).padStart(2, '0')}/${slotDate.getFullYear()}`;
+                                    }
+                                    return (
+                                        <option key={slot.id} value={slot.id}>
+                                            Month {slot.month}{dateStr}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        {errors.slot_id && <p className="text-red-500 text-sm mt-1">{errors.slot_id.message}</p>}
+                    </div>
+                )}
+
+                {/* 3. Collection Specific: Collection Month (which month's collection) */}
+                {transactionType === "collection" && (
+                    <div className="animate-fade-in">
+                        <label htmlFor="collection_month" className="block text-lg font-medium text-text-secondary mb-1">
+                            Collection Month
+                        </label>
+                        <div className="relative flex items-center">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                                <Calendar className="w-5 h-5 text-text-secondary" />
+                            </span>
+                            <div className="absolute left-10 h-6 w-px bg-border"></div>
+                            <select
+                                {...register("collection_month")}
+                                id="collection_month"
+                                className={`w-full pl-12 pr-4 py-3 text-base bg-background-secondary border rounded-md focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 ${errors.collection_month ? "border-red-500" : "border-border"}`}
+                                disabled={!selectedChitId}
+                            >
+                                <option value="">
+                                    {!selectedChitId
+                                        ? "Select chit first..."
+                                        : "Select collection month..."}
+                                </option>
+                                {selectedChitData && Array.from({ length: selectedChitData.duration_months }, (_, i) => i + 1).map(month => {
+                                    // Calculate date for this month
+                                    let dateStr = "";
+                                    if (selectedChitData?.start_date) {
+                                        const startDate = new Date(selectedChitData.start_date);
+                                        const monthDate = new Date(startDate);
+                                        monthDate.setMonth(monthDate.getMonth() + month - 1);
+                                        dateStr = ` - ${String(monthDate.getMonth() + 1).padStart(2, '0')}/${monthDate.getFullYear()}`;
+                                    }
+                                    return (
+                                        <option key={month} value={month}>
+                                            Month {month}{dateStr}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        {errors.collection_month && <p className="text-red-500 text-sm mt-1">{errors.collection_month.message}</p>}
+                    </div>
+                )}
+
+                {/* 3. Payout Specific: Winning Month */}
                 {transactionType === "payout" && (
-                    <div>
+                    <div className="animate-fade-in">
                         <label htmlFor="chit_assignment_id" className="block text-lg font-medium text-text-secondary mb-1">
                             Winning Assignment
                         </label>
@@ -327,8 +611,10 @@ const TransactionForm = ({
                                 disabled={!selectedMemberId || !selectedChitId}
                             >
                                 <option value="">Select an assignment...</option>
-                                {assignments.map(a => (
-                                    <option key={a.id} value={a.id}>{a.chit_month} (Month {a.month_number})</option>
+                                {assignments.map(slot => (
+                                    <option key={slot.id} value={slot.id}>
+                                        Month {slot.month} - {slot.chit?.name || "Chit"}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -402,10 +688,11 @@ const TransactionForm = ({
                             id="method"
                             className="w-full pl-12 pr-4 py-3 text-base bg-background-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
                         >
-                            <option value="Cash">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="other">Other</option>
                         </select>
                     </div>
                 </div>
@@ -433,13 +720,24 @@ const TransactionForm = ({
 
                 {/* Actions */}
                 <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
-                    <Button type="submit" variant="primary" isLoading={mutation.isPending}>
-                        {transactionId ? (
-                            <><SquarePen className="inline-block mr-2 w-5 h-5" />Update</>
+                    <Button type="button" variant="ghost" onClick={onCancel || (() => navigate(-1))}>Cancel</Button>
+                    <Button
+                        type="submit"
+                        variant={transactionType === "collection" ? "success" : "error"}
+                        disabled={mutation.isPending}
+                        className="w-full md:w-auto min-w-[120px]"
+                    >
+                        {mutation.isPending ? (
+                            <Loader2 className="animate-spin mx-auto w-5 h-5" />
                         ) : (
-                            <><Save className="inline-block mr-2 w-5 h-5" />Save</>
-                        )} {transactionType === "collection" ? "Collection" : "Payout"}
+                            <>
+                                {transactionId ? (
+                                    <><SquarePen className="inline-block mr-2 w-5 h-5" />Update</>
+                                ) : (
+                                    <><Save className="inline-block mr-2 w-5 h-5" />Save</>
+                                )} {transactionType === "collection" ? "Collection" : "Payout"}
+                            </>
+                        )}
                     </Button>
                 </div>
             </form>

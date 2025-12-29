@@ -5,12 +5,11 @@ import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import useScrollToTop from "../../../hooks/useScrollToTop";
 import useTableKeyboardNavigation from "../../../hooks/useTableKeyboardNavigation";
 import { useLedger } from "../hooks/useLedger";
+import { useChits } from "../../chits/hooks/useChits";
+import { useMembers } from "../../members/hooks/useMembers";
 import {
     useDeleteCollection,
 } from "../../collections/hooks/useCollections";
-import {
-    useDeletePayout,
-} from "../../payouts/hooks/usePayouts";
 
 import Message from "../../../components/ui/Message";
 import Button from "../../../components/ui/Button";
@@ -26,6 +25,8 @@ import StatsCard from "../../../components/ui/StatsCard";
 import StatsCarousel from "../../../components/ui/StatsCarousel";
 import FormattedCurrency from "../../../components/ui/FormattedCurrency";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import DateFilterDropdown from "../../../components/ui/DateFilterDropdown";
+import DateRangeModal from "../../../components/ui/DateRangeModal";
 
 import {
     Plus,
@@ -36,6 +37,8 @@ import {
     ArrowDownLeft,
     ArrowUpRight,
     BookOpen,
+    User,
+    Layers,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 10;
@@ -51,8 +54,8 @@ const SORT_OPTIONS = [
 ];
 
 const FILTER_OPTIONS = [
-    { value: "collection", label: "Collections (In)" },
-    { value: "payout", label: "Payouts (Out)" },
+    { value: "collection", label: "Collections" },
+    { value: "payout", label: "Payouts" },
 ];
 
 const LedgerPage = () => {
@@ -65,6 +68,14 @@ const LedgerPage = () => {
     const [typeFilter, setTypeFilter] = useState(null);
     const [sortBy, setSortBy] = useState("date_desc");
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Filter states for member and chit
+    const [memberFilter, setMemberFilter] = useState(null);
+    const [chitFilter, setChitFilter] = useState(null);
+
+    // Date filter state
+    const [dateFilter, setDateFilter] = useState({ type: "all" });
+    const [isDateRangeModalOpen, setIsDateRangeModalOpen] = useState(false);
 
     // View mode (always table for ledger usually, but keeping logic)
     const viewMode = "table";
@@ -82,8 +93,14 @@ const LedgerPage = () => {
         error: queryError,
     } = useLedger();
 
-    const deleteCollectionMutation = useDeleteCollection();
-    const deletePayoutMutation = useDeletePayout();
+    // Fetch members and chits for filter dropdowns
+    const { data: membersData } = useMembers();
+    const { data: chitsData } = useChits();
+    const allMembers = membersData?.members ?? [];
+    const allChits = chitsData?.chits ?? [];
+
+    // All payments (collections and payouts) use the payments API now
+    const deletePaymentMutation = useDeleteCollection();
 
     const error = localError || (queryError?.message ?? null);
 
@@ -104,12 +121,10 @@ const LedgerPage = () => {
         if (!itemToDelete) return;
         setLocalError(null);
 
-        const isCollection = itemToDelete.transactionType === "collection";
-        const mutation = isCollection ? deleteCollectionMutation : deletePayoutMutation;
-
-        mutation.mutate(itemToDelete.id, {
+        deletePaymentMutation.mutate(itemToDelete.id, {
             onSuccess: () => {
-                setSuccess(`${isCollection ? "Collection" : "Payout"} deleted successfully.`);
+                const typeName = itemToDelete.transactionType === "collection" ? "Collection" : "Payout";
+                setSuccess(`${typeName} deleted successfully.`);
                 setIsDeleteModalOpen(false);
                 setItemToDelete(null);
             },
@@ -128,12 +143,12 @@ const LedgerPage = () => {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth();
 
-        // Monthly stats calculation logic (reused)
+        // Monthly stats calculation logic (using new Payment API fields)
         const monthlyIn = collections.reduce((sum, c) => {
-            if (!c.collection_date) return sum;
-            const [cYear, cMonth] = c.collection_date.split("-").map(Number);
+            if (!c.date) return sum;
+            const [cYear, cMonth] = c.date.split("-").map(Number);
             if (cYear === currentYear && cMonth - 1 === currentMonth) {
-                return sum + (c.amount_paid || 0);
+                return sum + (c.amount || 0);
             }
             return sum;
         }, 0);
@@ -142,7 +157,7 @@ const LedgerPage = () => {
             if (!p.paid_date) return sum;
             const paidDate = new Date(p.paid_date);
             if (paidDate.getFullYear() === currentYear && paidDate.getMonth() === currentMonth) {
-                return sum + (p.amount || 0);
+                return sum + (p.amount_paid || 0);
             }
             return sum;
         }, 0);
@@ -185,11 +200,78 @@ const LedgerPage = () => {
     }, [collections, payouts, allTransactions, loading]);
 
 
+    // --- HELPER: Calculate date range from filter ---
+    const getDateRange = (filter) => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        switch (filter.type) {
+            case "preset": {
+                switch (filter.preset) {
+                    case "today":
+                        return { start: today, end: new Date(today.getTime() + 86400000 - 1) };
+                    case "this_week": {
+                        const dayOfWeek = today.getDay();
+                        const startOfWeek = new Date(today);
+                        startOfWeek.setDate(today.getDate() - dayOfWeek);
+                        const endOfWeek = new Date(startOfWeek);
+                        endOfWeek.setDate(startOfWeek.getDate() + 6);
+                        endOfWeek.setHours(23, 59, 59, 999);
+                        return { start: startOfWeek, end: endOfWeek };
+                    }
+                    case "this_month": {
+                        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                        return { start: startOfMonth, end: endOfMonth };
+                    }
+                    case "last_30_days": {
+                        const start = new Date(today);
+                        start.setDate(today.getDate() - 30);
+                        return { start, end: new Date(today.getTime() + 86400000 - 1) };
+                    }
+                    case "this_year": {
+                        const startOfYear = new Date(now.getFullYear(), 0, 1);
+                        const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                        return { start: startOfYear, end: endOfYear };
+                    }
+                    default:
+                        return null;
+                }
+            }
+            case "month": {
+                const startOfMonth = new Date(filter.year, filter.month, 1);
+                const endOfMonth = new Date(filter.year, filter.month + 1, 0, 23, 59, 59, 999);
+                return { start: startOfMonth, end: endOfMonth };
+            }
+            case "custom": {
+                if (filter.startDate && filter.endDate) {
+                    const start = new Date(filter.startDate);
+                    const end = new Date(filter.endDate);
+                    end.setHours(23, 59, 59, 999);
+                    return { start, end };
+                }
+                return null;
+            }
+            default:
+                return null;
+        }
+    };
+
     // --- FILTERING & SORTING ---
     const processedData = useMemo(() => {
         let data = [...allTransactions];
 
-        // 1. Search
+        // 1. Member Filter
+        if (memberFilter) {
+            data = data.filter(item => String(item.member_id) === memberFilter);
+        }
+
+        // 2. Chit Filter
+        if (chitFilter) {
+            data = data.filter(item => String(item.chit_id) === chitFilter);
+        }
+
+        // 3. Search
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             data = data.filter(item =>
@@ -200,12 +282,21 @@ const LedgerPage = () => {
             );
         }
 
-        // 2. Filter Type
+        // 4. Filter Type
         if (typeFilter) {
             data = data.filter(item => item.transactionType === typeFilter);
         }
 
-        // 3. Sort
+        // 5. Date Filter
+        const dateRange = getDateRange(dateFilter);
+        if (dateRange) {
+            data = data.filter(item => {
+                const itemDate = new Date(item.transactionDate);
+                return itemDate >= dateRange.start && itemDate <= dateRange.end;
+            });
+        }
+
+        // 5. Sort
         data.sort((a, b) => {
             const dateA = new Date(a.transactionDate);
             const dateB = new Date(b.transactionDate);
@@ -226,7 +317,12 @@ const LedgerPage = () => {
         });
 
         return data;
-    }, [allTransactions, searchQuery, typeFilter, sortBy]);
+    }, [allTransactions, memberFilter, chitFilter, searchQuery, typeFilter, dateFilter, sortBy]);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [memberFilter, chitFilter, searchQuery, typeFilter, dateFilter]);
 
     // Pagination
     const totalPages = Math.ceil(processedData.length / ITEMS_PER_PAGE);
@@ -247,6 +343,11 @@ const LedgerPage = () => {
 
     // Columns
     const columns = [
+        {
+            header: "S.No",
+            className: "text-center w-16",
+            cell: (_, index) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+        },
         {
             header: "Date",
             className: "text-center w-32",
@@ -271,16 +372,16 @@ const LedgerPage = () => {
         {
             header: "Member",
             accessor: "displayName",
-            className: "text-left font-medium"
+            className: "text-center font-medium min-w-[200px]"
         },
         {
             header: "Chit",
             accessor: "chitName",
-            className: "text-left text-text-secondary"
+            className: "text-center text-text-secondary min-w-[150px]"
         },
         {
             header: "Amount",
-            className: "text-right font-bold w-32",
+            className: "text-center font-bold font-mono w-32",
             cell: (row) => (
                 <span className={row.transactionType === "collection" ? "text-success-accent" : "text-error-accent"}>
                     {row.transactionType === "collection" ? "+" : "-"}
@@ -289,9 +390,9 @@ const LedgerPage = () => {
             )
         },
         {
-            header: "Details", // Combined Method & Notes? Or just Method
-            className: "text-center text-text-secondary text-sm hidden md:table-cell",
-            cell: (row) => row.transactionType === 'collection' ? row.collection_method : row.transactionMethod
+            header: "Method",
+            className: "text-center w-24 text-text-secondary text-sm hidden md:table-cell capitalize",
+            cell: (row) => row.transactionMethod?.replace("_", " ") || "Cash"
         },
         {
             header: "Actions",
@@ -304,7 +405,6 @@ const LedgerPage = () => {
                         title="Edit"
                         onClick={(e) => {
                             e.stopPropagation();
-                            // Pass type in state or query param
                             navigate(`/ledger/edit/${row.id}`, { state: { type: row.transactionType } });
                         }}
                     />
@@ -353,6 +453,33 @@ const LedgerPage = () => {
                     onFilterChange={setTypeFilter}
 
                     hideViewToggle={true}
+
+                    customFilterElement={
+                        <DateFilterDropdown
+                            value={dateFilter}
+                            onChange={setDateFilter}
+                            onCustomRangeClick={() => setIsDateRangeModalOpen(true)}
+                        />
+                    }
+
+                    dropdownFilters={[
+                        {
+                            id: "chit",
+                            value: chitFilter,
+                            onChange: setChitFilter,
+                            placeholder: "All Chits",
+                            icon: Layers,
+                            options: allChits.map(c => ({ value: String(c.id), label: c.name })),
+                        },
+                        {
+                            id: "member",
+                            value: memberFilter,
+                            onChange: setMemberFilter,
+                            placeholder: "All Members",
+                            icon: User,
+                            options: allMembers.map(m => ({ value: String(m.id), label: m.full_name })),
+                        },
+                    ]}
                 />
 
                 {loading ? (
@@ -389,6 +516,16 @@ const LedgerPage = () => {
                     confirmLabel="Delete"
                     cancelLabel="Cancel"
                     variant="error"
+                />
+
+                <DateRangeModal
+                    isOpen={isDateRangeModalOpen}
+                    onClose={() => setIsDateRangeModalOpen(false)}
+                    onApply={({ startDate, endDate }) => {
+                        setDateFilter({ type: "custom", startDate, endDate });
+                    }}
+                    initialStartDate={dateFilter.type === "custom" ? dateFilter.startDate : ""}
+                    initialEndDate={dateFilter.type === "custom" ? dateFilter.endDate : ""}
                 />
             </div>
 

@@ -3,15 +3,13 @@
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import CheckConstraint, Index
+from sqlalchemy import Index
 import enum
 
 from app.core.utils import utc_now
 
 if TYPE_CHECKING:
     from app.models.slots import ChitSlot
-    from app.models.members import Member
-    from app.models.chits import Chit
 
 
 class PaymentType(str, enum.Enum):
@@ -34,23 +32,13 @@ class Payment(SQLModel, table=True):
     Tracks all actual payment transactions.
     Each payment can be full or partial.
     
-    For COLLECTION payments:
-      - Links via chit_id + member_id + month
-      - slot_id is NULL
-      
-    For PAYOUT payments:
-      - Links via slot_id (which has chit_id and member_id)
-      - month can be derived from slot
+    All payments (both Collections and Payouts) are linked via slot_id.
+    The slot contains: chit_id, member_id, and month - single source of truth.
     """
     __table_args__ = (
-        CheckConstraint(
-            "(payment_type = 'collection' AND slot_id IS NULL) OR "
-            "(payment_type = 'payout' AND slot_id IS NOT NULL)",
-            name='ck_payment_type_slot_consistency'
-        ),
-        # Composite indexes for common query patterns
-        Index('ix_payment_chit_member_month', 'chit_id', 'member_id', 'month'),
-        Index('ix_payment_chit_month', 'chit_id', 'month'),
+        # Index for common query patterns
+        Index('ix_payment_slot', 'slot_id'),
+        Index('ix_payment_slot_type', 'slot_id', 'payment_type'),
     )
     
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -62,21 +50,17 @@ class Payment(SQLModel, table=True):
     notes: Optional[str] = Field(default=None, max_length=1000)
     payment_type: PaymentType  # collection or payout
     
-    # Month number (1, 2, 3...) - used for collection payments
-    month: int = Field(ge=1)
+    # Link to slot - REQUIRED for all payments
+    # The slot contains the member's assigned payout month
+    slot_id: int = Field(foreign_key="chitslot.id", ge=1)
     
-    # Link to slot (for payout payments only)
-    slot_id: Optional[int] = Field(default=None, foreign_key="chitslot.id")
-    
-    # Required references
-    member_id: int = Field(foreign_key="member.id", ge=1)  # Who paid/received
-    chit_id: int = Field(foreign_key="chit.id", ge=1)  # Which chit
+    # For collections: which month's collection this payment is for (1 to duration_months)
+    # For payouts: NULL (not applicable)
+    collection_month: Optional[int] = Field(default=None, ge=1, index=True)
     
     # Audit timestamps
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     
     # Relationships
-    slot: Optional["ChitSlot"] = Relationship(back_populates="payments")
-    member: "Member" = Relationship(back_populates="payments")
-    chit: "Chit" = Relationship(back_populates="payments")
+    slot: "ChitSlot" = Relationship(back_populates="payments")

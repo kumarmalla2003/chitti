@@ -640,8 +640,10 @@ async def get_month_members(
     # Get the slot for this month
     month_slot = await crud_slots.get_by_chit_and_month(session, chit_id=chit_id, month=month)
     
-    # Get all assigned slots for this chit (these are the "members" for collection purposes)
+    # Show ALL assigned slots (all members who have won any month)
+    # But payments will only be counted if slot.month == viewing month
     all_assigned_slots = await crud_slots.get_assigned_slots(session, chit_id=chit_id)
+    all_assigned_slots = sorted(all_assigned_slots, key=lambda s: s.month)
     
     # Get all payments for this chit in this month
     month_payments = await crud_payments.get_by_chit_and_month(session, chit_id=chit_id, month=month)
@@ -694,9 +696,16 @@ async def get_month_members(
         
         total_expected += member_expected or 0
         
-        # Get payments made by this member for this month
-        member_payments = [p for p in month_payments if p.member_id == member.id and p.payment_type == PaymentType.COLLECTION]
-        amount_paid = sum(p.amount for p in member_payments)
+        # Query payments for this member's slot WHERE collection_month == viewing month
+        # This correctly finds all collections the member made for this month,
+        # regardless of which payout slot they're assigned to
+        slot_payments = await crud_payments.get_by_slot_and_collection_month(
+            session, slot_id=assigned_slot.id, collection_month=month
+        )
+        slot_collection_payments = [p for p in slot_payments if p.payment_type == PaymentType.COLLECTION]
+        amount_paid = sum(p.amount for p in slot_collection_payments)
+        
+        # Update total collected for the VIEW
         total_collected += amount_paid
         
         # Determine status
@@ -716,13 +725,19 @@ async def get_month_members(
                 method=p.method.value if p.method else "cash",
                 notes=p.notes
             )
-            for p in member_payments
+            for p in slot_collection_payments
         ]
         
+        # Calculate slot date
+        slot_date_obj = db_chit.start_date + relativedelta(months=assigned_slot.month - 1)
+        slot_date_str = slot_date_obj.strftime("%d-%m-%Y")
+
         members_data.append(MemberMonthlyData(
             member_id=member.id,
             member_name=member.full_name,
             phone_number=member.phone_number,
+            slot_month=assigned_slot.month,
+            slot_date=slot_date_str,
             expected_amount=member_expected,
             amount_paid=amount_paid,
             status=status_str,

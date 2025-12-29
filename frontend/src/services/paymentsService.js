@@ -3,6 +3,16 @@ import api from '../lib/api';
 const BASE_URL = '/payments';
 
 const handleError = (error, defaultMessage) => {
+    console.error("API Error:", error.response?.data);
+
+    // Handle Pydantic validation errors (422)
+    if (error.response?.data?.detail && Array.isArray(error.response.data.detail)) {
+        const validationErrors = error.response.data.detail
+            .map(err => `${err.loc?.join(' > ')}: ${err.msg}`)
+            .join('; ');
+        throw new Error(`Validation failed: ${validationErrors}`);
+    }
+
     if (error.response?.data?.detail) {
         throw new Error(error.response.data.detail);
     }
@@ -53,11 +63,11 @@ export const getPaymentById = async (id) => {
 
 /**
  * Update a payment.
- * PUT /payments/{id}
+ * PATCH /payments/{id}
  */
 export const updatePayment = async (id, paymentData) => {
     try {
-        const response = await api.put(`${BASE_URL}/${id}`, paymentData);
+        const response = await api.patch(`${BASE_URL}/${id}`, paymentData);
         return response.data;
     } catch (error) {
         handleError(error, "Failed to update payment.");

@@ -23,10 +23,10 @@ class ChitNested(BaseModel):
     chit_value: int = 0
     size: int = 0
     duration_months: int = 0  # Added for month display
-    base_contribution: int = 0
-    premium_contribution: int = 0
-    payout_premium_percent: float = 0.0
-    foreman_commission_percent: float = 0.0
+    base_contribution: Optional[int] = None
+    premium_contribution: Optional[int] = None
+    payout_premium_percent: Optional[float] = None
+    foreman_commission_percent: Optional[float] = None
     notes: Optional[str] = Field(default=None, max_length=1000000)
     
     model_config = ConfigDict(from_attributes=True)

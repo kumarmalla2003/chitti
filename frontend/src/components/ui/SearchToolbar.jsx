@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, X, ArrowUpDown, LayoutGrid, List, Check } from "lucide-react";
+import { Search, X, ArrowUpDown, LayoutGrid, List, Check, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
@@ -17,6 +17,8 @@ import { motion, AnimatePresence } from "framer-motion";
  * @param {string} viewMode - Current view mode ("table" | "card")
  * @param {function} onViewChange - View change handler
  * @param {boolean} showViewToggle - Whether to show view toggle (default: true)
+ * @param {Array} dropdownFilters - Array of {id, value, options, onChange, placeholder, icon} for dropdown filters
+ * @param {React.ReactNode} customFilterElement - Custom filter element to render in filter row
  */
 const SearchToolbar = ({
   searchPlaceholder = "Search...",
@@ -31,6 +33,8 @@ const SearchToolbar = ({
   viewMode,
   onViewChange,
   showViewToggle = true,
+  dropdownFilters = [],
+  customFilterElement = null,
 }) => {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const sortRef = useRef(null);
@@ -81,6 +85,12 @@ const SearchToolbar = ({
   const chipSelectedClass = "bg-accent text-white";
   const chipUnselectedClass =
     "bg-background-tertiary text-text-secondary hover:bg-background-secondary hover:text-text-primary border border-border";
+
+  // Dropdown select styles (consistent with chip styles)
+  const selectBaseClass =
+    "appearance-none pl-7 pr-6 py-1 text-xs font-medium rounded-full border transition-colors duration-200 cursor-pointer bg-background-tertiary text-text-secondary hover:bg-background-secondary hover:text-text-primary border-border focus:outline-none focus:ring-1 focus:ring-accent";
+  const selectActiveClass =
+    "appearance-none pl-7 pr-6 py-1 text-xs font-medium rounded-full border transition-colors duration-200 cursor-pointer bg-accent/10 text-accent border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
   return (
     <div className="mb-3 flex flex-col gap-3">
@@ -182,30 +192,72 @@ const SearchToolbar = ({
         )}
       </div>
 
-      {/* Filter Chips Row */}
-      {filterOptions.length > 0 && (
-        <div className="flex overflow-x-auto gap-2 no-scrollbar">
-          {/* All Chip */}
-          <button
-            type="button"
-            onClick={() => onFilterChange(null)}
-            className={`${chipBaseClass} ${filterValue === null ? chipSelectedClass : chipUnselectedClass
-              }`}
-          >
-            All
-          </button>
-          {/* Filter Option Chips */}
-          {filterOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onFilterChange(option.value)}
-              className={`${chipBaseClass} ${filterValue === option.value ? chipSelectedClass : chipUnselectedClass
-                }`}
-            >
-              {option.label}
-            </button>
-          ))}
+      {/* Filter Row: Custom Filters + Dropdown Filters + Chips */}
+      {(filterOptions.length > 0 || dropdownFilters.length > 0 || customFilterElement) && (
+        <div className="flex overflow-x-auto gap-2 no-scrollbar items-center">
+          {/* Custom Filter Element */}
+          {customFilterElement}
+          {/* Dropdown Filters */}
+          {dropdownFilters.map((dropdown) => {
+            const Icon = dropdown.icon;
+            const hasValue = dropdown.value !== null && dropdown.value !== "";
+            return (
+              <div key={dropdown.id} className="relative flex-shrink-0">
+                {Icon && (
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                    <Icon className={`w-3 h-3 ${hasValue ? "text-accent" : "text-text-secondary"}`} />
+                  </span>
+                )}
+                <select
+                  value={dropdown.value || ""}
+                  onChange={(e) => dropdown.onChange(e.target.value || null)}
+                  className={hasValue ? selectActiveClass : selectBaseClass}
+                >
+                  <option value="">{dropdown.placeholder}</option>
+                  {dropdown.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="absolute inset-y-0 right-0 flex items-center pr-1.5 pointer-events-none">
+                  <ChevronDown className={`w-3 h-3 ${hasValue ? "text-accent" : "text-text-secondary"}`} />
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Divider between dropdowns and chips */}
+          {dropdownFilters.length > 0 && filterOptions.length > 0 && (
+            <div className="h-4 w-px bg-border flex-shrink-0"></div>
+          )}
+
+          {/* Filter Chips */}
+          {filterOptions.length > 0 && (
+            <>
+              {/* All Chip */}
+              <button
+                type="button"
+                onClick={() => onFilterChange(null)}
+                className={`${chipBaseClass} ${filterValue === null ? chipSelectedClass : chipUnselectedClass
+                  }`}
+              >
+                All
+              </button>
+              {/* Filter Option Chips */}
+              {filterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onFilterChange(option.value)}
+                  className={`${chipBaseClass} ${filterValue === option.value ? chipSelectedClass : chipUnselectedClass
+                    }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -213,3 +265,4 @@ const SearchToolbar = ({
 };
 
 export default SearchToolbar;
+

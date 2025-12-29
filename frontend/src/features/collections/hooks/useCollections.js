@@ -154,6 +154,10 @@ export const useDeleteCollection = () => {
             queryClient.invalidateQueries({ queryKey: collectionKeys.detail(collectionId) });
             queryClient.invalidateQueries({ queryKey: collectionKeys.all });
             queryClient.invalidateQueries({ queryKey: collectionKeys.lists() });
+            // Invalidate both collection and payout payment query keys used by useLedger
+            queryClient.invalidateQueries({ queryKey: ['payments', 'collection'] });
+            queryClient.invalidateQueries({ queryKey: ['payments', 'payout'] });
+            queryClient.invalidateQueries({ queryKey: ['payments'] });
         },
     });
 };

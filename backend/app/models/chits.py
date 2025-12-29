@@ -10,7 +10,6 @@ from app.core.utils import utc_now
 
 if TYPE_CHECKING:
     from app.models.slots import ChitSlot
-    from app.models.payments import Payment
 
 
 class ChitType(str, enum.Enum):
@@ -55,5 +54,5 @@ class Chit(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
     
     # Relationships - cascade delete (when chit is deleted, related records are also deleted)
+    # Payments are accessed via slots, not directly
     slots: List["ChitSlot"] = Relationship(back_populates="chit", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    payments: List["Payment"] = Relationship(back_populates="chit", sa_relationship_kwargs={"cascade": "all, delete-orphan"})

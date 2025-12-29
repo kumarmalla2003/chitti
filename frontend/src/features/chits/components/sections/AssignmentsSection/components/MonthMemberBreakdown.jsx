@@ -165,6 +165,8 @@ const MonthMemberBreakdown = ({
                         <table className="w-full text-sm">
                             <thead className="bg-background-tertiary">
                                 <tr>
+                                    <th className="px-4 py-2 text-left font-medium text-text-secondary">Month</th>
+                                    <th className="px-4 py-2 text-left font-medium text-text-secondary">Date</th>
                                     <th className="px-4 py-2 text-left font-medium text-text-secondary">Member</th>
                                     <th className="px-4 py-2 text-right font-medium text-text-secondary">Expected</th>
                                     <th className="px-4 py-2 text-right font-medium text-text-secondary">Paid</th>
@@ -177,13 +179,19 @@ const MonthMemberBreakdown = ({
                             <tbody>
                                 {filteredMembers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={onLogPayment ? 5 : 4} className="px-4 py-8 text-center text-text-secondary">
+                                        <td colSpan={onLogPayment ? 7 : 6} className="px-4 py-8 text-center text-text-secondary">
                                             {searchQuery ? "No members match your search" : "No members assigned"}
                                         </td>
                                     </tr>
                                 ) : (
                                     filteredMembers.map((member, index) => (
                                         <tr key={`${member.member_id}-${index}`} className="border-t border-border hover:bg-background-tertiary/30 transition-colors">
+                                            <td className="px-4 py-3 text-text-primary font-medium">
+                                                {member.slot_month}
+                                            </td>
+                                            <td className="px-4 py-3 text-text-secondary text-xs">
+                                                {member.slot_date}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-text-primary">{member.member_name}</span>

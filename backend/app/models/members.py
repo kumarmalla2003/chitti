@@ -8,7 +8,6 @@ from app.core.utils import utc_now
 
 if TYPE_CHECKING:
     from app.models.slots import ChitSlot
-    from app.models.payments import Payment
 
 
 class Member(SQLModel, table=True):
@@ -21,5 +20,5 @@ class Member(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
+    # Payments are accessed via slots, not directly
     slots: List["ChitSlot"] = Relationship(back_populates="member")
-    payments: List["Payment"] = Relationship(back_populates="member")

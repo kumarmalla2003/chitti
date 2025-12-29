@@ -19,6 +19,8 @@ class MemberMonthlyData(BaseModel):
     member_id: int
     member_name: str
     phone_number: str
+    slot_month: int
+    slot_date: str
     expected_amount: int  # Per-member expected (Total ÷ Size) in rupees
     amount_paid: int      # Sum of payments for this month in rupees
     status: str           # 'Paid', 'Partial', 'Unpaid'

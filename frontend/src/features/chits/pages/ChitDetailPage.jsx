@@ -20,7 +20,7 @@ import Skeleton from "../../../components/ui/Skeleton";
 import ChitDetailsForm from "../components/forms/ChitDetailsForm";
 import ChitMobileContent from "../components/sections/ChitMobileContent";
 import AssignmentsSection from "../components/sections/AssignmentsSection";
-import TransactionsSection from "../components/sections/TransactionsSection";
+import LedgerSection from "../components/sections/TransactionsSection";
 import ChitViewDashboard from "./ChitViewDashboard";
 import { capitalizeFirstLetter } from "../utils/normalizeChit";
 import { Info, Loader2, ArrowLeft, SquarePen, Printer } from "lucide-react";
@@ -557,7 +557,7 @@ const ChitDetailPage = () => {
 
                     {/* Transactions Section */}
                     <Card className="flex-1 flex flex-col">
-                      <TransactionsSection
+                      <LedgerSection
                         mode={mode}
                         chitId={effectiveChitId}
                       />

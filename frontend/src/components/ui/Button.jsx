@@ -11,7 +11,7 @@ const Button = ({
   const baseStyles =
     "font-semibold transition-all duration-normal ease-smooth focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
-  const commonClasses = "px-control py-2 rounded-btn flex items-center justify-center gap-2";
+  const commonClasses = "px-control py-2 rounded-btn inline-flex items-center justify-center gap-2";
 
   const variants = {
     primary: `${commonClasses} bg-accent text-white hover:bg-accent-hover focus:ring-accent hover:scale-105`,
